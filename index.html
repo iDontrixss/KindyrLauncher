@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es" data-lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zotlin Launcher — The Modern MC Launcher</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --black:    #0a0c0a;
+      --dark:     #111612;
+      --card:     #151b14;
+      --border:   #1e2a1c;
+      --green:    #4ade80;
+      --green-dim:#2a7a46;
+      --green-bg: rgba(74,222,128,.07);
+      --muted:    #6b8c6a;
+      --light:    #d6ead4;
+      --white:    #f0f7ee;
+      --radius:   14px;
+      --mono: 'DM Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--black); color: var(--light); font-family: var(--sans); overflow-x: hidden; }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: .025; pointer-events: none; z-index: 1000;
+    }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--black); }
+    ::-webkit-scrollbar-thumb { background: var(--green-dim); border-radius: 99px; }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 900;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 5vw;
+      background: rgba(10,12,10,.80);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 1.1rem; font-weight: 800; letter-spacing: -.02em; color: var(--white);
+    }
+    .nav-logo img { width: 32px; height: 32px; border-radius: 7px; }
+    .nav-logo span { color: var(--green); }
+    .nav-links { display: flex; gap: 28px; list-style: none; }
+    .nav-links a { font-family: var(--mono); font-size: .78rem; color: var(--muted); text-decoration: none; letter-spacing: .04em; transition: color .2s; }
+    .nav-links a:hover { color: var(--green); }
+    .nav-right { display: flex; align-items: center; gap: 14px; }
+    .nav-cta { font-family: var(--mono); font-size: .78rem; padding: 8px 20px; background: var(--green); color: var(--black); border: none; border-radius: 6px; cursor: pointer; font-weight: 500; text-decoration: none; transition: opacity .2s, transform .15s; }
+    .nav-cta:hover { opacity: .85; transform: translateY(-1px); }
+    .lang-btn { font-family: var(--mono); font-size: .72rem; padding: 6px 12px; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; letter-spacing: .06em; transition: border-color .2s, color .2s; }
+    .lang-btn:hover { border-color: var(--green); color: var(--green); }
+
+    /* HERO */
+    #hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 120px 5vw 80px; position: relative; overflow: hidden; }
+    #hero::after { content: ''; position: absolute; width: 700px; height: 700px; background: radial-gradient(circle, rgba(74,222,128,.14) 0%, transparent 70%); top: 50%; left: 50%; transform: translate(-50%, -60%); pointer-events: none; animation: pulse 6s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{transform:translate(-50%,-60%) scale(1);opacity:.8}50%{transform:translate(-50%,-58%) scale(1.08);opacity:1} }
+    .hero-badge { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: .7rem; color: var(--green); background: var(--green-bg); border: 1px solid rgba(74,222,128,.2); padding: 5px 14px; border-radius: 99px; margin-bottom: 32px; letter-spacing: .08em; animation: fadeUp .8s ease both; }
+    .hero-badge::before { content: ''; width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: blink 1.4s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+    .hero-logo-wrap { margin-bottom: 24px; animation: fadeUp .85s .05s ease both; }
+    .hero-logo-wrap img { width: 90px; height: 90px; border-radius: 20px; box-shadow: 0 0 40px rgba(74,222,128,.2); }
+    h1 { font-size: clamp(3rem, 9vw, 7.5rem); font-weight: 800; line-height: .95; letter-spacing: -.04em; color: var(--white); animation: fadeUp .9s .1s ease both; }
+    h1 em { font-style: normal; color: var(--green); }
+    .hero-sub { max-width: 560px; margin: 28px auto 0; font-family: var(--mono); font-size: .95rem; font-weight: 300; color: var(--muted); line-height: 1.7; animation: fadeUp 1s .2s ease both; }
+    .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 44px; animation: fadeUp 1s .35s ease both; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 10px; padding: 15px 36px; background: var(--green); color: var(--black); font-family: var(--mono); font-size: .9rem; font-weight: 500; border: none; border-radius: 8px; cursor: pointer; text-decoration: none; transition: transform .2s, box-shadow .2s; }
+    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 8px 40px rgba(74,222,128,.3); }
+    .btn-secondary { display: inline-flex; align-items: center; gap: 10px; padding: 15px 36px; background: transparent; color: var(--light); font-family: var(--mono); font-size: .9rem; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; text-decoration: none; transition: border-color .2s, color .2s; }
+    .btn-secondary:hover { border-color: var(--green); color: var(--green); }
+    .hero-stats { display: flex; gap: 40px; justify-content: center; margin-top: 64px; animation: fadeUp 1s .5s ease both; }
+    .stat { text-align: center; }
+    .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--white); letter-spacing: -.03em; }
+    .stat-num span { color: var(--green); }
+    .stat-label { font-family: var(--mono); font-size: .65rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-top: 4px; }
+
+    /* SECTIONS */
+    section { padding: 100px 5vw; }
+    .section-tag { font-family: var(--mono); font-size: .7rem; color: var(--green); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 16px; }
+    .section-title { font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 800; color: var(--white); letter-spacing: -.03em; line-height: 1.1; }
+    .section-title em { font-style: normal; color: var(--green); }
+    .section-desc { font-family: var(--mono); font-size: .88rem; color: var(--muted); line-height: 1.8; max-width: 500px; margin-top: 12px; }
+
+    /* FEATURES */
+    #features { background: var(--dark); }
+    .features-header { margin-bottom: 60px; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+    .feat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; transition: border-color .25s, transform .25s; position: relative; overflow: hidden; }
+    .feat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--green), transparent); opacity: 0; transition: opacity .3s; }
+    .feat-card:hover { border-color: var(--green-dim); transform: translateY(-4px); }
+    .feat-card:hover::before { opacity: 1; }
+    .feat-icon { width: 44px; height: 44px; background: var(--green-bg); border: 1px solid rgba(74,222,128,.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; margin-bottom: 20px; }
+    .feat-name { font-size: 1rem; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+    .feat-desc { font-family: var(--mono); font-size: .8rem; color: var(--muted); line-height: 1.7; }
+
+    /* DOWNLOAD */
+    #download { background: var(--black); text-align: center; }
+    .download-inner { max-width: 720px; margin: 0 auto; }
+    .download-box { margin-top: 48px; background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 48px; position: relative; overflow: hidden; }
+    .download-box::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(74,222,128,.1) 0%, transparent 60%); pointer-events: none; }
+    .version-badge { display: inline-block; font-family: var(--mono); font-size: .72rem; color: var(--green); background: var(--green-bg); border: 1px solid rgba(74,222,128,.2); padding: 4px 12px; border-radius: 99px; margin-bottom: 20px; letter-spacing: .06em; }
+    .download-title { font-size: 1.5rem; font-weight: 800; color: var(--white); letter-spacing: -.03em; margin-bottom: 10px; }
+    .download-meta { font-family: var(--mono); font-size: .78rem; color: var(--muted); margin-bottom: 32px; }
+    .download-options { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .dl-btn { display: inline-flex; align-items: center; gap: 10px; padding: 13px 28px; background: var(--green); color: var(--black); font-family: var(--mono); font-size: .82rem; font-weight: 500; border-radius: 8px; text-decoration: none; border: none; cursor: pointer; transition: transform .2s, box-shadow .2s; }
+    .dl-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(74,222,128,.25); }
+    .dl-btn.outline { background: transparent; color: var(--light); border: 1px solid var(--border); }
+    .dl-btn.outline:hover { border-color: var(--green); color: var(--green); box-shadow: none; }
+    .sys-req { margin-top: 28px; font-family: var(--mono); font-size: .72rem; color: var(--muted); display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+    .sys-req span { display: flex; align-items: center; gap: 6px; }
+
+    /* CHANGELOG */
+    #changelog { background: var(--dark); }
+    .changelog-inner { max-width: 860px; margin: 48px auto 0; }
+    .cl-entry { padding: 36px 0; border-bottom: 1px solid var(--border); }
+    .cl-entry:last-child { border-bottom: none; }
+    .cl-head { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .cl-version { font-size: 1.1rem; font-weight: 800; color: var(--white); }
+    .cl-date { font-family: var(--mono); font-size: .7rem; color: var(--muted); }
+    .cl-tag { display: inline-block; font-family: var(--mono); font-size: .62rem; padding: 3px 10px; border-radius: 4px; letter-spacing: .06em; }
+    .cl-tag.release { background: var(--green-bg); color: var(--green); border: 1px solid rgba(74,222,128,.2); }
+    .cl-tag.beta { background: rgba(251,191,36,.07); color: #fbbf24; border: 1px solid rgba(251,191,36,.2); }
+    .cl-section-title { font-family: var(--mono); font-size: .75rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin: 20px 0 10px; border-left: 2px solid var(--green-dim); padding-left: 10px; }
+    .cl-change { display: flex; align-items: flex-start; gap: 10px; font-family: var(--mono); font-size: .82rem; color: var(--light); line-height: 1.6; margin-bottom: 8px; padding-left: 4px; }
+    .cl-change::before { content: '▸'; color: var(--green); flex-shrink: 0; margin-top: 2px; font-size: .7rem; }
+    .cl-change.fix::before { content: '⬤'; color: #f97316; font-size: .5rem; margin-top: 6px; }
+    .cl-change.improve::before { content: '◆'; color: #7cb8f0; font-size: .55rem; margin-top: 5px; }
+
+    /* FAQ */
+    #faq { background: var(--black); }
+    .faq-inner { max-width: 720px; margin: 48px auto 0; }
+    .faq-item { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; transition: border-color .2s; }
+    .faq-item.open { border-color: var(--green-dim); }
+    .faq-q { width: 100%; background: var(--card); border: none; cursor: pointer; padding: 20px 24px; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 16px; font-family: var(--sans); font-size: .95rem; font-weight: 600; color: var(--white); transition: color .2s; }
+    .faq-q:hover { color: var(--green); }
+    .faq-arrow { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 50%; font-size: .7rem; color: var(--muted); transition: transform .3s, border-color .2s; }
+    .faq-item.open .faq-arrow { transform: rotate(135deg); border-color: var(--green); color: var(--green); }
+    .faq-body { background: var(--card); padding: 0 24px; font-family: var(--mono); font-size: .82rem; color: var(--muted); line-height: 1.8; max-height: 0; overflow: hidden; transition: max-height .35s ease, padding .3s ease; }
+    .faq-item.open .faq-body { max-height: 400px; padding: 0 24px 20px; }
+
+    /* FOOTER */
+    footer { background: var(--dark); border-top: 1px solid var(--border); padding: 40px 5vw; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
+    .footer-logo { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 800; color: var(--white); }
+    .footer-logo img { width: 24px; height: 24px; border-radius: 5px; }
+    .footer-logo span { color: var(--green); }
+    .footer-links { display: flex; gap: 24px; list-style: none; }
+    .footer-links a { font-family: var(--mono); font-size: .72rem; color: var(--muted); text-decoration: none; letter-spacing: .04em; transition: color .2s; }
+    .footer-links a:hover { color: var(--green); }
+    .footer-copy { font-family: var(--mono); font-size: .7rem; color: var(--muted); }
+
+    /* ANIMATIONS */
+    @keyframes fadeUp { from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)} }
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* RESPONSIVE */
+    @media (max-width: 700px) {
+      nav { padding: 12px 5vw; }
+      .nav-links { display: none; }
+      .hero-stats { gap: 20px; }
+      footer { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGO DATA -->
+<script>
+const LOGO = "LOGO_PLACEHOLDER";
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('img.logo-img').forEach(function(img) {
+    img.src = 'data:image/png;base64,' + LOGO;
+  });
+});
+</script>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <img class="logo-img" src="" alt="Zotlin Launcher" />
+    Zotlin<span> Launcher</span>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#features" data-i18n="nav.features">Características</a></li>
+    <li><a href="#download" data-i18n="nav.download">Descarga</a></li>
+    <li><a href="#changelog" data-i18n="nav.changelog">Changelog</a></li>
+    <li><a href="#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-right">
+    <button class="lang-btn" onclick="toggleLang()" id="langBtn">EN</button>
+    <a href="#download" class="nav-cta" data-i18n="nav.cta">↓ Descargar</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-badge" data-i18n="hero.badge">Release 1.0.0 — Ahora disponible</div>
+  <div class="hero-logo-wrap"><img class="logo-img" src="" alt="Zotlin Launcher" /></div>
+  <h1 data-i18n-html="hero.title">El launcher de<br/><em>Minecraft</em><br/>que mereces.</h1>
+  <p class="hero-sub" data-i18n="hero.sub">Zotlin Launcher redefine cómo jugás Minecraft. Rápido, modular y completamente personalizable — todo en un solo lugar.</p>
+  <div class="hero-actions">
+    <a href="#download" class="btn-primary" data-i18n="hero.cta1">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M4 7l4 4 4-4M2 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Descargar gratis</span>
+    </a>
+    <a href="#features" class="btn-secondary" data-i18n="hero.cta2">Ver características →</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-num">100<span>%</span></div>
+      <div class="stat-label" data-i18n="hero.stat">Gratuito</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="features-header reveal">
+    <div class="section-tag" data-i18n="feat.tag">// características</div>
+    <h2 class="section-title" data-i18n-html="feat.title">Todo lo que<br/>necesitás, <em>nativo</em>.</h2>
+    <p class="section-desc" data-i18n="feat.desc">Sin plugins externos, sin configuraciones complicadas. Zotlin Launcher viene completo desde el primer inicio.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card reveal">
+      <div class="feat-icon">🎨</div>
+      <div class="feat-name" data-i18n="feat1.name">UI moderna y limpia</div>
+      <div class="feat-desc" data-i18n="feat1.desc">Pantalla de inicio renovada, minimalista y sin distracciones. Ajustes rediseñados con temas dinámicos y opciones avanzadas.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">⚡</div>
+      <div class="feat-name" data-i18n="feat2.name">Transiciones ultra fluidas</div>
+      <div class="feat-desc" data-i18n="feat2.desc">Sistema asíncrono que elimina el lag al cambiar de pestañas. Caché de nodos y carga inteligente para una navegación instantánea.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">🛡️</div>
+      <div class="feat-name" data-i18n="feat3.name">Login Premium (Microsoft)</div>
+      <div class="feat-desc" data-i18n="feat3.desc">Autenticación oficial con Microsoft para cuentas Premium. Soporte nativo sin pasos adicionales.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">☕</div>
+      <div class="feat-name" data-i18n="feat4.name">Java integrado (Java S)</div>
+      <div class="feat-desc" data-i18n="feat4.desc">Runtimes de Java preinstalados para compatibilidad automática con cualquier versión de Minecraft, sin importar el Java del sistema.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">🌐</div>
+      <div class="feat-name" data-i18n="feat5.name">Español e Inglés</div>
+      <div class="feat-desc" data-i18n="feat5.desc">Internacionalización completa (i18n). Cambia el idioma en tiempo real — la interfaz se traduce al instante.</div>
+    </div>
+    <div class="feat-card reveal">
+      <div class="feat-icon">🔧</div>
+      <div class="feat-name" data-i18n="feat6.name">Rendimiento optimizado</div>
+      <div class="feat-desc" data-i18n="feat6.desc">Caché inteligente de almacenamiento, protección anti-spam en botones y corrección de fugas de memoria para una experiencia estable.</div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section id="download">
+  <div class="download-inner">
+    <div class="reveal">
+      <div class="section-tag" data-i18n="dl.tag">// descarga</div>
+      <h2 class="section-title" data-i18n-html="dl.title">Empezá <em>hoy mismo</em>.</h2>
+      <p class="section-desc" data-i18n="dl.desc">Gratuito, sin anuncios y sin registro. Solo Windows por ahora.</p>
+    </div>
+    <div class="download-box reveal">
+      <div class="version-badge" data-i18n="dl.version">VERSIÓN ACTUAL — Release 1.0.0</div>
+      <div class="download-title">Zotlin Launcher Release 1.0.0</div>
+      <div class="download-meta" data-i18n="dl.meta">Versión estable · Solo Windows 10/11</div>
+      <div class="download-options">
+        <a href="#" class="dl-btn">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M5 7l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span data-i18n="dl.btn">Windows (.exe)</span>
+        </a>
+      </div>
+      <div class="sys-req">
+        <span>🖥 Windows 10/11</span>
+        <span>☕ <span data-i18n="dl.java">Java incluido</span></span>
+        <span>💾 <span data-i18n="dl.ram">Mín. 2 GB RAM</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHANGELOG -->
+<section id="changelog">
+  <div class="reveal">
+    <div class="section-tag" data-i18n="cl.tag">// changelog</div>
+    <h2 class="section-title" data-i18n-html="cl.title">Historial de<br/><em>versiones</em>.</h2>
+  </div>
+  <div class="changelog-inner">
+
+    <!-- Release 1.0.0 -->
+    <div class="cl-entry reveal">
+      <div class="cl-head">
+        <div class="cl-version">Release 1.0.0</div>
+        <div class="cl-date">2025</div>
+        <span class="cl-tag release">RELEASE</span>
+      </div>
+
+      <div class="cl-section-title" data-i18n="cl.ui">🎨 Interfaz, Diseño y Experiencia Visual</div>
+      <div class="cl-change">Pantalla de inicio renovada — limpieza visual profunda, interfaz minimalista enfocada en jugar.</div>
+      <div class="cl-change">Apartado de ajustes completamente rediseñado con opciones avanzadas, cambio de temas dinámico y organización intuitiva.</div>
+      <div class="cl-change">Scrollbar personalizada integrada con el modo oscuro y la estética del launcher.</div>
+      <div class="cl-change">Transiciones fluidas sin congelamientos gracias al nuevo sistema asíncrono — navegación instantánea.</div>
+      <div class="cl-change">Protección anti-spam en botones: re-ejecución deshabilitada visualmente al hacer clicks rápidos.</div>
+
+      <div class="cl-section-title" data-i18n="cl.perf">⚡ Rendimiento e Ingeniería</div>
+      <div class="cl-change improve">Caché inteligente de almacenamiento: cálculo del tamaño de carpetas (16.000+ archivos) realizado una sola vez en memoria.</div>
+      <div class="cl-change improve">Optimización del cambio de secciones con caché de nodos (<code>sectionNodeCache</code>) para evitar re-ejecución de scripts.</div>
+
+      <div class="cl-section-title" data-i18n="cl.features">🚀 Nuevas Funciones</div>
+      <div class="cl-change">Soporte Premium: autenticación oficial con Microsoft Login.</div>
+      <div class="cl-change">Java S: runtimes de Java preinstalados para compatibilidad automática con cualquier versión de Minecraft.</div>
+      <div class="cl-change">i18n completa: soporte bilingüe Español/Inglés con traducción en caliente de toda la interfaz.</div>
+
+      <div class="cl-section-title" data-i18n="cl.fixes">🐛 Corrección de Errores</div>
+      <div class="cl-change fix">Bug crítico: fuga de memoria por scripts duplicados en cada click (<code>let/const already declared</code>) — corregido.</div>
+      <div class="cl-change fix">NeoForge/Modpacks: paracaídas <code>if (!target) return</code> para evitar crashes al cambiar de pestaña durante la carga.</div>
+      <div class="cl-change fix">EPERM Fix: reestructuración del limpiador de archivos en <code>main.js</code> para evitar fallos con archivos abiertos por Electron en Windows.</div>
+      <div class="cl-change fix">Eliminación de HTML corrupto y bloques JS duplicados en la vista de instancias.</div>
+    </div>
+
+    <!-- Beta 1.0.0 -->
+    <div class="cl-entry reveal">
+      <div class="cl-head">
+        <div class="cl-version">Beta 1.0.0</div>
+        <div class="cl-date">2025</div>
+        <span class="cl-tag beta">BETA</span>
+      </div>
+      <div class="cl-change" data-i18n="cl.beta.line1">Primera versión pública del launcher.</div>
+      <div class="cl-change" data-i18n="cl.beta.line2">Base funcional: gestión de instancias, soporte inicial de mods y cuentas offline.</div>
+      <div class="cl-change" data-i18n="cl.beta.line3">Interfaz inicial en fase de pruebas con la comunidad.</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="reveal">
+    <div class="section-tag">// faq</div>
+    <h2 class="section-title" data-i18n-html="faq.title">Preguntas<br/><em>frecuentes</em>.</h2>
+  </div>
+  <div class="faq-inner">
+    <div class="faq-item reveal">
+      <button class="faq-q" onclick="toggleFaq(this)"><span data-i18n="faq.q1">¿Zotlin Launcher es completamente gratuito?</span><div class="faq-arrow">+</div></button>
+      <div class="faq-body" data-i18n="faq.a1">Sí, es 100% gratuito y de código abierto. No hay planes de pago, suscripciones ni funciones bloqueadas.</div>
+    </div>
+    <div class="faq-item reveal">
+      <button class="faq-q" onclick="toggleFaq(this)"><span data-i18n="faq.q2">¿Necesito tener Java instalado?</span><div class="faq-arrow">+</div></button>
+      <div class="faq-body" data-i18n="faq.a2">No. Zotlin Launcher incluye sus propios runtimes de Java (Java S). Detecta y usa automáticamente la versión correcta para cada versión de Minecraft.</div>
+    </div>
+    <div class="faq-item reveal">
+      <button class="faq-q" onclick="toggleFaq(this)"><span data-i18n="faq.q3">¿Funciona con cuentas no-premium?</span><div class="faq-arrow">+</div></button>
+      <div class="faq-body" data-i18n="faq.a3">Sí. Podés usar cuentas Premium (Microsoft) y cuentas offline. El launcher gestiona ambas de forma nativa.</div>
+    </div>
+    <div class="faq-item reveal">
+      <button class="faq-q" onclick="toggleFaq(this)"><span data-i18n="faq.q4">¿Hay soporte para Linux o macOS?</span><div class="faq-arrow">+</div></button>
+      <div class="faq-body" data-i18n="faq.a4">Por ahora solo hay soporte oficial para Windows 10/11. El soporte para otros sistemas operativos podría llegar en el futuro.</div>
+    </div>
+    <div class="faq-item reveal">
+      <button class="faq-q" onclick="toggleFaq(this)"><span data-i18n="faq.q5">¿Puedo cambiar el idioma?</span><div class="faq-arrow">+</div></button>
+      <div class="faq-body" data-i18n="faq.a5">Sí. El launcher incluye soporte completo de Español e Inglés. Podés cambiar el idioma tanto dentro del launcher como en esta página web con el botón de idioma en la barra de navegación.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">
+    <img class="logo-img" src="" alt="Zotlin" />
+    Zotlin<span> Launcher</span>
+  </div>
+  <ul class="footer-links">
+    <li><a href="#">GitHub</a></li>
+    <li><a href="#">Discord</a></li>
+    <li><a href="#">Issues</a></li>
+    <li><a href="#" data-i18n="footer.license">Licencia</a></li>
+  </ul>
+  <div class="footer-copy">© 2025 Zotlin Launcher — Open Source</div>
+</footer>
+
+<script>
+// ── i18n
+const translations = {
+  es: {
+    "nav.features": "Características",
+    "nav.download": "Descarga",
+    "nav.changelog": "Changelog",
+    "nav.cta": "↓ Descargar",
+    "hero.badge": "Release 1.0.0 — Ahora disponible",
+    "hero.title": "El launcher de<br/><em>Minecraft</em><br/>que mereces.",
+    "hero.sub": "Zotlin Launcher redefine cómo jugás Minecraft. Rápido, modular y completamente personalizable — todo en un solo lugar.",
+    "hero.cta1": "Descargar gratis",
+    "hero.cta2": "Ver características →",
+    "hero.stat": "Gratuito",
+    "feat.tag": "// características",
+    "feat.title": "Todo lo que<br/>necesitás, <em>nativo</em>.",
+    "feat.desc": "Sin plugins externos, sin configuraciones complicadas. Zotlin Launcher viene completo desde el primer inicio.",
+    "feat1.name": "UI moderna y limpia",
+    "feat1.desc": "Pantalla de inicio renovada, minimalista y sin distracciones. Ajustes rediseñados con temas dinámicos y opciones avanzadas.",
+    "feat2.name": "Transiciones ultra fluidas",
+    "feat2.desc": "Sistema asíncrono que elimina el lag al cambiar de pestañas. Caché de nodos para una navegación instantánea.",
+    "feat3.name": "Login Premium (Microsoft)",
+    "feat3.desc": "Autenticación oficial con Microsoft para cuentas Premium. Soporte nativo sin pasos adicionales.",
+    "feat4.name": "Java integrado (Java S)",
+    "feat4.desc": "Runtimes de Java preinstalados para compatibilidad automática con cualquier versión de Minecraft.",
+    "feat5.name": "Español e Inglés",
+    "feat5.desc": "Internacionalización completa (i18n). Cambia el idioma en tiempo real — la interfaz se traduce al instante.",
+    "feat6.name": "Rendimiento optimizado",
+    "feat6.desc": "Caché inteligente, protección anti-spam y corrección de fugas de memoria para una experiencia estable.",
+    "dl.tag": "// descarga",
+    "dl.title": "Empezá <em>hoy mismo</em>.",
+    "dl.desc": "Gratuito, sin anuncios y sin registro. Solo Windows por ahora.",
+    "dl.version": "VERSIÓN ACTUAL — Release 1.0.0",
+    "dl.meta": "Versión estable · Solo Windows 10/11",
+    "dl.btn": "Windows (.exe)",
+    "dl.java": "Java incluido",
+    "dl.ram": "Mín. 2 GB RAM",
+    "cl.tag": "// changelog",
+    "cl.title": "Historial de<br/><em>versiones</em>.",
+    "cl.ui": "🎨 Interfaz, Diseño y Experiencia Visual",
+    "cl.perf": "⚡ Rendimiento e Ingeniería",
+    "cl.features": "🚀 Nuevas Funciones",
+    "cl.fixes": "🐛 Corrección de Errores",
+    "cl.beta.line1": "Primera versión pública del launcher.",
+    "cl.beta.line2": "Base funcional: gestión de instancias, soporte inicial de mods y cuentas offline.",
+    "cl.beta.line3": "Interfaz inicial en fase de pruebas con la comunidad.",
+    "faq.title": "Preguntas<br/><em>frecuentes</em>.",
+    "faq.q1": "¿Zotlin Launcher es completamente gratuito?",
+    "faq.a1": "Sí, es 100% gratuito y de código abierto. No hay planes de pago, suscripciones ni funciones bloqueadas.",
+    "faq.q2": "¿Necesito tener Java instalado?",
+    "faq.a2": "No. Zotlin Launcher incluye sus propios runtimes de Java (Java S). Detecta y usa automáticamente la versión correcta.",
+    "faq.q3": "¿Funciona con cuentas no-premium?",
+    "faq.a3": "Sí. Podés usar cuentas Premium (Microsoft) y cuentas offline. El launcher gestiona ambas de forma nativa.",
+    "faq.q4": "¿Hay soporte para Linux o macOS?",
+    "faq.a4": "Por ahora solo hay soporte oficial para Windows 10/11. El soporte para otros sistemas podría llegar en el futuro.",
+    "faq.q5": "¿Puedo cambiar el idioma?",
+    "faq.a5": "Sí. El launcher incluye soporte completo de Español e Inglés. Podés cambiar el idioma con el botón en la barra de navegación.",
+    "footer.license": "Licencia"
+  },
+  en: {
+    "nav.features": "Features",
+    "nav.download": "Download",
+    "nav.changelog": "Changelog",
+    "nav.cta": "↓ Download",
+    "hero.badge": "Release 1.0.0 — Now available",
+    "hero.title": "The <em>Minecraft</em><br/>launcher<br/>you deserve.",
+    "hero.sub": "Zotlin Launcher redefines how you play Minecraft. Fast, modular and fully customizable — all in one place.",
+    "hero.cta1": "Download for free",
+    "hero.cta2": "See features →",
+    "hero.stat": "Free",
+    "feat.tag": "// features",
+    "feat.title": "Everything you<br/>need, <em>built-in</em>.",
+    "feat.desc": "No external plugins, no complex setup. Zotlin Launcher comes complete from the very first launch.",
+    "feat1.name": "Modern, clean UI",
+    "feat1.desc": "Revamped home screen — minimalist and distraction-free. Redesigned settings with dynamic themes and advanced options.",
+    "feat2.name": "Ultra-smooth transitions",
+    "feat2.desc": "Async system that eliminates lag when switching tabs. Node cache for instant navigation.",
+    "feat3.name": "Premium Login (Microsoft)",
+    "feat3.desc": "Official Microsoft authentication for Premium accounts. Native support with no extra steps.",
+    "feat4.name": "Built-in Java (Java S)",
+    "feat4.desc": "Pre-installed Java runtimes for automatic compatibility with any Minecraft version — no matter what Java you have installed.",
+    "feat5.name": "Spanish & English",
+    "feat5.desc": "Full i18n support. Switch language in real time — the whole UI translates instantly.",
+    "feat6.name": "Optimized performance",
+    "feat6.desc": "Smart caching, anti-spam protection and memory leak fixes for a stable experience.",
+    "dl.tag": "// download",
+    "dl.title": "Get started <em>today</em>.",
+    "dl.desc": "Free, no ads, no registration. Windows only for now.",
+    "dl.version": "CURRENT VERSION — Release 1.0.0",
+    "dl.meta": "Stable release · Windows 10/11 only",
+    "dl.btn": "Windows (.exe)",
+    "dl.java": "Java included",
+    "dl.ram": "Min. 2 GB RAM",
+    "cl.tag": "// changelog",
+    "cl.title": "Version<br/><em>history</em>.",
+    "cl.ui": "🎨 UI, Design & Visual Experience",
+    "cl.perf": "⚡ Performance & Engineering",
+    "cl.features": "🚀 New Features",
+    "cl.fixes": "🐛 Bug Fixes",
+    "cl.beta.line1": "First public release of the launcher.",
+    "cl.beta.line2": "Functional base: instance management, initial mod support and offline accounts.",
+    "cl.beta.line3": "Initial UI in community testing phase.",
+    "faq.title": "Frequently asked<br/><em>questions</em>.",
+    "faq.q1": "Is Zotlin Launcher completely free?",
+    "faq.a1": "Yes, it's 100% free and open source. No paid plans, subscriptions or locked features.",
+    "faq.q2": "Do I need Java installed?",
+    "faq.a2": "No. Zotlin Launcher includes its own Java runtimes (Java S). It automatically detects and uses the right version for each Minecraft version.",
+    "faq.q3": "Does it work with non-premium accounts?",
+    "faq.a3": "Yes. You can use Premium (Microsoft) accounts and offline accounts. The launcher manages both natively.",
+    "faq.q4": "Is there Linux or macOS support?",
+    "faq.a4": "For now there is official support for Windows 10/11 only. Support for other operating systems may come in the future.",
+    "faq.q5": "Can I change the language?",
+    "faq.a5": "Yes. The launcher includes full Spanish and English support. You can switch the language using the button in the navigation bar.",
+    "footer.license": "License"
+  }
+};
+
+let currentLang = 'es';
+
+function applyLang(lang) {
+  const t = translations[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key]) el.textContent = t[key];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const key = el.getAttribute('data-i18n-html');
+    if (t[key]) el.innerHTML = t[key];
+  });
+  document.documentElement.setAttribute('lang', lang);
+  document.getElementById('langBtn').textContent = lang === 'es' ? 'EN' : 'ES';
+  currentLang = lang;
+}
+
+function toggleLang() {
+  applyLang(currentLang === 'es' ? 'en' : 'es');
+}
+
+// ── FAQ
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+
+// ── Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => entry.target.classList.add('visible'), i * 60);
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Nav active
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-links a');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 120) current = s.id; });
+  navLinks.forEach(a => { a.style.color = a.getAttribute('href') === '#' + current ? 'var(--green)' : ''; });
+});
+</script>
+</body>
+</html>
