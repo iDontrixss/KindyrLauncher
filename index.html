@@ -12,16 +12,24 @@
 <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   
   <script>
+    // ── Shared utilities (available to the FOUC guard below and the main script)
+    window.Loryq = window.Loryq || {};
+    Loryq.THEME_KEY = 'loryq-theme';
+    Loryq.storage = {
+      get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } },
+      set(key, value) { try { localStorage.setItem(key, value); } catch (_) {} }
+    };
+    Loryq.$ = (sel, root = document) => root.querySelector(sel);
+    Loryq.$$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  </script>
+
+  <script>
     (function () {
-      try {
-        const savedTheme = localStorage.getItem('loryq-theme');
-        document.documentElement.setAttribute(
-          'data-theme',
-          savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : 'dark'
-        );
-      } catch (_) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
+      const savedTheme = Loryq.storage.get(Loryq.THEME_KEY);
+      document.documentElement.setAttribute(
+        'data-theme',
+        savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : 'dark'
+      );
     })();
   </script>
   
@@ -1164,9 +1172,9 @@ const translations = {
   }
 };
 
-let currentLang = 'es';
+const { $, $$, storage, THEME_KEY } = Loryq;
 
-const THEME_KEY = 'loryq-theme';
+let currentLang = 'es';
 let currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
 
 function applyTheme(theme) {
@@ -1174,11 +1182,9 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', safeTheme);
   currentTheme = safeTheme;
 
-  try {
-    localStorage.setItem(THEME_KEY, safeTheme);
-  } catch (_) {}
+  storage.set(THEME_KEY, safeTheme);
 
-  const btn = document.getElementById('themeBtn');
+  const btn = $('#themeBtn');
   if (btn) {
     const nextThemeName = safeTheme === 'dark' ? 'modo claro' : 'modo oscuro';
     btn.setAttribute('aria-label', `Cambiar a ${nextThemeName}`);
@@ -1193,16 +1199,14 @@ function toggleTheme() {
 
 function applyLang(lang) {
   const t = translations[lang];
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (t[key]) el.textContent = t[key];
+  const bind = (attr, prop) => $$(`[${attr}]`).forEach(el => {
+    const key = el.getAttribute(attr);
+    if (t[key]) el[prop] = t[key];
   });
-  document.querySelectorAll('[data-i18n-html]').forEach(el => {
-    const key = el.getAttribute('data-i18n-html');
-    if (t[key]) el.innerHTML = t[key];
-  });
+  bind('data-i18n', 'textContent');
+  bind('data-i18n-html', 'innerHTML');
   document.documentElement.setAttribute('lang', lang);
-  document.getElementById('langBtn').textContent = lang === 'es' ? 'EN' : 'ES';
+  $('#langBtn').textContent = lang === 'es' ? 'EN' : 'ES';
   currentLang = lang;
   updateChangelogButtons();
 }
@@ -1215,7 +1219,7 @@ function toggleLang() {
 // ── Compact changelog
 function updateChangelogButtons() {
   const t = translations[currentLang] || translations.es;
-  document.querySelectorAll('.cl-more-btn').forEach(btn => {
+  $$('.cl-more-btn').forEach(btn => {
     const entry = btn.closest('.cl-entry');
     const expanded = entry && entry.classList.contains('expanded');
     btn.textContent = expanded ? (t['cl.less'] || 'Ocultar detalles') : (t['cl.more'] || 'Ver detalles');
@@ -1235,7 +1239,7 @@ function toggleChangelog(btn) {
 function toggleFaq(btn) {
   const item = btn.closest('.faq-item');
   const isOpen = item.classList.contains('open');
-  document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+  $$('.faq-item.open').forEach(el => el.classList.remove('open'));
   if (!isOpen) item.classList.add('open');
 }
 
@@ -1248,11 +1252,11 @@ const observer = new IntersectionObserver((entries) => {
     }
   });
 }, { threshold: 0.1 });
-document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+$$('.reveal').forEach(el => observer.observe(el));
 
 // ── Nav active
-const sections = document.querySelectorAll('section[id]');
-const navLinks = document.querySelectorAll('.nav-links a');
+const sections = $$('section[id]');
+const navLinks = $$('.nav-links a');
 window.addEventListener('scroll', () => {
   let current = '';
   sections.forEach(s => { if (window.scrollY >= s.offsetTop - 120) current = s.id; });
