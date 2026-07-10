@@ -1214,8 +1214,7 @@ function resolveInitialLang() {
     const saved = localStorage.getItem(LANG_KEY);
     if (saved && translations[saved]) return saved;
   } catch (_) {}
-  const nav = (navigator.language || '').slice(0, 2).toLowerCase();
-  return translations[nav] ? nav : DEFAULT_LANG;
+  return DEFAULT_LANG;
 }
 
 let currentLang = DEFAULT_LANG;
