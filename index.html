@@ -4,14 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Loryq Launcher — The Modern MC Launcher</title>
+  <meta name="description" content="Loryq Launcher — el launcher de Minecraft moderno, rápido, modular y personalizable. Gratuito, sin anuncios y sin registro." />
+  <link rel="icon" type="image/png" href="logo-loryq.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Loryq Launcher — The Modern MC Launcher" />
+  <meta property="og:description" content="El launcher de Minecraft moderno, rápido, modular y personalizable. Gratuito, sin anuncios y sin registro." />
+  <meta property="og:image" content="logo-loryq.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Loryq Launcher — The Modern MC Launcher" />
+  <meta name="twitter:description" content="El launcher de Minecraft moderno, rápido, modular y personalizable." />
+  <meta name="twitter:image" content="logo-loryq.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
   <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-solid-straight/css/uicons-solid-straight.css'>
 <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-brands/css/uicons-brands.css'>
-<link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-solid-straight/css/uicons-solid-straight.css'>
   
   <script>
+    document.documentElement.classList.add('js');
     (function () {
       try {
         const savedTheme = localStorage.getItem('loryq-theme');
@@ -589,8 +599,8 @@
 
     /* ANIMATIONS */
     @keyframes fadeUp { from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)} }
-    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
-    .reveal.visible { opacity: 1; transform: none; }
+    html.js .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+    html.js .reveal.visible { opacity: 1; transform: none; }
 
     /* RESPONSIVE */
     @media (max-width: 700px) {
@@ -840,23 +850,23 @@
 <span class="cl-tag release">RELEASE</span>
 </div><div class="cl-content">
 <div class="cl-section-title" data-i18n="cl.ui"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:5px" viewBox="0 0 24 24" width="12"><rect height="18" rx="3" width="18" x="3" y="3"></rect><path d="M3 9h18M9 21V9"></path></svg> Interfaz, Diseño y Experiencia Visual</div>
-<div class="cl-change">Pantalla de inicio renovada — limpieza visual profunda, interfaz minimalista enfocada en jugar.</div>
-<div class="cl-change">Apartado de ajustes completamente rediseñado con opciones avanzadas, cambio de temas dinámico y organización intuitiva.</div>
-<div class="cl-change">Scrollbar personalizada integrada con el modo oscuro y la estética del launcher.</div>
-<div class="cl-change">Transiciones fluidas sin congelamientos gracias al nuevo sistema asíncrono — navegación instantánea.</div>
-<div class="cl-change">Protección anti-spam en botones: re-ejecución deshabilitada visualmente al hacer clicks rápidos.</div>
+<div class="cl-change" data-i18n="cl.100.ui1">Pantalla de inicio renovada — limpieza visual profunda, interfaz minimalista enfocada en jugar.</div>
+<div class="cl-change" data-i18n="cl.100.ui2">Apartado de ajustes completamente rediseñado con opciones avanzadas, cambio de temas dinámico y organización intuitiva.</div>
+<div class="cl-change" data-i18n="cl.100.ui3">Scrollbar personalizada integrada con el modo oscuro y la estética del launcher.</div>
+<div class="cl-change" data-i18n="cl.100.ui4">Transiciones fluidas sin congelamientos gracias al nuevo sistema asíncrono — navegación instantánea.</div>
+<div class="cl-change" data-i18n="cl.100.ui5">Protección anti-spam en botones: re-ejecución deshabilitada visualmente al hacer clicks rápidos.</div>
 <div class="cl-section-title" data-i18n="cl.perf"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:5px" viewBox="0 0 24 24" width="12"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg> Rendimiento e Ingeniería</div>
-<div class="cl-change improve">Caché inteligente de almacenamiento: cálculo del tamaño de carpetas (16.000+ archivos) realizado una sola vez en memoria.</div>
-<div class="cl-change improve">Optimización del cambio de secciones con caché de nodos (<code>sectionNodeCache</code>) para evitar re-ejecución de scripts.</div>
+<div class="cl-change improve" data-i18n="cl.100.perf1">Caché inteligente de almacenamiento: cálculo del tamaño de carpetas (16.000+ archivos) realizado una sola vez en memoria.</div>
+<div class="cl-change improve" data-i18n-html="cl.100.perf2">Optimización del cambio de secciones con caché de nodos (<code>sectionNodeCache</code>) para evitar re-ejecución de scripts.</div>
 <div class="cl-section-title" data-i18n="cl.features"><i class="fi fi-brands-java"></i> Nuevas Funciones</div>
-<div class="cl-change">Soporte Premium: autenticación oficial con Microsoft Login.</div>
-<div class="cl-change">Java S: runtimes de Java preinstalados para compatibilidad automática con cualquier versión de Minecraft.</div>
-<div class="cl-change">i18n completa: soporte bilingüe Español/Inglés con traducción en caliente de toda la interfaz.</div>
+<div class="cl-change" data-i18n="cl.100.feat1">Soporte Premium: autenticación oficial con Microsoft Login.</div>
+<div class="cl-change" data-i18n="cl.100.feat2">Java S: runtimes de Java preinstalados para compatibilidad automática con cualquier versión de Minecraft.</div>
+<div class="cl-change" data-i18n="cl.100.feat3">i18n completa: soporte bilingüe Español/Inglés con traducción en caliente de toda la interfaz.</div>
 <div class="cl-section-title" data-i18n="cl.fixes"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:5px" viewBox="0 0 24 24" width="12"><path d="M12 22c4.97 0 9-4.03 9-9H3c0 4.97 4.03 9 9 9z"></path><path d="M12 13V7"></path><path d="M8 3l4 4 4-4"></path><line x1="3" x2="21" y1="13" y2="13"></line><path d="M5 13V9a7 7 0 0 1 14 0v4"></path></svg> Corrección de Errores</div>
-<div class="cl-change fix">Bug crítico: fuga de memoria por scripts duplicados en cada click (<code>let/const already declared</code>) — corregido.</div>
-<div class="cl-change fix">NeoForge/Modpacks: paracaídas <code>if (!target) return</code> para evitar crashes al cambiar de pestaña durante la carga.</div>
-<div class="cl-change fix">EPERM Fix: reestructuración del limpiador de archivos en <code>main.js</code> para evitar fallos con archivos abiertos por Electron en Windows.</div>
-<div class="cl-change fix">Eliminación de HTML corrupto y bloques JS duplicados en la vista de instancias.</div>
+<div class="cl-change fix" data-i18n-html="cl.100.fix1">Bug crítico: fuga de memoria por scripts duplicados en cada click (<code>let/const already declared</code>) — corregido.</div>
+<div class="cl-change fix" data-i18n-html="cl.100.fix2">NeoForge/Modpacks: paracaídas <code>if (!target) return</code> para evitar crashes al cambiar de pestaña durante la carga.</div>
+<div class="cl-change fix" data-i18n-html="cl.100.fix3">EPERM Fix: reestructuración del limpiador de archivos en <code>main.js</code> para evitar fallos con archivos abiertos por Electron en Windows.</div>
+<div class="cl-change fix" data-i18n="cl.100.fix4">Eliminación de HTML corrupto y bloques JS duplicados en la vista de instancias.</div>
 </div><button class="cl-more-btn" data-i18n="cl.more" onclick="toggleChangelog(this)" type="button">Ver detalles</button></div>
 <!-- Beta 1.0.0 -->
 <div class="cl-entry reveal cl-short">
@@ -918,7 +928,7 @@
       <div class="download-title" data-i18n="rep.title2">Reportes & Sugerencias</div>
       <div class="download-meta" data-i18n="rep.meta">Tu opinión ayuda a mejorar Loryq.</div>
       <div class="download-options">
-        <a href="https://zotlin-reports-and-suggestions.vercel.app/" class="dl-btn" data-i18n="rep.btn">Ir a Reportes & Sugerencias →</a>
+        <a href="https://loryq-reports-and-suggestions.vercel.app/" class="dl-btn" data-i18n="rep.btn">Ir a Reportes & Sugerencias →</a>
       </div>
     </div>
   </div>
@@ -931,9 +941,9 @@
     Loryq<span> Launcher</span>
   </div>
   <ul class="footer-links">
-    <li><a href="#">GitHub</a></li>
+    <li><a href="https://github.com/iDontrixss/LoryqLauncher" target="_blank" rel="noopener">GitHub</a></li>
     <li><a href="#">Discord</a></li>
-    <li><a href="https://zotlin-reports-and-suggestions.vercel.app/" data-i18n="nav.reports">Reportes & Sugerencias</a></li>
+    <li><a href="https://loryq-reports-and-suggestions.vercel.app/" data-i18n="nav.reports">Reportes & Sugerencias</a></li>
     <li><a href="#" data-i18n="footer.license">Licencia</a></li>
   </ul>
   <div class="footer-copy">Loryq Launcher — Open Source</div>
@@ -975,6 +985,22 @@ const translations = {
 "cl.110.sec5": "Mejor recuperación ante errores de red.",
 "cl.110.s5": "❤️ Gracias",
 "cl.110.thanks": "Gracias a todos los que probaron las primeras versiones de Loryq Launcher y ayudaron a mejorar el proyecto. Un agradecimiento especial a ElKeoMC por permitir la integración de su modpack de optimización.",
+"cl.100.ui1": "Pantalla de inicio renovada — limpieza visual profunda, interfaz minimalista enfocada en jugar.",
+"cl.100.ui2": "Apartado de ajustes completamente rediseñado con opciones avanzadas, cambio de temas dinámico y organización intuitiva.",
+"cl.100.ui3": "Scrollbar personalizada integrada con el modo oscuro y la estética del launcher.",
+"cl.100.ui4": "Transiciones fluidas sin congelamientos gracias al nuevo sistema asíncrono — navegación instantánea.",
+"cl.100.ui5": "Protección anti-spam en botones: re-ejecución deshabilitada visualmente al hacer clicks rápidos.",
+"cl.100.perf1": "Caché inteligente de almacenamiento: cálculo del tamaño de carpetas (16.000+ archivos) realizado una sola vez en memoria.",
+"cl.100.perf2": "Optimización del cambio de secciones con caché de nodos (<code>sectionNodeCache</code>) para evitar re-ejecución de scripts.",
+"cl.100.feat1": "Soporte Premium: autenticación oficial con Microsoft Login.",
+"cl.100.feat2": "Java S: runtimes de Java preinstalados para compatibilidad automática con cualquier versión de Minecraft.",
+"cl.100.feat3": "i18n completa: soporte bilingüe Español/Inglés con traducción en caliente de toda la interfaz.",
+"cl.100.fix1": "Bug crítico: fuga de memoria por scripts duplicados en cada click (<code>let/const already declared</code>) — corregido.",
+"cl.100.fix2": "NeoForge/Modpacks: paracaídas <code>if (!target) return</code> para evitar crashes al cambiar de pestaña durante la carga.",
+"cl.100.fix3": "EPERM Fix: reestructuración del limpiador de archivos en <code>main.js</code> para evitar fallos con archivos abiertos por Electron en Windows.",
+"cl.100.fix4": "Eliminación de HTML corrupto y bloques JS duplicados en la vista de instancias.",
+"theme.toLight": "Cambiar a modo claro",
+"theme.toDark": "Cambiar a modo oscuro",
     "faq.q6": "¿Por qué Windows me dice \"Windows protegió su PC\"?",
     "faq.a6": "Es una advertencia normal de Windows SmartScreen que aparece cuando un ejecutable no tiene suficientes descargas acumuladas para ser reconocido automáticamente como seguro. No indica que el archivo sea malicioso. Loryq Launcher es 100% open source — podés revisar cada línea del código en GitHub. Para continuar, hacé click en \"Más información\" y luego en \"Ejecutar de todas formas\". Si eso no funciona, hacé click derecho sobre el archivo descargado, seleccioná \"Propiedades\" y al final de la ventana marcá la casilla \"Desbloquear\", luego aplicá y volvé a ejecutarlo.",
     "nav.reports": "Reportes & Sugerencias",
@@ -1085,6 +1111,22 @@ const translations = {
 "cl.110.sec5": "Better recovery from network-related errors.",
 "cl.110.s5": "❤️ Thanks",
 "cl.110.thanks": "Thank you to everyone who tested the early versions of Loryq Launcher and helped improve the project. Special thanks to ElKeoMC for allowing the integration of his optimization modpack into the launcher.",
+"cl.100.ui1": "Revamped home screen — deep visual cleanup, minimalist interface focused on playing.",
+"cl.100.ui2": "Completely redesigned settings section with advanced options, dynamic theme switching and intuitive organization.",
+"cl.100.ui3": "Custom scrollbar integrated with dark mode and the launcher's aesthetic.",
+"cl.100.ui4": "Smooth transitions with no freezes thanks to the new async system — instant navigation.",
+"cl.100.ui5": "Anti-spam protection on buttons: re-execution visually disabled on rapid clicks.",
+"cl.100.perf1": "Smart storage caching: folder size calculation (16,000+ files) done only once in memory.",
+"cl.100.perf2": "Section switching optimized with a node cache (<code>sectionNodeCache</code>) to avoid re-running scripts.",
+"cl.100.feat1": "Premium support: official Microsoft Login authentication.",
+"cl.100.feat2": "Java S: pre-installed Java runtimes for automatic compatibility with any Minecraft version.",
+"cl.100.feat3": "Full i18n: bilingual Spanish/English support with hot translation of the entire interface.",
+"cl.100.fix1": "Critical bug: memory leak from scripts duplicated on every click (<code>let/const already declared</code>) — fixed.",
+"cl.100.fix2": "NeoForge/Modpacks: <code>if (!target) return</code> guard to prevent crashes when switching tabs during load.",
+"cl.100.fix3": "EPERM fix: restructured the file cleaner in <code>main.js</code> to avoid failures with files opened by Electron on Windows.",
+"cl.100.fix4": "Removed corrupt HTML and duplicated JS blocks in the instances view.",
+"theme.toLight": "Switch to light mode",
+"theme.toDark": "Switch to dark mode",
     "faq.q6": "Why does Windows say \"Windows protected your PC\"?",
     "faq.a6": "This is a normal Windows SmartScreen warning that appears when an executable hasn't accumulated enough downloads to be automatically recognized as safe. It does not mean the file is malicious. Loryq Launcher is 100% open source — you can review every line of code on GitHub. To continue, click \"More info\" and then \"Run anyway\". If that doesn't work, right-click the downloaded file, select \"Properties\", and at the bottom of the window check the \"Unblock\" checkbox, then apply and run it again.",
     "nav.reports": "Reports & Suggestions",
@@ -1164,10 +1206,30 @@ const translations = {
   }
 };
 
-let currentLang = 'es';
+const LANG_KEY = 'loryq-lang';
+const DEFAULT_LANG = 'es';
+
+function resolveInitialLang() {
+  try {
+    const saved = localStorage.getItem(LANG_KEY);
+    if (saved && translations[saved]) return saved;
+  } catch (_) {}
+  return DEFAULT_LANG;
+}
+
+let currentLang = DEFAULT_LANG;
 
 const THEME_KEY = 'loryq-theme';
 let currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+
+function updateThemeButton() {
+  const btn = document.getElementById('themeBtn');
+  if (!btn) return;
+  const t = translations[currentLang] || translations[DEFAULT_LANG];
+  const label = currentTheme === 'dark' ? t['theme.toLight'] : t['theme.toDark'];
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('title', label);
+}
 
 function applyTheme(theme) {
   const safeTheme = theme === 'light' ? 'light' : 'dark';
@@ -1178,12 +1240,7 @@ function applyTheme(theme) {
     localStorage.setItem(THEME_KEY, safeTheme);
   } catch (_) {}
 
-  const btn = document.getElementById('themeBtn');
-  if (btn) {
-    const nextThemeName = safeTheme === 'dark' ? 'modo claro' : 'modo oscuro';
-    btn.setAttribute('aria-label', `Cambiar a ${nextThemeName}`);
-    btn.setAttribute('title', `Cambiar a ${nextThemeName}`);
-  }
+  updateThemeButton();
 }
 
 function toggleTheme() {
@@ -1192,18 +1249,27 @@ function toggleTheme() {
 
 
 function applyLang(lang) {
-  const t = translations[lang];
+  const safeLang = translations[lang] ? lang : DEFAULT_LANG;
+  const t = translations[safeLang];
+  const def = translations[DEFAULT_LANG];
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
-    if (t[key]) el.textContent = t[key];
+    const val = t[key] != null ? t[key] : def[key];
+    if (val != null) el.textContent = val;
   });
   document.querySelectorAll('[data-i18n-html]').forEach(el => {
     const key = el.getAttribute('data-i18n-html');
-    if (t[key]) el.innerHTML = t[key];
+    const val = t[key] != null ? t[key] : def[key];
+    if (val != null) el.innerHTML = val;
   });
-  document.documentElement.setAttribute('lang', lang);
-  document.getElementById('langBtn').textContent = lang === 'es' ? 'EN' : 'ES';
-  currentLang = lang;
+  document.documentElement.setAttribute('lang', safeLang);
+  const langBtn = document.getElementById('langBtn');
+  if (langBtn) langBtn.textContent = safeLang === 'es' ? 'EN' : 'ES';
+  currentLang = safeLang;
+  try {
+    localStorage.setItem(LANG_KEY, safeLang);
+  } catch (_) {}
+  updateThemeButton();
   updateChangelogButtons();
 }
 
@@ -1247,19 +1313,27 @@ const observer = new IntersectionObserver((entries) => {
       observer.unobserve(entry.target);
     }
   });
-}, { threshold: 0.1 });
+}, { threshold: 0, rootMargin: '0px 0px -8% 0px' });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-// ── Nav active
+// ── Nav active (throttled with requestAnimationFrame)
 const sections = document.querySelectorAll('section[id]');
 const navLinks = document.querySelectorAll('.nav-links a');
-window.addEventListener('scroll', () => {
+let navTicking = false;
+function updateNavActive() {
   let current = '';
   sections.forEach(s => { if (window.scrollY >= s.offsetTop - 120) current = s.id; });
   navLinks.forEach(a => { a.style.color = a.getAttribute('href') === '#' + current ? 'var(--green)' : ''; });
-});
+  navTicking = false;
+}
+window.addEventListener('scroll', () => {
+  if (!navTicking) {
+    navTicking = true;
+    requestAnimationFrame(updateNavActive);
+  }
+}, { passive: true });
   applyTheme(currentTheme);
-  applyLang('es');
+  applyLang(resolveInitialLang());
 </script>
 </body>
 </html>
