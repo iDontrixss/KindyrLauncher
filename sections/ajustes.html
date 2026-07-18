@@ -1,0 +1,526 @@
+<div class="page-head">
+  <div>
+    <div class="page-title" data-i18n="settings.title">Ajustes</div>
+    <div class="page-subtitle" data-i18n="settings.subtitle">Personalizá el launcher y los valores predeterminados.</div>
+  </div>
+  <div class="settings-actions">
+    <button type="button" class="secondary-btn" onclick="resetSettings()" data-i18n="settings.reset">Restaurar</button>
+    <button type="button" class="primary-btn" onclick="saveSettings()" data-i18n="settings.save">Guardar</button>
+  </div>
+</div>
+
+<div class="settings-layout">
+  <div class="settings-nav">
+    <button type="button" class="settings-nav-btn active" data-settings-tab="personalization" onclick="showSettingsTab('personalization', this)" data-i18n="settings.tab.personalization">Personalización</button>
+    <button type="button" class="settings-nav-btn" data-settings-tab="general" onclick="showSettingsTab('general', this)" data-i18n="settings.tab.general">General</button>
+    <button type="button" class="settings-nav-btn" data-settings-tab="resources" onclick="showSettingsTab('resources', this)" data-i18n="settings.tab.resources">Recursos</button>
+  </div>
+
+  <div class="settings-panel">
+    <div class="settings-section active" id="settings-personalization">
+      <div class="settings-group">
+        <div class="settings-group-title" data-i18n="settings.language">Idioma</div>
+        <div class="lang-row">
+          <button type="button" class="lang-chip active" data-lang="es" onclick="selectLanguage('es', this)">Español</button>
+          <button type="button" class="lang-chip" data-lang="en" onclick="selectLanguage('en', this)">English</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title" data-i18n="settings.theme">Tema</div>
+        <div class="theme-row">
+          <button type="button" class="theme-chip" data-theme="dark" onclick="selectTheme('dark', this)" data-i18n="settings.theme.dark">Oscuro</button>
+          <button type="button" class="theme-chip" data-theme="light" onclick="selectTheme('light', this)" data-i18n="settings.theme.light">Claro</button>
+          <button type="button" class="theme-chip active" data-theme="loryq" onclick="selectTheme('loryq', this)" data-i18n="settings.theme.loryq">Loryq</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title" data-i18n="settings.background">Fondo personalizado</div>
+        <div class="settings-group-desc" data-i18n="settings.background.desc">Imagen de fondo del área principal del launcher.</div>
+        <div class="bg-preview" id="settings-bg-preview"></div>
+        <div class="settings-actions" style="justify-content:flex-start;padding-top:0">
+          <button type="button" class="secondary-btn" onclick="pickBackgroundImage()"><i class="fa-regular fa-image"></i> <span data-i18n="settings.background.pick">Elegir imagen/Video</span></button>
+          <button type="button" class="secondary-btn" onclick="clearBackgroundImage()"><i class="fa-regular fa-trash-can"></i> <span data-i18n="settings.background.clear">Quitar fondo</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section" id="settings-general">
+      <div class="settings-group">
+        <div class="settings-group-title" data-i18n="settings.defaults.ram">RAM predeterminada</div>
+        <div class="settings-group-desc" data-i18n="settings.defaults.ram.desc">Se usa al iniciar Minecraft si no cambiás la memoria manualmente.</div>
+        <div class="ram-control">
+          <div class="ram-head">
+            <label class="setting-label" for="setting-min-ram-mb"><strong data-i18n="settings.ram.min">Mínima</strong></label>
+            <span class="ram-hint" id="setting-min-ram-hint">2048 MB</span>
+          </div>
+          <input class="ram-slider" type="range" id="setting-min-ram-slider" min="512" max="16384" step="256" value="2048" oninput="syncRamFromSlider('min')">
+          <div class="ram-input-row">
+            <input class="setting-input" id="setting-min-ram-mb" value="2048" oninput="syncRamFromInput('min')">
+            <span class="ram-hint">MB / G</span>
+          </div>
+        </div>
+        <div class="ram-control">
+          <div class="ram-head">
+            <label class="setting-label" for="setting-max-ram-mb"><strong data-i18n="settings.ram.max">Máxima</strong></label>
+            <span class="ram-hint" id="setting-max-ram-hint">4096 MB</span>
+          </div>
+          <input class="ram-slider" type="range" id="setting-max-ram-slider" min="512" max="16384" step="256" value="4096" oninput="syncRamFromSlider('max')">
+          <div class="ram-input-row">
+            <input class="setting-input" id="setting-max-ram-mb" value="4096" oninput="syncRamFromInput('max')">
+            <span class="ram-hint">MB / G</span>
+          </div>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title" data-i18n="settings.javaArgs">Argumentos JVM</div>
+        <div class="settings-group-desc" data-i18n="settings.javaArgs.desc">Argumentos extra para Java al iniciar Minecraft. Separados por espacio.</div>
+        <textarea class="setting-input setting-textarea" id="setting-java-args" placeholder="-XX:+UseG1GC"></textarea>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title" data-i18n="settings.java.title">Instalaciones de Java</div>
+        <div class="settings-group-desc" data-i18n="settings.java.desc">Rutas por versión. Vacío = descarga automática de Temurin al jugar.</div>
+        <div id="java-installs-list"></div>
+      </div>
+    </div>
+
+    <div class="settings-section" id="settings-resources">
+      <div class="settings-group">
+        <div class="settings-group-title" data-i18n="settings.dataRoot">Carpeta de datos</div>
+        <div class="settings-group-desc" data-i18n="settings.dataRoot.desc">Instancias, Java descargado y archivos del launcher.</div>
+        <div class="path-row">
+          <input class="setting-input" id="settings-data-root" readonly>
+          <button type="button" class="secondary-btn" onclick="openDataRoot()" aria-label="Abrir carpeta"><i class="fa-regular fa-folder-open"></i></button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title" data-i18n="settings.storage">Uso de almacenamiento</div>
+        <div class="storage-grid" id="settings-storage-grid">
+          <div class="storage-card"><span data-i18n="settings.storage.total">Total</span><strong id="storage-total">—</strong></div>
+          <div class="storage-card"><span data-i18n="settings.storage.instances">Instancias</span><strong id="storage-instances">—</strong></div>
+          <div class="storage-card"><span data-i18n="settings.storage.runtime">Java (runtime)</span><strong id="storage-runtime">—</strong></div>
+          <div class="storage-card"><span data-i18n="settings.storage.cache">Caché</span><strong id="storage-cache">—</strong></div>
+        </div>
+        <button type="button" class="secondary-btn" onclick="refreshStorageInfo()"><i class="fa-solid fa-rotate"></i> <span data-i18n="settings.storage.refresh">Actualizar</span></button>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title" data-i18n="settings.downloads">Descargas</div>
+        <div class="setting-row">
+          <label class="setting-label" for="setting-max-downloads">
+            <strong data-i18n="settings.downloads.max">Descargas simultáneas</strong>
+            <span data-i18n="settings.downloads.max.desc">Cuántos archivos puede descargar el launcher a la vez.</span>
+          </label>
+          <div class="ram-control">
+            <input class="ram-slider" type="range" id="setting-max-downloads" min="1" max="20" step="1" value="6" oninput="updateDownloadsLabel()">
+            <div class="ram-input-row">
+              <input class="setting-input" id="setting-max-downloads-value" value="6" readonly style="max-width:80px">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title" data-i18n="settings.cache.title">Caché del launcher</div>
+        <div class="settings-group-desc" data-i18n="settings.cache.desc">Borra metadatos en caché y archivos temporales de descarga de Java.</div>
+        <button type="button" class="secondary-btn" onclick="purgeLauncherCache()"><i class="fa-solid fa-trash-can"></i> <span data-i18n="settings.cache.purge">Vaciar caché</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Optimized settings JavaScript with lazy loading and error handling
+let settingsInitialized = false
+
+function showSettingsTab(tabName, button) {
+  document.querySelectorAll('.settings-nav-btn').forEach(btn => btn.classList.remove('active'))
+  document.querySelectorAll('.settings-section').forEach(section => section.classList.remove('active'))
+  if (button) button.classList.add('active')
+  document.getElementById('settings-' + tabName).classList.add('active')
+  
+  // Lazy load resources only when needed
+  if (tabName === 'resources') {
+    setTimeout(() => refreshStorageInfo(), 100)
+  }
+  if (tabName === 'general') {
+    setTimeout(() => renderJavaInstalls(), 100)
+  }
+}
+
+function selectLanguage(lang, button) {
+  settings.language = lang
+  document.querySelectorAll('.lang-chip').forEach(chip => chip.classList.remove('active'))
+  if (button) button.classList.add('active')
+  applyLanguage()
+  console.log('idioma cambiado a', lang)
+  console.log('loadedSections antes:', [...loadedSections])
+  if (typeof reloadSectionsForLanguage === 'function') reloadSectionsForLanguage()
+  console.log('loadedSections despues:', [...loadedSections])
+}
+
+function selectTheme(theme, button) {
+  settings.theme = theme
+  document.querySelectorAll('.theme-chip').forEach(chip => chip.classList.remove('active'))
+  if (button) button.classList.add('active')
+  applyTheme()
+}
+
+function updateDownloadsLabel() {
+  const slider = document.getElementById('setting-max-downloads')
+  const value = document.getElementById('setting-max-downloads-value')
+  if (!slider || !value) return
+  value.value = slider.value
+  settings.maxConcurrentDownloads = Number(slider.value)
+}
+
+function renderJavaInstalls() {
+  const list = document.getElementById('java-installs-list')
+  if (!list || !window.zotlinAPI?.settings?.getJavaInstalls) {
+    return
+  }
+  
+  // Add error handling
+  window.zotlinAPI.settings.getJavaInstalls().then(result => {
+    if (!result.ok) {
+      list.innerHTML = '<div class="install-note">Error al cargar instalaciones de Java: ' + escapeHtml(result.error || 'Desconocido') + '</div>'
+      return
+    }
+    
+    try {
+      list.innerHTML = result.installs.map(item => (
+        '<div class="java-block" data-java-major="' + item.major + '">' +
+          '<div class="java-block-title">' + escapeHtml(t('java.location', { major: item.major })) + '</div>' +
+          '<div class="java-path-row">' +
+            '<input class="setting-input java-path-input" id="java-path-' + item.major + '" value="' + escapeHtml(item.path || '') + '" placeholder="Automático">' +
+            '<span class="java-status ' + (item.valid ? 'ok' : 'bad') + '" title="' + (item.valid ? 'OK' : 'Sin Java') + '">' +
+              (item.valid ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-minus"></i>') +
+            '</span>' +
+          '</div>' +
+          '<div class="java-actions">' +
+            '<button type="button" class="secondary-btn" onclick="installRecommendedJava(' + item.major + ')"><i class="fa-solid fa-download"></i> ' + escapeHtml(t('java.installRecommended')) + '</button>' +
+            '<button type="button" class="secondary-btn" onclick="detectJavaPath(' + item.major + ')"><i class="fa-solid fa-magnifying-glass"></i> ' + escapeHtml(t('java.detect')) + '</button>' +
+            '<button type="button" class="secondary-btn" onclick="browseJavaPath(' + item.major + ')"><i class="fa-regular fa-folder-open"></i> ' + escapeHtml(t('java.browse')) + '</button>' +
+          '</div>' +
+        '</div>'
+      )).join('')
+      
+      const downloads = document.getElementById('setting-max-downloads')
+      const downloadsValue = document.getElementById('setting-max-downloads-value')
+      if (downloads && result.maxConcurrentDownloads) {
+        downloads.value = String(result.maxConcurrentDownloads)
+        if (downloadsValue) downloadsValue.value = String(result.maxConcurrentDownloads)
+        settings.maxConcurrentDownloads = result.maxConcurrentDownloads
+      }
+    } catch (error) {
+      console.error('Error rendering Java installs:', error)
+      list.innerHTML = '<div class="install-note">Error al renderizar instalaciones de Java</div>'
+    }
+  }).catch(error => {
+    console.error('Error getting Java installs:', error)
+    list.innerHTML = '<div class="install-note">Error al cargar instalaciones de Java</div>'
+  })
+}
+
+async function saveJavaPath(major) {
+  const input = document.getElementById('java-path-' + major)
+  if (!input || !window.zotlinAPI?.settings?.setJavaPath) return
+  try {
+    const result = await window.zotlinAPI.settings.setJavaPath({ major, path: input.value.trim() })
+    if (!result.ok) {
+      setStatus(result.error)
+      return
+    }
+    renderJavaInstalls()
+  } catch (error) {
+    console.error('Error saving Java path:', error)
+    setStatus('Error al guardar ruta de Java')
+  }
+}
+
+async function browseJavaPath(major) {
+  try {
+    const result = await window.zotlinAPI.settings.browseJava()
+    if (result.cancelled) return
+    if (!result.ok) {
+      setStatus(result.error)
+      return
+    }
+    document.getElementById('java-path-' + major).value = result.path
+    await saveJavaPath(major)
+  } catch (error) {
+    console.error('Error browsing Java path:', error)
+    setStatus('Error al buscar ruta de Java')
+  }
+}
+
+async function detectJavaPath(major) {
+  try {
+    const result = await window.zotlinAPI.settings.detectJava(major)
+    if (!result.ok) {
+      setStatus(result.error)
+      return
+    }
+    document.getElementById('java-path-' + major).value = result.path
+    await saveJavaPath(major)
+    setStatus('Java ' + major + ' detectado')
+  } catch (error) {
+    console.error('Error detecting Java path:', error)
+    setStatus('Error al detectar Java')
+  }
+}
+
+async function installRecommendedJava(major) {
+  setStatus('Descargando Java ' + major + '...')
+  try {
+    const result = await window.zotlinAPI.settings.installJava(major)
+    if (!result.ok) {
+      setStatus(result.error)
+      return
+    }
+    document.getElementById('java-path-' + major).value = result.path
+    renderJavaInstalls()
+    refreshStorageInfo()
+    setStatus('Java ' + major + ' instalado')
+  } catch (error) {
+    console.error('Error installing Java:', error)
+    setStatus('Error al instalar Java')
+  }
+}
+
+async function refreshStorageInfo() {
+  if (!window.zotlinAPI?.settings?.getStorage) return
+  try {
+    const result = await window.zotlinAPI.settings.getStorage()
+    if (!result.ok) return
+    document.getElementById('settings-data-root').value = result.dataRoot
+    document.getElementById('storage-total').textContent = result.formatted.total
+    document.getElementById('storage-instances').textContent = result.formatted.instances
+    document.getElementById('storage-runtime').textContent = result.formatted.runtime
+    document.getElementById('storage-cache').textContent = result.formatted.cache
+  } catch (error) {
+    console.error('Error refreshing storage info:', error)
+  }
+}
+
+async function openDataRoot() {
+  try {
+    await window.zotlinAPI.settings.openDataRoot()
+  } catch (error) {
+    console.error('Error opening data root:', error)
+    setStatus('Error al abrir carpeta de datos')
+  }
+}
+
+async function purgeLauncherCache() {
+  try {
+    const result = await window.zotlinAPI.settings.purgeCache()
+    if (result && result.ok) {
+      refreshStorageInfo()
+      setStatus(t('settings.cache.purge') + ' ✓')
+      return
+    }
+    // show error when purge failed
+    setStatus(result?.error || 'No se pudo vaciar la caché')
+  } catch (error) {
+    console.error('Error purging cache:', error)
+    setStatus('Error al vaciar caché')
+  }
+}
+
+async function pickBackgroundImage() {
+  try {
+    setStatus(t('settings.background.processing'))
+    const result = await window.zotlinAPI.settings.pickBackground()
+    if (result.cancelled) {
+      setStatus(t('app.ready'))
+      return
+    }
+    if (!result.ok) {
+      setStatus(result.error || t('settings.background.error'))
+      return
+    }
+    settings.backgroundImage = result.path
+    applyBackground()
+    setStatus(t('settings.background.applied'))
+  } catch (error) {
+    console.error('Error picking background:', error)
+    setStatus(t('settings.background.error'))
+  }
+}
+
+async function clearBackgroundImage() {
+  try {
+    await window.zotlinAPI.settings.clearBackground()
+    settings.backgroundImage = ''
+    applyBackground()
+  } catch (error) {
+    console.error('Error clearing background:', error)
+    setStatus('Error al quitar imagen de fondo')
+  }
+}
+
+function applySettingsToForm() {
+  try {
+    document.getElementById('setting-min-ram-slider').value = String(settings.minRamMb || 2048)
+    document.getElementById('setting-max-ram-slider').value = String(settings.maxRamMb || 4096)
+    document.getElementById('setting-min-ram-mb').value = String(settings.minRamMb || 2048)
+    document.getElementById('setting-max-ram-mb').value = String(settings.maxRamMb || 4096)
+    syncRamFromSlider('min')
+    syncRamFromSlider('max')
+    const javaArgsEl = document.getElementById('setting-java-args')
+    if (javaArgsEl) javaArgsEl.value = settings.javaArgs || ''
+    const downloads = document.getElementById('setting-max-downloads')
+    const downloadsValue = document.getElementById('setting-max-downloads-value')
+    if (downloads) downloads.value = String(settings.maxConcurrentDownloads || 6)
+    if (downloadsValue) downloadsValue.value = String(settings.maxConcurrentDownloads || 6)
+    document.querySelectorAll('.lang-chip').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.lang === settings.language)
+    })
+    applyTheme()
+    applyLanguage()
+  } catch (error) {
+    console.error('Error applying settings to form:', error)
+  }
+}
+
+function getValidatedSettings() {
+  try {
+    console.log('[VALIDACION AJUSTES] settings:', settings)
+    console.log('[VALIDACION AJUSTES] settings.minRam:', settings?.minRam)
+    console.log('[VALIDACION AJUSTES] settings.maxRam:', settings?.maxRam)
+    console.log('[VALIDACION AJUSTES] settings.username:', settings?.username)
+
+    syncRamFromSlider('min')
+    syncRamFromSlider('max')
+
+    let minRam, maxRam
+    try {
+      minRam = parseRam(settings.minRam)
+      console.log('[VALIDACION AJUSTES] parseRam(minRam) OK:', minRam)
+    } catch (e) {
+      console.error('[VALIDACION AJUSTES] parseRam(minRam) ERROR:', e, e.stack)
+      throw e
+    }
+
+    try {
+      maxRam = parseRam(settings.maxRam)
+      console.log('[VALIDACION AJUSTES] parseRam(maxRam) OK:', maxRam)
+    } catch (e) {
+      console.error('[VALIDACION AJUSTES] parseRam(maxRam) ERROR:', e, e.stack)
+      throw e
+    }
+
+    try {
+      const usernameValid = isValidUsername(settings.username)
+      console.log('[VALIDACION AJUSTES] isValidUsername OK:', usernameValid)
+    } catch (e) {
+      console.error('[VALIDACION AJUSTES] isValidUsername ERROR:', e, e.stack)
+      throw e
+    }
+
+    if (!isValidUsername(settings.username)) {
+      return { ok: false, error: 'Nombre offline invalido: usa 3-16 letras, numeros o _' }
+    }
+    if (!minRam || !maxRam) {
+      return { ok: false, error: 'RAM invalida: usa algo como 2048, 4096M o 4G' }
+    }
+    if (minRam.mb > maxRam.mb) {
+      return { ok: false, error: 'La RAM minima no puede ser mayor que la maxima' }
+    }
+
+    settings.javaArgs = document.getElementById('setting-java-args')?.value.trim() || settings.javaArgs || ''
+
+    return {
+      ok: true,
+      settings: {
+        username: settings.username,
+        minRam: minRam.value,
+        maxRam: maxRam.value,
+        minRamMb: minRam.mb,
+        maxRamMb: maxRam.mb,
+        language: settings.language,
+        theme: settings.theme,
+        backgroundImage: settings.backgroundImage,
+        javaArgs: settings.javaArgs,
+        maxConcurrentDownloads: Number(document.getElementById('setting-max-downloads')?.value || settings.maxConcurrentDownloads || 6)
+      }
+    }
+  } catch (error) {
+    console.error('[VALIDACION AJUSTES] CATCH ERROR:', error)
+    console.error('[VALIDACION AJUSTES] CATCH STACK:', error.stack)
+    return { ok: false, error: 'Error al validar ajustes' }
+  }
+}
+
+async function saveSettings() {
+  try {
+    const validated = getValidatedSettings()
+    if (!validated.ok) {
+      setStatus(validated.error)
+      return
+    }
+
+    settings = validated.settings
+    localStorage.setItem('zotlin-settings', JSON.stringify(settings))
+    if (window.zotlinAPI?.settings?.saveResources) {
+      await window.zotlinAPI.settings.saveResources({
+        maxConcurrentDownloads: settings.maxConcurrentDownloads
+      })
+    }
+    for (const major of JAVA_MAJORS_UI) {
+      const input = document.getElementById('java-path-' + major)
+      if (input) await window.zotlinAPI.settings.setJavaPath({ major, path: input.value.trim() })
+    }
+    ensureAccount(settings.username)
+    applyActiveAccount(settings.username)
+    setStatus(t('settings.save') + ' ✓')
+  } catch (error) {
+    console.error('Error saving settings:', error)
+    setStatus('Error al guardar ajustes')
+  }
+}
+
+async function resetSettings() {
+  try {
+    localStorage.removeItem('zotlin-settings')
+    settings = {
+      username: settings.username,
+      minRam: '2G',
+      maxRam: '4G',
+      minRamMb: 2048,
+      maxRamMb: 4096,
+      language: 'es',
+      theme: 'dark',
+      backgroundImage: '',
+      javaArgs: '',
+      maxConcurrentDownloads: 6
+    }
+    await window.zotlinAPI.settings.clearBackground()
+    applySettingsToForm()
+    applyBackground()
+    setStatus(t('settings.reset') + ' ✓')
+  } catch (error) {
+    console.error('Error resetting settings:', error)
+    setStatus('Error al restaurar ajustes')
+  }
+}
+
+// Initialize settings with lazy loading
+function initializeSettings() {
+  if (settingsInitialized) return
+  settingsInitialized = true
+  
+  try {
+    applySettingsToForm()
+    applyBackground()
+    // Only load heavy resources when needed
+    setTimeout(() => {
+      renderJavaInstalls()
+      refreshStorageInfo()
+    }, 200)
+  } catch (error) {
+    console.error('Error initializing settings:', error)
+  }
+}
+
+// Initialize when section is loaded
+initializeSettings()
+</script>

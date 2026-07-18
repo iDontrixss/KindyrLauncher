@@ -1,0 +1,824 @@
+<style>
+  /* Skins section — usa variables del launcher */
+  .skins-root {
+    display: flex;
+    height: 100%;
+    gap: 20px;
+    overflow: hidden;
+  }
+
+  /* LEFT PANEL */
+  .skin-viewer-panel {
+    width: 240px;
+    min-width: 240px;
+    background: #242424;
+    border: 1px solid #333;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px;
+    gap: 12px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .skin-viewer-wrap {
+    width: 160px;
+    height: 230px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .skin-viewer-wrap::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 40px;
+    background: radial-gradient(ellipse at 50% 100%, rgba(29,158,117,.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  #skin-canvas { border-radius: 8px; width: 160px; height: 230px; display: block; }
+
+  #skin-preview-img {
+    width: 160px;
+    height: 230px;
+    image-rendering: pixelated;
+    border-radius: 8px;
+    object-fit: contain;
+    display: none;
+  }
+
+  .skin-viewer-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    text-align: center;
+    margin-top: 2px;
+  }
+
+  .skin-viewer-badge {
+    font-size: 10px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    text-align: center;
+    margin-top: -6px;
+  }
+
+  .skin-model-toggle {
+    display: flex;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    width: 100%;
+  }
+  .model-btn {
+    flex: 1;
+    padding: 7px 0;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 12px;
+    font-family: 'Segoe UI', sans-serif;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .model-btn.active { background: #1D9E75; color: #fff; font-weight: 600; }
+  .model-btn:not(.active):hover { background: #2e2e2e; color: #e0e0e0; }
+
+  .skin-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    width: 100%;
+  }
+
+  .skin-action-btn {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Segoe UI', sans-serif;
+    cursor: pointer;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: opacity .15s, border-color .15s, color .15s;
+  }
+  .skin-action-btn.primary { background: #1D9E75; color: #fff; }
+  .skin-action-btn.primary:hover { opacity: .88; }
+  .skin-action-btn.primary:disabled { opacity: .4; cursor: not-allowed; }
+  .skin-action-btn.secondary { background: #1a1a1a; border: 1px solid #333; color: #ddd; }
+  .skin-action-btn.secondary:hover { border-color: #555; color: #fff; }
+  .skin-action-btn.ghost { background: transparent; border: 1px solid #333; color: #888; }
+  .skin-action-btn.ghost:hover { border-color: #1D9E75; color: #1D9E75; }
+
+  .skin-divider { width: 100%; height: 1px; background: #333; margin: 2px 0; }
+
+  .sv-status {
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    line-height: 1.5;
+    padding: 0 4px;
+  }
+  .sv-status.ok { color: #1D9E75; }
+  .sv-status.error { color: #e05c5c; }
+
+  /* RIGHT PANEL */
+  .skin-gallery-panel {
+    flex: 1;
+    background: #242424;
+    border: 1px solid #333;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .skin-gallery-top {
+    padding: 16px 20px 0;
+    border-bottom: 1px solid #333;
+  }
+
+  .skin-tabs {
+    display: flex;
+    gap: 0;
+  }
+  .skin-tab {
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #888;
+    font-size: 13px;
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+    margin-bottom: -1px;
+  }
+  .skin-tab:hover { color: #e0e0e0; }
+  .skin-tab.active { color: #ffffff; border-bottom-color: #1D9E75; font-weight: 600; }
+
+  .skin-search-bar {
+    display: flex;
+    gap: 8px;
+    padding: 14px 20px;
+    border-bottom: 1px solid #333;
+  }
+
+  .skin-search-input {
+    flex: 1;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .skin-search-input:focus { border-color: #1D9E75; }
+  .skin-search-input::placeholder { color: #555; }
+
+  .skin-search-btn {
+    padding: 9px 16px;
+    background: #1D9E75;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+    white-space: nowrap;
+  }
+  .skin-search-btn:hover { opacity: .88; }
+
+  .skin-gallery-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px 20px;
+  }
+
+  .skin-grid-label {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 10px;
+    margin-top: 6px;
+  }
+
+  .skin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .skin-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 12px 8px 10px;
+    cursor: pointer;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+  }
+  .skin-card:hover { 
+    border-color: #1D9E75; 
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 12px rgba(29, 158, 117, 0.2);
+  }
+  .skin-card.selected { 
+    border-color: #1D9E75; 
+    background: #17382d; 
+    box-shadow: 0 0 0 2px rgba(29, 158, 117, 0.3);
+  }
+
+  .skin-card-avatar {
+    width: 80px;
+    height: 160px;
+    image-rendering: pixelated;
+    border-radius: 6px;
+    object-fit: contain;
+  }
+
+  .skin-card-name {
+    font-size: 11px;
+    color: #e0e0e0;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    font-weight: 500;
+  }
+
+  .skin-card-fav {
+    position: absolute;
+    top: 4px; right: 4px;
+    background: none;
+    border: none;
+    color: #444;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    transition: color .15s;
+    line-height: 1;
+  }
+  .skin-card-fav:hover, .skin-card-fav.active { color: #f0c040; }
+
+  /* Upload */
+  .skin-upload-zone {
+    border: 1.5px dashed #333;
+    border-radius: 10px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    margin-bottom: 16px;
+  }
+  .skin-upload-zone:hover, .skin-upload-zone.drag {
+    border-color: #1D9E75;
+    background: #17382d;
+  }
+  .skin-upload-icon { font-size: 28px; margin-bottom: 10px; opacity: .5; }
+  .skin-upload-text { font-size: 13px; color: #888; line-height: 1.7; }
+  .skin-upload-text strong { color: #1D9E75; }
+
+  .skin-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #555;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  .skin-loading {
+    text-align: center;
+    padding: 24px;
+    color: #666;
+    font-size: 12px;
+    animation: skPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes skPulse { 0%,100%{opacity:.3}50%{opacity:1} }
+
+  #skin-file-input { display: none; }
+</style>
+
+<div class="skins-root">
+
+  <!-- LEFT: Viewer -->
+  <div class="skin-viewer-panel">
+    <div class="skin-viewer-wrap">
+      <canvas id="skin-canvas" width="160" height="230"></canvas>
+      <img id="skin-preview-img" src="" alt="Skin preview" style="display:none;">
+    </div>
+
+    <div class="skin-viewer-name" id="sv-name">Cargando...</div>
+    <div class="skin-viewer-badge" id="sv-badge">SELECCIONÁ UNA SKIN</div>
+
+    <div class="skin-model-toggle">
+      <button class="model-btn active" id="model-classic" onclick="setModel('classic')">Classic</button>
+      <button class="model-btn" id="model-slim" onclick="setModel('slim')">Slim</button>
+    </div>
+
+    <div class="skin-actions">
+      <button class="skin-action-btn primary" id="btn-apply" onclick="applySkin()" data-i18n="skins.apply">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        Aplicar skin
+      </button>
+      <button class="skin-action-btn secondary" onclick="openTab('subir')" data-i18n="skins.upload">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Subir skin
+      </button>
+      <button class="skin-action-btn ghost" onclick="favCurrentSkin()" data-i18n="skins.saveFavorite">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Guardar favorita
+      </button>
+    </div>
+
+    <div class="skin-divider"></div>
+    <div class="sv-status" id="sv-status" data-i18n="skins.selectSkin">Seleccioná una skin para comenzar</div>
+  </div>
+
+  <!-- RIGHT: Gallery -->
+  <div class="skin-gallery-panel">
+    <div class="skin-gallery-top">
+      <div class="skin-tabs">
+        <button class="skin-tab active" onclick="openTab('populares', this)" data-i18n="skins.popular">Populares</button>
+        <button class="skin-tab" onclick="openTab('favoritas', this)" data-i18n="skins.favorites">Favoritas</button>
+        <button class="skin-tab" onclick="openTab('subir', this)" data-i18n="skins.uploadTab">Subir</button>
+      </div>
+    </div>
+
+    <div class="skin-search-bar" id="search-bar">
+      <input class="skin-search-input" id="skin-search" placeholder="Buscar skin por usuario de Minecraft..." onkeydown="if(event.key==='Enter') searchSkin()">
+      <button class="skin-search-btn" onclick="searchSkin()">Buscar</button>
+    </div>
+
+    <div class="skin-gallery-body" id="gallery-body"></div>
+  </div>
+</div>
+
+<input type="file" id="skin-file-input" accept=".png" onchange="handleFileUpload(event)">
+
+<script>
+// Cargar skinview3d
+(function() {
+  if (window.skinview3d) {
+    console.log('skinview3d ya cargado, inicializando...')
+    initViewer();
+    return;
+  }
+  console.log('Cargando skinview3d desde jsDelivr CDN...')
+  const s = document.createElement('script')
+  s.src = 'https://cdn.jsdelivr.net/npm/skinview3d@3.4.1/bundles/skinview3d.bundle.js'
+  s.crossOrigin = 'anonymous'
+  s.onload = () => {
+    console.log('skinview3d cargado exitosamente, window.skinview3d:', window.skinview3d)
+    if (window.skinview3d) {
+      initViewer()
+    } else {
+      console.error('skinview3d no está disponible en window después de cargar')
+    }
+  }
+  s.onerror = () => {
+    console.error('Error al cargar skinview3d desde CDN')
+    skinSetStatus(t('skins.skinview3dLoadError'), 'error')
+  }
+  document.head.appendChild(s)
+})()
+
+// ── Estado
+let viewer = null
+let currentSkin = null
+let currentModel = 'classic'
+let currentTab = 'populares'
+let favorites = []
+let useFallback2D = false
+
+// ── Jugadores famosos (solo nombres, UUID se resuelve dinámicamente)
+const FEATURED = [
+  'Notch', 'Technoblade', 'Dream', 'GeorgeNotFound', 'Sapnap',
+  'TommyInnit', 'Skeppy', 'BadBoyHalo', 'Philza', 'WilburSoot',
+  'Quackity', 'Ranboo', 'Tubbo', 'Jschlatt', 'xQc'
+]
+
+const avatar = uuid => `https://mc-heads.net/avatar/${uuid}/48`
+const skin   = uuid => `https://mc-heads.net/skin/${uuid}`
+const body   = uuid => `https://mc-heads.net/body/${uuid}/160`
+
+// ── Resolver UUID desde nombre usando Mojang API
+async function resolveUUID(username) {
+  try {
+    const res = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(username)}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.id
+  } catch {
+    return null
+  }
+}
+
+// ── Cache de UUIDs
+const uuidCache = new Map()
+
+async function getCachedUUID(username) {
+  if (uuidCache.has(username)) return uuidCache.get(username)
+  const uuid = await resolveUUID(username)
+  if (uuid) uuidCache.set(username, uuid)
+  return uuid
+}
+
+// ── Init viewer
+async function initViewer() {
+  const canvas = document.getElementById('skin-canvas')
+  if (!canvas) {
+    console.error('Canvas no encontrado')
+    return
+  }
+  console.log('Canvas encontrado:', canvas)
+  console.log('Canvas dimensions:', canvas.width, canvas.height)
+  console.log('Canvas style:', canvas.style.cssText)
+  console.log('Canvas offsetWidth/Height:', canvas.offsetWidth, canvas.offsetHeight)
+
+  // Destruir viewer anterior si existe para evitar conflictos de contexto
+  if (viewer) {
+    console.log('Destruyendo viewer anterior')
+    try {
+      viewer.dispose()
+    } catch (e) {
+      console.warn('Error al destruir viewer anterior:', e)
+    }
+    viewer = null
+  }
+
+  if (!window.skinview3d) {
+    console.error('skinview3d no está disponible')
+    console.log('window.skinview3d:', window.skinview3d)
+    useFallback2D = true
+    skinSetStatus('⚠️ skinview3d no disponible. Usando vista 2D.', 'error')
+    loadFavorites()
+    renderTab('populares')
+    const defaultUUID = await getCachedUUID(FEATURED[0])
+    if (defaultUUID) {
+      selectSkin(FEATURED[0], defaultUUID, 'popular')
+    }
+    return
+  }
+  console.log('skinview3d disponible:', window.skinview3d)
+  console.log('skinview3d.SkinViewer:', window.skinview3d.SkinViewer)
+
+  try {
+    console.log('Creando viewer con skinview3d.SkinViewer...')
+    viewer = new skinview3d.SkinViewer({ canvas, width: 160, height: 230 })
+    console.log('Viewer creado exitosamente:', viewer)
+    
+    // Configurar viewer según API de skinview3d 3.x
+    console.log('Configurando viewer...')
+    
+    // Auto-rotación
+    viewer.autoRotate = true
+    console.log('Auto-rotación habilitada')
+    
+    // Animación de caminar
+    if (skinview3d.WalkingAnimation) {
+      viewer.animation = new skinview3d.WalkingAnimation()
+      viewer.animation.speed = 0.5
+      console.log('Animación WalkingAnimation configurada')
+    } else {
+      console.warn('WalkingAnimation no disponible en esta versión')
+    }
+    
+    // Mostrar canvas
+    canvas.style.display = 'block'
+    console.log('Canvas visible')
+    
+    console.log('Viewer configurado completamente')
+
+    loadFavorites()
+    renderTab('populares')
+
+    // Cargar skin por defecto (Notch)
+    const defaultUUID = await getCachedUUID(FEATURED[0])
+    if (defaultUUID) {
+      selectSkin(FEATURED[0], defaultUUID, 'popular')
+    }
+  } catch (error) {
+    console.error('Error al crear viewer:', error)
+    console.error('Error stack:', error.stack)
+    console.warn('Falló la creación del viewer 3D, usando fallback 2D')
+    useFallback2D = true
+    skinSetStatus('⚠️ Error 3D. Usando vista 2D.', 'error')
+    loadFavorites()
+    renderTab('populares')
+    const defaultUUID = await getCachedUUID(FEATURED[0])
+    if (defaultUUID) {
+      selectSkin(FEATURED[0], defaultUUID, 'popular')
+    }
+  }
+}
+
+// ── Tabs
+async function openTab(tab, el) {
+  currentTab = tab
+  document.querySelectorAll('.skin-tab').forEach(t => t.classList.remove('active'))
+  if (el) el.classList.add('active')
+  else {
+    const tabs = document.querySelectorAll('.skin-tab')
+    const map = { populares: 0, favoritas: 1, subir: 2 }
+    if (tabs[map[tab]]) tabs[map[tab]].classList.add('active')
+  }
+  document.getElementById('search-bar').style.display = tab === 'populares' ? 'flex' : 'none'
+  await renderTab(tab)
+}
+
+async function renderTab(tab) {
+  const body = document.getElementById('gallery-body')
+  if (tab === 'populares') await renderPopulares(body)
+  else if (tab === 'favoritas') renderFavoritas(body)
+  else renderSubir(body)
+}
+
+// ── Populares
+async function renderPopulares(el) {
+  el.innerHTML = `
+    <div class="skin-grid-label">${t('skins.featured')}</div>
+    <div class="skin-grid" id="popular-grid">
+      <div class="skin-loading">${t('skins.loading')}</div>
+    </div>
+    <div id="search-results"></div>`
+  
+  // Resolver UUIDs dinámicamente
+  const grid = document.getElementById('popular-grid')
+  const cards = []
+  
+  for (const username of FEATURED) {
+    const uuid = await getCachedUUID(username)
+    if (uuid) {
+      cards.push(mkCard(username, body(uuid), uuid, 'popular'))
+    }
+  }
+  
+  grid.innerHTML = cards.join('')
+}
+
+function mkCard(name, avatarUrl, uuid, source) {
+  const fav = favorites.some(f => f.uuid === uuid)
+  return `<div class="skin-card" id="card-${uuid}" onclick="selectSkin('${name}','${uuid}','${source}')">
+    <button class="skin-card-fav ${fav ? 'active' : ''}" title="${t('skins.saveFavorite')}" onclick="event.stopPropagation();toggleFav('${name}','${uuid}')">★</button>
+    <img class="skin-card-avatar" src="${avatarUrl}" alt="${name}">
+    <div class="skin-card-name">${name}</div>
+  </div>`
+}
+
+// ── Buscar
+async function searchSkin() {
+  const q = document.getElementById('skin-search').value.trim()
+  if (!q) return
+  const wrap = document.getElementById('search-results')
+  if (!wrap) return
+  wrap.innerHTML = `<div class="skin-loading">${t('skins.searching', { q })}</div>`
+  try {
+    const res = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(q)}`)
+    if (!res.ok) throw new Error()
+    const { id, name } = await res.json()
+    wrap.innerHTML = `
+      <div class="skin-grid-label">${t('skins.searchResult', { name })}</div>
+      <div class="skin-grid">${mkCard(name, body(id), id, 'search')}</div>`
+  } catch {
+    wrap.innerHTML = `<div class="skin-empty">${t('skins.searchNotFound', { q })}</div>`
+  }
+}
+
+// ── Seleccionar
+async function selectSkin(name, uuid, source) {
+  console.log(`=== selectSkin llamado: name=${name}, uuid=${uuid}, source=${source}`)
+  
+  document.querySelectorAll('.skin-card').forEach(c => c.classList.remove('selected'))
+  document.getElementById('card-' + uuid)?.classList.add('selected')
+
+  const skinUrl = skin(uuid)
+  console.log('URL de skin:', skinUrl)
+  currentSkin = { name, uuid, url: skinUrl, model: currentModel, source }
+
+  document.getElementById('sv-name').textContent = name
+  const srcLabel = { popular: t('skins.sourcePopular'), search: t('skins.sourceSearch'), fav: t('skins.sourceFavorite'), upload: t('skins.sourceUpload') }
+  document.getElementById('sv-badge').textContent = `${currentModel === 'classic' ? t('skins.modelClassic') : t('skins.modelSlim')} · ${srcLabel[source] || ''}`
+  skinSetStatus('', '')
+
+  // Fallback 2D si WebGL no está disponible
+  if (useFallback2D) {
+    console.log('Usando fallback 2D')
+    const previewImg = document.getElementById('skin-preview-img')
+    const canvas = document.getElementById('skin-canvas')
+    if (previewImg) {
+      // Usar render de cuerpo completo de mc-heads
+      previewImg.src = `https://mc-heads.net/body/${uuid}/160`
+      previewImg.style.display = 'block'
+    }
+    if (canvas) canvas.style.display = 'none'
+    skinSetStatus(t('skins.view2dActive'), 'ok')
+    return
+  }
+
+  // Mostrar canvas 3D
+  const previewImg = document.getElementById('skin-preview-img')
+  const canvas = document.getElementById('skin-canvas')
+  if (previewImg) previewImg.style.display = 'none'
+  if (canvas) canvas.style.display = 'block'
+  console.log('Canvas visible, imagen oculta')
+
+  if (viewer) {
+    console.log('Viewer disponible, cargando skin...')
+    try {
+      // En skinview3d 3.x, loadSkin solo toma la URL, el modelo se detecta automáticamente
+      await viewer.loadSkin(skinUrl)
+      console.log('Skin cargada exitosamente')
+      skinSetStatus(t('skins.skinLoaded'), 'ok')
+    } catch (error) {
+      console.error('Error al cargar skin:', error)
+      skinSetStatus(t('skins.skinLoadError'), 'error')
+    }
+  } else {
+    console.error('Viewer no disponible')
+    skinSetStatus(t('skins.viewerNotInitialized'), 'error')
+  }
+}
+
+// ── Modelo
+function setModel(m) {
+  console.log(`=== setModel llamado: ${m}`)
+  currentModel = m
+  document.getElementById('model-classic').classList.toggle('active', m === 'classic')
+  document.getElementById('model-slim').classList.toggle('active', m === 'slim')
+  
+  if (currentSkin && viewer) {
+    console.log('Cambiando modelo a:', m)
+    // API correcta de SkinView3D 3.x para cambiar el modelo
+    viewer.playerObject.skin.modelType = m === 'slim' ? 'slim' : 'default'
+    console.log('Modelo cambiado a:', viewer.playerObject.skin.modelType)
+  }
+  
+  if (currentSkin) {
+    document.getElementById('sv-badge').textContent = `${m === 'classic' ? t('skins.modelClassic') : t('skins.modelSlim')} · ${currentSkin.source?.toUpperCase() || ''}`
+  }
+}
+
+// ── Aplicar
+async function applySkin() {
+  if (!currentSkin) return
+  const btn = document.getElementById('btn-apply')
+  btn.disabled = true
+  btn.textContent = t('skins.applying')
+  skinSetStatus('', '')
+
+  try {
+    const result = await window.zotlinAPI.microsoft.list()
+    const active = result?.accounts?.find(a => a.active)
+
+    if (active?.access_token) {
+      let skinBytes = null
+      // Si es una URL blob:, extraer los bytes en el renderer
+      if (currentSkin.url.startsWith('blob:')) {
+        const response = await fetch(currentSkin.url)
+        const arrayBuffer = await response.arrayBuffer()
+        skinBytes = new Uint8Array(arrayBuffer)
+      }
+      const r = await window.zotlinAPI.skins.applyOnline(currentSkin.url, currentModel, active.access_token, skinBytes)
+      r.ok ? skinSetStatus(t('skins.skinApplied'), 'ok')
+             : skinSetStatus('Error: ' + (r.error || t('skins.tryAgain')), 'error')
+    } else {
+      const r = await window.zotlinAPI.skins.saveLocal(currentSkin.url, currentSkin.name)
+      r.ok ? skinSetStatus(t('skins.skinSavedLocal'), 'ok')
+             : skinSetStatus('Error: ' + (r.error || t('skins.tryAgain')), 'error')
+    }
+  } catch(e) {
+    skinSetStatus('Error: ' + e.message, 'error')
+  }
+
+  btn.disabled = false
+  btn.textContent = t('skins.apply')
+}
+
+// ── Favoritas
+function loadFavorites() {
+  try { favorites = JSON.parse(localStorage.getItem('zotlin_favs') || '[]') } catch { favorites = [] }
+}
+function saveFavorites() {
+  localStorage.setItem('zotlin_favs', JSON.stringify(favorites))
+}
+function toggleFav(name, uuid) {
+  const idx = favorites.findIndex(f => f.uuid === uuid)
+  idx >= 0 ? favorites.splice(idx, 1) : favorites.push({ name, uuid })
+  saveFavorites()
+  const btn = document.querySelector(`#card-${uuid} .skin-card-fav`)
+  if (btn) btn.classList.toggle('active', favorites.some(f => f.uuid === uuid))
+  if (currentTab === 'favoritas') renderTab('favoritas')
+}
+function favCurrentSkin() {
+  if (!currentSkin?.uuid) return
+  toggleFav(currentSkin.name, currentSkin.uuid)
+  skinSetStatus(t('skins.favoriteSaved'), 'ok')
+}
+function renderFavoritas(el) {
+  if (!favorites.length) {
+    el.innerHTML = `<div class="skin-empty">${t('skins.noFavorites')}</div>`
+    return
+  }
+  el.innerHTML = `
+    <div class="skin-grid-label">${t('skins.myFavorites', { count: favorites.length })}</div>
+    <div class="skin-grid">${favorites.map(f => mkCard(f.name, avatar(f.uuid), f.uuid, 'fav')).join('')}</div>`
+}
+
+// ── Subir
+function renderSubir(el) {
+  el.innerHTML = `
+    <div class="skin-upload-zone" id="upload-zone"
+      onclick="document.getElementById('skin-file-input').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)">
+      <div class="skin-upload-icon">🎨</div>
+      <div class="skin-upload-text">
+        <strong>${t('skins.dragDrop')}</strong><br>
+        ${t('skins.orClick')}
+        ${t('skins.fileSpec')}
+      </div>
+    </div>
+    <div id="upload-msg"></div>`
+}
+
+function handleDrop(e) {
+  e.preventDefault()
+  document.getElementById('upload-zone')?.classList.remove('drag')
+  const f = e.dataTransfer.files[0]
+  if (f) processFile(f)
+}
+function handleFileUpload(e) { if (e.target.files[0]) processFile(e.target.files[0]) }
+
+async function processFile(file) {
+  console.log('=== processFile llamado:', file.name)
+  
+  if (!file.name.endsWith('.png')) {
+    document.getElementById('upload-msg').innerHTML = `<div class="sv-status error" style="text-align:center;padding:12px">${t('skins.pngOnly')}</div>`
+    return
+  }
+  const url = URL.createObjectURL(file)
+  const name = file.name.replace('.png', '')
+  console.log('URL de skin local:', url)
+  currentSkin = { name, url, model: currentModel, source: 'upload' }
+  document.getElementById('sv-name').textContent = name
+  document.getElementById('sv-badge').textContent = `${currentModel === 'classic' ? t('skins.modelClassic') : t('skins.modelSlim')} · ${t('skins.sourceUpload')}`
+
+  // Mostrar canvas 3D
+  const previewImg = document.getElementById('skin-preview-img')
+  const canvas = document.getElementById('skin-canvas')
+  if (previewImg) previewImg.style.display = 'none'
+  if (canvas) canvas.style.display = 'block'
+  console.log('Canvas visible, imagen oculta')
+
+  if (viewer) {
+    console.log('Viewer disponible, cargando skin local...')
+    try {
+      // En skinview3d 3.x, loadSkin solo toma la URL
+      await viewer.loadSkin(url)
+      console.log('Skin local cargada exitosamente')
+    } catch (error) {
+      console.error('Error al cargar skin local:', error)
+    }
+  } else {
+    console.error('Viewer no disponible')
+  }
+
+  document.getElementById('upload-msg').innerHTML = `<div class="sv-status ok" style="text-align:center;padding:12px">${t('skins.previewReady')}</div>`
+}
+
+function skinSetStatus(msg, type) {
+  const el = document.getElementById('sv-status')
+  el.textContent = msg || t('skins.selectSkin')
+  el.className = 'sv-status' + (type ? ' ' + type : '')
+}
+</script>

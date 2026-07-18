@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Zotlin Launcher</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #121212;
+      color: #e8e8e8;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+    .splash {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      background-color: #121212;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      background-size: 40px 40px;
+      position: relative;
+    }
+    .splash::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 55% at 50% 38%, rgba(29, 158, 117, 0.12), transparent 65%);
+      pointer-events: none;
+    }
+    .splash-inner {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .logo-wrap {
+      position: relative;
+      width: 128px;
+      height: 128px;
+      margin-bottom: 28px;
+    }
+    .ring {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      animation: ringSpin 2.4s linear infinite;
+    }
+    @keyframes ringSpin {
+      to { transform: rotate(360deg); }
+    }
+    .logo {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 52px;
+      height: 52px;
+      transform: translate(-50%, -50%);
+      border-radius: 12px;
+      object-fit: cover;
+    }
+    .logo-fallback {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 52px;
+      height: 52px;
+      transform: translate(-50%, -50%);
+      border-radius: 12px;
+      background: linear-gradient(145deg, #1a3d30, #17382d);
+      border: 1px solid rgba(29, 158, 117, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #1D9E75;
+    }
+    .logo-fallback.show { display: flex; }
+    .title {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+    .version {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #6a6a6a;
+      font-weight: 500;
+    }
+    .status {
+      position: absolute;
+      bottom: 28px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 12px;
+      color: #555;
+      letter-spacing: 0.02em;
+      min-height: 16px;
+      transition: opacity 0.35s ease;
+    }
+    .status.fade { opacity: 0; }
+  </style>
+</head>
+<body>
+  <div class="splash">
+    <div class="splash-inner">
+      <div class="logo-wrap">
+        <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+          <defs>
+            <linearGradient id="zotlinRing" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1D9E75"/>
+              <stop offset="55%" stop-color="#2ec492"/>
+              <stop offset="100%" stop-color="#1a6b52"/>
+            </linearGradient>
+          </defs>
+          <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2"/>
+          <circle cx="60" cy="60" r="54" fill="none" stroke="url(#zotlinRing)" stroke-width="3"
+            stroke-linecap="round" stroke-dasharray="72 268" transform="rotate(-90 60 60)"/>
+        </svg>
+        <img class="logo" src="assets/logo-dark.png" alt="" id="splash-logo">
+        <div class="logo-fallback" id="splash-logo-fallback">Z</div>
+      </div>
+      <div class="title">Zotlin Launcher</div>
+      <div class="version" id="splash-version">v1.0.0</div>
+    </div>
+    <div class="status" id="splash-status">Iniciando...</div>
+  </div>
+  <script>
+    const logo = document.getElementById('splash-logo')
+    const fallback = document.getElementById('splash-logo-fallback')
+    logo.onerror = () => {
+      logo.style.display = 'none'
+      fallback.classList.add('show')
+    }
+
+    const params = new URLSearchParams(location.search)
+    const version = params.get('v')
+    if (version) document.getElementById('splash-version').textContent = 'v' + version
+
+    const messages = [
+      'Cargando interfaz...',
+      'Preparando instancias...',
+      'Comprobando ajustes...',
+      'Casi listo...'
+    ]
+    let index = 0
+    const statusEl = document.getElementById('splash-status')
+    statusEl.textContent = messages[0]
+
+    setInterval(() => {
+      statusEl.classList.add('fade')
+      setTimeout(() => {
+        index = (index + 1) % messages.length
+        statusEl.textContent = messages[index]
+        statusEl.classList.remove('fade')
+      }, 350)
+    }, 1200)
+  </script>
+</body>
+</html>

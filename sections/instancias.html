@@ -1,0 +1,136 @@
+<div class="page-head">
+  <div>
+    <div class="page-title" data-i18n="instances.title">Instancias</div>
+    <div class="page-subtitle" data-i18n="instances.subtitle">Elegí un perfil de juego para usar.</div>
+  </div>
+  <div class="hero-actions">
+    <input class="search-box" id="version-search" placeholder="Buscar instancia..." data-i18n-placeholder="instances.search" oninput="filterVersions()">
+    <button type="button" class="secondary-btn" onclick="importMrpack()"><i class="fa-solid fa-file-import"></i> <span data-i18n="instances.import">Importar modpack</span></button>
+    <button type="button" class="primary-btn" onclick="openCreateInstanceModal()"><i class="fa-solid fa-plus"></i> <span data-i18n="instances.add">Agregar instalación</span></button>
+  </div>
+</div>
+
+<div class="versions-list" id="versions-list">
+  <div class="version-row selected" data-instance="vanilla-1.21.4" data-version="1.21.4" onclick="selectVersionFromList(this)">
+    <div class="version-info">
+      <strong>Minecraft 1.21.4</strong>
+      <span>Release · <span data-i18n="instances.lastSelected">Última seleccionada</span></span>
+    </div>
+    <div class="version-badge" data-i18n="instances.current">Actual</div>
+    <button type="button" class="icon-action" onclick="openInstanceFolder(event, this)" title="Abrir carpeta" aria-label="Abrir carpeta" data-i18n-title="instance.openFolder" data-i18n-aria-label="instance.openFolder"><i class="fa-regular fa-folder-open"></i></button>
+    <button type="button" class="version-action" onclick="useVersion(event, this)" data-i18n="instances.use">Usar</button>
+  </div>
+  <div class="version-row" data-instance="vanilla-1.20.6" data-version="1.20.6" onclick="selectVersionFromList(this)">
+    <div class="version-info">
+      <strong>Minecraft 1.20.6</strong>
+      <span>Release · <span data-i18n="instances.stable">Estable</span></span>
+    </div>
+    <div class="version-badge">Release</div>
+    <button type="button" class="icon-action" onclick="openInstanceFolder(event, this)" title="Abrir carpeta" aria-label="Abrir carpeta" data-i18n-title="instance.openFolder" data-i18n-aria-label="instance.openFolder"><i class="fa-regular fa-folder-open"></i></button>
+    <button type="button" class="version-action" onclick="useVersion(event, this)" data-i18n="instances.use">Usar</button>
+  </div>
+  <div class="version-row" data-instance="vanilla-1.19.4" data-version="1.19.4" onclick="selectVersionFromList(this)">
+    <div class="version-info">
+      <strong>Minecraft 1.19.4</strong>
+      <span>Release · <span data-i18n="instances.modFriendly">Compatible con muchos mods</span></span>
+    </div>
+    <div class="version-badge">Release</div>
+    <button type="button" class="icon-action" onclick="openInstanceFolder(event, this)" title="Abrir carpeta" aria-label="Abrir carpeta" data-i18n-title="instance.openFolder" data-i18n-aria-label="instance.openFolder"><i class="fa-regular fa-folder-open"></i></button>
+    <button type="button" class="version-action" onclick="useVersion(event, this)" data-i18n="instances.use">Usar</button>
+  </div>
+  <div class="version-row" data-instance="vanilla-1.18.2" data-version="1.18.2" onclick="selectVersionFromList(this)">
+    <div class="version-info">
+      <strong>Minecraft 1.18.2</strong>
+      <span>Release · <span data-i18n="instances.oldModpacks">Buena para modpacks viejos</span></span>
+    </div>
+    <div class="version-badge">Release</div>
+    <button type="button" class="icon-action" onclick="openInstanceFolder(event, this)" title="Abrir carpeta" aria-label="Abrir carpeta" data-i18n-title="instance.openFolder" data-i18n-aria-label="instance.openFolder"><i class="fa-regular fa-folder-open"></i></button>
+    <button type="button" class="version-action" onclick="useVersion(event, this)" data-i18n="instances.use">Usar</button>
+  </div>
+</div>
+
+<script>
+function renderLauncherInstancesList() {
+  const list = document.getElementById('versions-list')
+  if (!list) return
+  list.innerHTML = ''
+  if (!launcherInstances || !launcherInstances.length) return
+
+  const chunkSize = 10
+  let idx = 0
+
+  function renderChunk() {
+    const frag = document.createDocumentFragment()
+    for (let i = 0; i < chunkSize && idx < launcherInstances.length; i++, idx++) {
+      const instance = launcherInstances[idx]
+      const div = document.createElement('div')
+      div.className = 'version-row ' + (instance.id === selectedInstance ? 'selected' : '')
+      div.dataset.instance = instance.id
+      div.dataset.version = instance.version
+      div.setAttribute('onclick', 'openInstanceView(this)')
+      div.innerHTML = '<div class="version-info">' +
+        '<strong>' + escapeHtml(instance.name) + '</strong>' +
+        '<span>' + escapeHtml((instance.loader || 'vanilla') + ' · ' + instance.version + (instance.type === 'modpack' ? ' · Modpack' : '')) + '</span>' +
+      '</div>' +
+      '<div class="version-badge">' + (instance.id === selectedInstance ? escapeHtml(t('instances.current')) : escapeHtml(instance.loader || 'Release')) + '</div>' +
+      '<button type="button" class="icon-action" onclick="openInstanceFolder(event, this)" title="' + escapeHtml(t('instance.openFolder')) + '" aria-label="' + escapeHtml(t('instance.openFolder')) + '"><i class="fa-regular fa-folder-open"></i></button>' +
+      '<button type="button" class="version-action" onclick="openInstanceFromList(event, this)">' + escapeHtml(t('instances.open')) + '</button>'
+      frag.appendChild(div)
+    }
+    list.appendChild(frag)
+    if (idx < launcherInstances.length) setTimeout(renderChunk, 0)
+  }
+
+  renderChunk()
+}
+
+function selectVersionFromList(row) {
+  applySelectedInstance(row)
+  syncSelectedVersion()
+}
+
+function useVersion(event, button) {
+  event.stopPropagation()
+  openInstanceView(button.closest('.version-row'))
+}
+
+function filterVersions() {
+  const search = document.getElementById('version-search').value.toLowerCase()
+  document.querySelectorAll('.version-row').forEach(row => {
+    row.style.display = row.dataset.version.includes(search) ? 'grid' : 'none'
+  })
+}
+
+// Load instances when this section is shown
+if (typeof refreshLauncherInstances === 'function') {
+  refreshLauncherInstances()
+}
+async function importMrpack() {
+  if (!window.zotlinAPI?.instances?.importMrpack) {
+    setStatus(t('instances.importError'))
+    return
+  }
+
+  // Escuchar progreso
+  window.zotlinAPI.instances.onImportProgress((data) => {
+    setStatus(data.message)
+  })
+
+  const result = await window.zotlinAPI.instances.importMrpack()
+
+  window.zotlinAPI.instances.offImportProgress()
+
+  if (result.ok) {
+    if (result.warnings) {
+      setStatus(t('instances.importSuccess', { name: result.name }) + ` (${result.warnings} mod(s) fallaron)`)
+    } else {
+      setStatus(t('instances.importSuccess', { name: result.name }))
+    }
+    if (typeof refreshLauncherInstances === 'function') refreshLauncherInstances()
+  } else if (result.cancelled) {
+    setStatus(t('app.ready'))
+  } else {
+    setStatus(result.error || t('instances.importError'))
+  }
+}
+</script>

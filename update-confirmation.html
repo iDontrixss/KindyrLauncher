@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es" style="background:#1a1a1a;color-scheme:dark" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Update Confirmation</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #1a1a1a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .confirmation-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+      box-sizing: border-box;
+    }
+
+    .confirmation-icon {
+      font-size: 64px;
+      color: #ff6b6b;
+      margin-bottom: 24px;
+    }
+
+    .confirmation-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .confirmation-message {
+      font-size: 16px;
+      color: #b0b0b0;
+      text-align: center;
+      margin-bottom: 32px;
+      line-height: 1.5;
+      max-width: 400px;
+    }
+
+    .confirmation-version {
+      font-size: 14px;
+      color: #888888;
+      margin-bottom: 32px;
+    }
+
+    .confirmation-buttons {
+      display: flex;
+      gap: 16px;
+    }
+
+    .confirmation-button {
+      padding: 12px 32px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .confirmation-button.accept {
+      background: #4a9eff;
+      color: #ffffff;
+    }
+
+    .confirmation-button.accept:hover {
+      background: #3a8eef;
+    }
+
+    .confirmation-button.cancel {
+      background: #3a3a3a;
+      color: #ffffff;
+    }
+
+    .confirmation-button.cancel:hover {
+      background: #4a4a4a;
+    }
+  </style>
+</head>
+<body>
+  <div class="confirmation-container">
+    <i class="fa-solid fa-triangle-exclamation confirmation-icon"></i>
+    <div class="confirmation-title" id="title"></div>
+    <div class="confirmation-message" id="message"></div>
+    <div class="confirmation-version" id="version"></div>
+    <div class="confirmation-buttons">
+      <button class="confirmation-button cancel" id="cancelButton"></button>
+      <button class="confirmation-button accept" id="acceptButton"></button>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search)
+    document.getElementById('title').textContent = urlParams.get('title') || 'Update Available'
+    document.getElementById('message').textContent = urlParams.get('message') || 'Do you want to install this update?'
+    document.getElementById('version').textContent = `Version: ${urlParams.get('version') || ''}`
+    document.getElementById('acceptButton').textContent = urlParams.get('acceptText') || 'Install'
+    document.getElementById('cancelButton').textContent = urlParams.get('cancelText') || 'Cancel'
+
+    document.getElementById('acceptButton').addEventListener('click', () => {
+      window.electronAPI.updateConfirm(true)
+    })
+
+    document.getElementById('cancelButton').addEventListener('click', () => {
+      window.electronAPI.updateConfirm(false)
+    })
+  </script>
+</body>
+</html>

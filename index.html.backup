@@ -1,0 +1,1912 @@
+<!DOCTYPE html>
+<html lang="es" style="background:#1a1a1a;color-scheme:dark" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Zotlin Launcher</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+  <div class="logo-area">
+    <img src="assets/logo-dark.png" alt="Zotlin Logo">
+    <div class="logo-text">
+      <div class="logo-name">Zotlin Launcher</div>
+      <div class="logo-sub">v1.2.0</div>
+    </div>
+    <button type="button" class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()" aria-label="Contraer barra lateral" title="Contraer barra lateral" data-i18n-aria-label="sidebar.collapse" data-i18n-title="sidebar.collapse">
+      <i class="fa-solid fa-angles-left" id="sidebar-toggle-icon" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="sidebar-collapse-slot">
+    <button type="button" class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Expandir barra lateral" title="Expandir barra lateral" data-i18n-aria-label="sidebar.expand" data-i18n-title="sidebar.expand">
+      <i class="fa-solid fa-angles-right" aria-hidden="true"></i>
+    </button>
+  </div>
+  <nav aria-label="Navegación principal" data-i18n-aria-label="nav.main">
+    <button type="button" class="nav-item active" id="nav-home" data-view-title="Inicio" data-i18n-view-title="nav.home" onclick="loadSection('home', this)"><i class="fa-solid fa-house" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.home">Inicio</span></button>
+    <button type="button" class="nav-item" id="nav-instances" data-view-title="Instancias" data-i18n-view-title="nav.instances" onclick="loadSection('instances', this)"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.instances">Instancias</span></button>
+    <button type="button" class="nav-item" id="nav-discover" data-view-title="Descubrir" data-i18n-view-title="nav.discover" onclick="loadSection('discover', this)"><i class="fa-solid fa-compass" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.discover">Descubrir</span></button>
+    <button type="button" class="nav-item" id="nav-skins" data-view-title="Skins" data-i18n-view-title="nav.skins" onclick="loadSection('skins', this)"><i class="fa-solid fa-shirt" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.skins">Skins</span></button>
+    <button type="button" class="nav-item" id="nav-settings" data-view-title="Ajustes" data-i18n-view-title="nav.settings" onclick="loadSection('settings', this)"><i class="fa-solid fa-gear" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.settings">Ajustes</span></button>
+  </nav>
+  <button type="button" class="profile-area" onclick="openAccountManager()" aria-label="Abrir gestor de cuentas" data-i18n-aria-label="account.open">
+    <div class="avatar">ZT</div>
+    <div class="profile-text">
+      <div class="profile-name" id="username">ZotlinUser</div>
+      <div class="profile-mode" data-i18n="account.mode.offline">Modo offline</div>
+    </div>
+  </button>
+</div>
+
+<div class="modal-backdrop" id="account-modal" onclick="closeAccountManager(event)">
+  <div class="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title" id="account-modal-title" data-i18n="account.title">Gestor de cuentas</div>
+      <button type="button" class="modal-close" onclick="closeAccountManager()" aria-label="Cerrar" data-i18n-aria-label="app.close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="account-current">
+        <div class="avatar" id="modal-avatar">ZT</div>
+        <div class="account-meta">
+          <strong id="modal-current-name">ZotlinUser</strong>
+          <span data-i18n="account.offline">Cuenta offline actual</span>
+        </div>
+      </div>
+
+      <button type="button" class="microsoft-btn" id="ms-login-btn" onclick="loginMicrosoft()">
+  <i class="fa-brands fa-microsoft" aria-hidden="true"></i> <span data-i18n="account.ms.login">Iniciar sesión con Microsoft</span>
+</button>
+<div id="ms-login-status" style="font-size:12px;color:#888;margin-top:6px;"></div>
+
+<div class="section-label" data-i18n="account.ms.section">Cuentas Microsoft</div>
+<div class="account-list" id="ms-account-list"></div>
+<div class="section-label" data-i18n="account.offline.section">Cuentas offline</div>
+<div class="account-list" id="account-list"></div>
+
+      <div class="account-form">
+        <label for="new-account-name" class="sr-only" data-i18n="account.placeholder">Nuevo nombre offline</label>
+        <input class="setting-input" id="new-account-name" maxlength="16" placeholder="Nuevo nombre offline" data-i18n-placeholder="account.placeholder">
+        <button type="button" class="primary-btn" onclick="addOfflineAccount()" data-i18n="account.add">Agregar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="confirm-modal" onclick="closeConfirmModal(event)">
+  <div class="account-modal" style="max-width:360px;" role="dialog" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title" id="confirm-modal-title" data-i18n="confirm.title">Confirmar</div>
+      <button type="button" class="modal-close" onclick="closeConfirmModal()" aria-label="Cerrar" data-i18n-aria-label="app.close">×</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-modal-message" style="color:#ccc;font-size:14px;line-height:1.5;"></p>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px;">
+        <button type="button" class="secondary-btn" onclick="closeConfirmModal()" data-i18n="confirm.cancel">Cancelar</button>
+        <button type="button" class="primary-btn" id="confirm-modal-ok" style="background:#c0392b;" data-i18n="confirm.delete">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="install-modal" onclick="closeInstallModal(event)">
+  <div class="install-modal" role="dialog" aria-modal="true" aria-labelledby="install-title" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title" id="install-title" data-i18n="install.title">Instalar contenido</div>
+      <button type="button" class="modal-close" onclick="closeInstallModal()" aria-label="Cerrar" data-i18n-aria-label="app.close">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="install-standard-view">
+      <div class="install-grid">
+        <div>
+          <div class="section-label">Minecraft</div>
+          <input class="setting-input" id="install-game-version" placeholder="1.21.4" onchange="loadInstallVersions()">
+        </div>
+        <div>
+          <div class="section-label">Loader</div>
+          <select class="discover-select" id="install-loader" onchange="loadInstallVersions()">
+            <option value="any" data-i18n="install.any">Cualquiera</option>
+            <option value="minecraft">Minecraft</option>
+            <option value="fabric">Fabric</option>
+            <option value="forge">Forge</option>
+            <option value="neoforge">NeoForge</option>
+            <option value="quilt">Quilt</option>
+            <option value="paper">Paper</option>
+            <option value="spigot">Spigot</option>
+            <option value="bukkit">Bukkit</option>
+          </select>
+        </div>
+        <div class="install-row-full">
+          <div class="section-label" data-i18n="install.destination">Destino</div>
+          <select class="discover-select" id="install-destination" onchange="updateInstallDestination()">
+            <option value="downloads" data-i18n="install.destination.downloads">PC - Carpeta Descargas</option>
+            <option value="instance" data-i18n="install.destination.instance">Instalación del launcher</option>
+          </select>
+        </div>
+        <div class="install-row-full" id="install-instance-wrap">
+          <div class="section-label" data-i18n="install.instance">Instalación</div>
+          <select class="discover-select" id="install-instance"></select>
+        </div>
+        <div class="install-row-full">
+          <div class="section-label" data-i18n="install.compatibleVersions">Versiones compatibles</div>
+          <div class="install-version-list" id="install-version-list"></div>
+        </div>
+      </div>
+      </div>
+      <div id="install-modpack-view" style="display:none">
+        <div class="install-row-full">
+          <div class="section-label" data-i18n="install.versions">Versiones</div>
+          <div class="install-version-list" id="install-modpack-version-list"></div>
+        </div>
+        <div class="install-row-full" style="margin-top:14px">
+          <div class="section-label" data-i18n="install.destination">Destino</div>
+          <div class="destination-row" id="install-modpack-destination">
+            <button type="button" class="destination-option active" data-value="instance" onclick="selectModpackDestination('instance', this)" data-i18n="install.destination.newInstance">Nueva instancia</button>
+            <button type="button" class="destination-option" data-value="downloads" onclick="selectModpackDestination('downloads', this)" data-i18n="install.destination.downloadsShort">Carpeta Descargas</button>
+          </div>
+        </div>
+        <div class="install-row-full" style="margin-top:14px">
+          <div class="section-label">Loader</div>
+          <div class="loader-row" id="install-modpack-loaders"></div>
+        </div>
+      </div>
+      <div class="install-note" id="install-note" data-i18n="install.note">Elegí versión, loader y destino.</div>
+      <div class="install-actions">
+        <button type="button" class="secondary-btn" onclick="closeInstallModal()" data-i18n="install.cancel">Cancelar</button>
+        <button type="button" class="primary-btn" id="install-confirm" onclick="installSelectedProject()" data-i18n="install.install">Instalar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="create-instance-modal" onclick="closeCreateInstanceModal(event)">
+  <div class="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-instance-modal-title" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title" id="create-instance-modal-title" data-i18n="create.title">+ Nueva instalación</div>
+      <button type="button" class="modal-close" onclick="closeCreateInstanceModal()" aria-label="Cerrar" data-i18n-aria-label="app.close">×</button>
+    </div>
+    <div class="create-body">
+      <div>
+        <div class="section-label">Mod loader</div>
+        <div class="loader-row" id="create-loader-row"></div>
+      </div>
+      <label class="snapshot-row">
+        <input type="checkbox" id="create-snapshots" onchange="loadCreateVersions()">
+        <span data-i18n="create.snapshots">Mostrar snapshots · versiones de prueba</span>
+      </label>
+      <div>
+        <div class="section-label" data-i18n="create.minecraftVersion">Versión de Minecraft</div>
+        <input class="setting-input" id="create-version-search" placeholder="Buscar versión..." data-i18n-placeholder="create.searchVersion" oninput="scheduleCreateVersionLoad()">
+      </div>
+      <div class="version-picker-list" id="create-version-list"></div>
+      <div class="install-note" id="create-instance-note" data-i18n="create.note">Elegí loader y versión.</div>
+    </div>
+    <div class="create-footer">
+      <button type="button" class="secondary-btn" onclick="closeCreateInstanceModal()" data-i18n="install.cancel">Cancelar</button>
+      <button type="button" class="primary-btn" id="create-instance-confirm" onclick="createSelectedInstance()" data-i18n="create.create">Crear instalación</button>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+  <div class="topbar" id="topbar">
+    <div class="topbar-left">
+      <button type="button" class="topbar-back" id="topbar-back-btn" onclick="goHomeFromInstance()" aria-label="Volver a Inicio" title="Volver a Inicio" data-i18n-aria-label="nav.home" data-i18n-title="nav.home">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+      </button>
+      <span class="topbar-title" id="topbar-title" data-i18n-key="nav.home" data-i18n="nav.home">Inicio</span>
+    </div>
+    <div class="window-controls">
+      <button type="button" class="win-btn win-minimize" onclick="minimizeWindow()" aria-label="Minimizar ventana" data-i18n-aria-label="app.window.minimize"></button>
+      <button type="button" class="win-btn win-maximize" onclick="maximizeWindow()" aria-label="Maximizar ventana" data-i18n-aria-label="app.window.maximize"></button>
+      <button type="button" class="win-btn win-close" onclick="closeWindow()" aria-label="Cerrar ventana" data-i18n-aria-label="app.window.close"></button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="view active" id="home-view"></div>
+    <div class="view" id="instances-view"></div>
+    <div class="view" id="discover-view"></div>
+    <div class="view" id="skins-view"></div>
+    <div class="view" id="settings-view"></div>
+    <div class="view" id="instance-detail-view"></div>
+  </div>
+
+  <div class="bottombar">
+    <div class="status-dot"></div>
+    <span class="status-text" id="status" data-i18n="app.ready">Listo para jugar</span>
+    <span class="log-text" id="log"></span>
+  </div>
+</main>
+
+<script src="common.js"></script>
+<script>
+// Dynamic section loading
+let currentSection = 'home'
+let loadedSections = new Set()
+const sectionNodeCache = new Map()
+
+let confirmCallback = null
+
+function showConfirm(message, callback) {
+  document.getElementById('confirm-modal-message').textContent = message
+  confirmCallback = callback
+  document.getElementById('confirm-modal').classList.add('active')
+}
+
+function closeConfirmModal(event) {
+  if (event && event.target.id !== 'confirm-modal') return
+  document.getElementById('confirm-modal').classList.remove('active')
+  confirmCallback = null
+}
+
+document.getElementById('confirm-modal-ok').addEventListener('click', () => {
+  document.getElementById('confirm-modal').classList.remove('active')
+  if (confirmCallback) confirmCallback()
+  confirmCallback = null
+})
+
+const sectionFiles = {
+  home: 'sections/inicio.html',
+  instances: 'sections/instancias.html',
+  discover: 'sections/descubrir.html',
+  skins: 'sections/skins.html',
+  settings: 'sections/ajustes.html'
+}
+
+async function loginMicrosoft() {
+  const btn = document.getElementById('ms-login-btn')
+  const statusEl = document.getElementById('ms-login-status')
+  btn.disabled = true
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + escapeHtml(t('account.ms.opening'))
+  statusEl.textContent = t('account.ms.waiting')
+
+  const result = await window.zotlinAPI.microsoft.login()
+
+  btn.disabled = false
+  btn.innerHTML = '<i class="fa-brands fa-microsoft"></i> ' + escapeHtml(t('account.ms.login'))
+
+  if (!result.ok) {
+    statusEl.textContent = 'Error: ' + result.error
+    return
+  }
+
+  statusEl.textContent = t('account.added.microsoft', { name: result.account.name })
+  await loadMicrosoftAccounts()
+}
+
+async function loadMicrosoftAccounts() {
+  const result = await window.zotlinAPI.microsoft.list()
+  if (!result.ok) return
+  const list = document.getElementById('ms-account-list')
+  if (!list) return
+
+  const msAccounts = result.accounts || []
+  const activeAccountId = result.accounts?.find(a => a.active)?.id
+const msHtml = msAccounts.map(account => `
+    <div class="account-item ${account.id === activeAccountId ? 'active microsoft' : ''}" onclick="setActiveMicrosoftAccount('${account.id}')">
+      <div class="avatar" style="background:#1a2f4a;color:#2F6FD4;">
+        <i class="fa-brands fa-microsoft"></i>
+      </div>
+      <div class="account-meta">
+        <strong>${escapeHtml(account.name)}</strong>
+        <span>${escapeHtml(t('account.ms.premium'))}${account.id === activeAccountId ? ' ' + escapeHtml(t('account.ms.active')) : ''}</span>
+      </div>
+      <button type="button" class="icon-action" onclick="logoutMicrosoft(event, '${account.id}')" title="${escapeHtml(t('account.logout'))}">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
+    </div>
+  `).join('')
+
+  list.innerHTML = msHtml || '<div style="color:#666;font-size:13px;">' + escapeHtml(t('account.ms.none')) + '</div>'
+}
+
+async function setActiveMicrosoftAccount(accountId) {
+  await window.zotlinAPI.microsoft.setActive(accountId)
+  const result = await window.zotlinAPI.microsoft.list()
+  const active = result.accounts?.find(a => a.id === accountId)
+  if (active) {
+    applyActiveAccount(active.name, 'microsoft')
+  }
+  await loadMicrosoftAccounts()
+  const modal = document.getElementById('account-modal')
+  if (modal) modal.classList.remove('active')
+}
+
+async function logoutMicrosoft(event, accountId) {
+  event.stopPropagation()
+  showConfirm(t('confirm.logout.ms'), async () => {
+    await window.zotlinAPI.microsoft.logout(accountId)
+    await loadMicrosoftAccounts()
+  })
+}
+
+async function loadSection(sectionName, navEl) {
+  if (currentSection === sectionName && loadedSections.has(sectionName)) return
+
+  // Ocultar vista de instancia si está activa
+  const instanceDetailView = document.getElementById('instance-detail-view')
+  if (instanceDetailView) instanceDetailView.classList.remove('active')
+
+  // Detach previous section nodes into a cache so scripts are not re-executed
+  const previousSection = currentSection
+  if (previousSection && previousSection !== sectionName && previousSection !== 'instance-detail') {
+    const prevView = document.getElementById(previousSection + '-view')
+    if (prevView) {
+      // Move child nodes out of the DOM and store them
+      const nodes = Array.from(prevView.childNodes)
+      if (nodes.length) {
+        sectionNodeCache.set(previousSection, nodes)
+        for (const n of nodes) prevView.removeChild(n)
+      }
+      // Keep loadedSections marked — content already executed and cached
+    }
+  }
+
+  currentSection = sectionName
+  
+  const navItems = document.querySelectorAll('.nav-item')
+  const views = document.querySelectorAll('.view')
+  
+  navItems.forEach(item => item.classList.remove('active'))
+  if (navEl) navEl.classList.add('active')
+  
+  views.forEach(view => view.classList.remove('active'))
+  
+  const targetView = document.getElementById(sectionName + '-view')
+  if (targetView) targetView.classList.add('active')
+  
+  setTopbarMode('nav', navEl ? (navEl.dataset.viewTitle || navEl.textContent.trim()) : t('nav.home'))
+  
+  if (!loadedSections.has(sectionName)) {
+    try {
+      const response = await fetch(sectionFiles[sectionName])
+      if (!response.ok) throw new Error('Failed to load section')
+      const html = await response.text()
+      const targetView = document.getElementById(sectionName + '-view')
+      if (targetView) {
+        targetView.innerHTML = html
+        loadedSections.add(sectionName)
+
+        applyLanguage()
+        applyTheme()
+
+        // Execute scripts once by creating new script elements (only on first load)
+        const scripts = targetView.querySelectorAll('script')
+        const fragment = document.createDocumentFragment()
+        scripts.forEach(script => {
+          const newScript = document.createElement('script')
+          if (script.hasAttribute('data-isolate')) {
+            try {
+              newScript.textContent = '(function(){\n' + script.textContent + '\n})();'
+            } catch (e) {
+              newScript.textContent = script.textContent
+            }
+          } else {
+            newScript.textContent = script.textContent
+          }
+          fragment.appendChild(newScript)
+          script.remove()
+        })
+        targetView.appendChild(fragment)
+      }
+    } catch (error) {
+      console.error('Error loading section:', error)
+      const targetView = document.getElementById(sectionName + '-view')
+      if (targetView) targetView.innerHTML = '<div class="empty-view">' + escapeHtml(t('settings.validation.error')) + '</div>'
+    }
+  } else {
+    // Section was previously loaded — reattach cached nodes if present without re-executing scripts
+    const targetView = document.getElementById(sectionName + '-view')
+    if (targetView) {
+      const cached = sectionNodeCache.get(sectionName)
+      if (cached && cached.length) {
+        // Re-attach nodes inside requestAnimationFrame to avoid layout thrashing
+        requestAnimationFrame(() => {
+          for (const n of cached) targetView.appendChild(n)
+          // Remove from cache since nodes are back in the DOM
+          sectionNodeCache.delete(sectionName)
+          
+          // Aplicamos traducción y renderizado si viene del caché
+          applyLanguage()
+          if (sectionName === 'instances' && typeof renderLauncherInstancesList === 'function') renderLauncherInstancesList()
+          if (sectionName === 'discover' && typeof renderDiscoverTypes === 'function') renderDiscoverTypes()
+        })
+      } else {
+        applyLanguage()
+        if (sectionName === 'instances' && typeof renderLauncherInstancesList === 'function') renderLauncherInstancesList()
+        if (sectionName === 'discover' && typeof renderDiscoverTypes === 'function') renderDiscoverTypes()
+      }
+    }
+  }
+}
+
+// Throttle helper to prevent expensive repeated DOM updates
+function throttle(fn, wait) {
+  let last = 0
+  let timeout = null
+  let lastArgs = null
+  return function throttled(...args) {
+    const now = Date.now()
+    const remaining = wait - (now - last)
+    lastArgs = args
+    if (remaining <= 0) {
+      if (timeout) {
+        clearTimeout(timeout)
+        timeout = null
+      }
+      last = now
+      fn.apply(this, lastArgs)
+      lastArgs = null
+    } else if (!timeout) {
+      timeout = setTimeout(() => {
+        last = Date.now()
+        timeout = null
+        if (lastArgs) fn.apply(this, lastArgs)
+        lastArgs = null
+      }, remaining)
+    }
+  }
+}
+
+const _setTopbarModeImpl = function(mode, title) {
+  const topbar = document.getElementById('topbar')
+  const titleEl = document.getElementById('topbar-title')
+  if (!topbar || !titleEl) return
+  if (mode === 'instance') {
+    topbar.classList.add('instance-mode')
+    delete titleEl.dataset.i18nKey
+    titleEl.textContent = title || t('instance.title.fallback')
+  } else {
+    topbar.classList.remove('instance-mode')
+    titleEl.dataset.i18nKey = 'nav.home'
+    titleEl.textContent = title || t('nav.home')
+  }
+}
+
+// Expose a throttled version to avoid style recalcs flooding the renderer
+const setTopbarMode = throttle(_setTopbarModeImpl, 200)
+
+// Instance detail view (kept in main file as it's shared across sections)
+function getInstanceLoaderLabel(loader) {
+  if (!loader || loader === 'vanilla') return 'Vanilla'
+  return loader.charAt(0).toUpperCase() + loader.slice(1)
+}
+
+function getSelectedInstanceMeta() {
+  return launcherInstances.find(instance => instance.id === selectedInstance) || {
+    id: selectedInstance,
+    version: selectedVersion,
+    loader: selectedInstance.startsWith('vanilla-') ? 'vanilla' : 'minecraft'
+  }
+}
+
+function updateSelectedInstanceHero() {
+  const instance = launcherInstances.find(item => item.id === selectedInstance)
+  const displayName = instance ? instance.name : ('Minecraft ' + selectedVersion)
+  document.querySelectorAll('#selected-version').forEach(el => {
+    el.textContent = displayName
+  })
+  const heroDetail = document.getElementById('instance-hero-detail')
+  if (heroDetail) {
+    heroDetail.textContent = instance
+      ? (instance.loader || 'vanilla') + ' · ' + instance.version + ' · Java Edition'
+      : 'Release · Java Edition'
+  }
+}
+
+function syncRecentCardsSelection() {
+  document.querySelectorAll('#recent-instances-grid .ver-card').forEach(card => {
+    card.classList.toggle('selected', card.dataset.instance === selectedInstance)
+  })
+}
+
+function applySelectedInstance(rowOrId) {
+  if (typeof rowOrId === 'string') {
+    selectedInstance = rowOrId
+    const instance = launcherInstances.find(item => item.id === selectedInstance)
+    if (instance) {
+      selectedVersion = instance.version
+    }
+  } else {
+    selectedInstance = rowOrId.dataset.instance
+    const instance = launcherInstances.find(item => item.id === selectedInstance)
+    if (instance) {
+      selectedVersion = instance.version
+    } else {
+      selectedVersion = rowOrId.dataset.version
+    }
+  }
+  updateSelectedInstanceHero()
+  recordRecentInstance(selectedInstance)
+  syncRecentCardsSelection()
+  syncSelectedVersion()
+}
+
+function syncSelectedVersion() {
+  document.querySelectorAll('.version-row').forEach(row => {
+    const isSelected = row.dataset.instance === selectedInstance
+    const instance = launcherInstances.find(item => item.id === row.dataset.instance)
+    row.classList.toggle('selected', isSelected)
+    const badge = row.querySelector('.version-badge')
+    if (badge) {
+      badge.textContent = isSelected
+        ? t('instances.current')
+        : (instance?.loader || 'Release')
+    }
+  })
+}
+
+
+function loadInstanceDetailContent() {
+  const instance = launcherInstances.find(item => item.id === selectedInstance)
+  const displayName = instance ? instance.name : ('Minecraft ' + selectedVersion)
+  const loaderLabel = instance?.loader || 'vanilla'
+  const versionLabel = instance?.version || selectedVersion
+  const detailView = document.getElementById('instance-detail-view')
+  detailView.innerHTML = `
+    <div class="hero">
+      <div>
+        <div class="hero-label">${escapeHtml(t('instance.label'))}</div>
+        <div class="hero-version" id="selected-version">${displayName}</div>
+<div class="hero-detail" id="instance-hero-detail">${loaderLabel} · ${versionLabel} · Java Edition</div>
+      </div>
+      <div class="hero-actions">
+        <button type="button" class="icon-action" id="open-folder-btn" title="${escapeHtml(t('instance.openInstanceFolder'))}" aria-label="${escapeHtml(t('instance.openInstanceFolder'))}">
+          <i class="fa-regular fa-folder-open"></i>
+        </button>
+        <button type="button" class="icon-action" id="export-mrpack-btn" title="${escapeHtml(t('instance.exportMrpack'))}" aria-label="${escapeHtml(t('instance.exportMrpack'))}">
+          <i class="fa-solid fa-file-export"></i>
+        </button>
+        <button type="button" class="play-btn" id="play-btn">
+          <i class="fa-solid fa-play"></i> ${escapeHtml(t('instance.play'))}
+        </button>
+      </div>
+    </div>
+
+    <div class="instance-manager">
+      <div class="instance-manager-head">
+        <div class="instance-manager-title">
+          <strong id="instance-manager-name">${displayName}</strong>
+<span id="instance-manager-meta">${loaderLabel} · ${versionLabel} · ${escapeHtml(t('instance.isolatedFolder'))}</span>
+        </div>
+        <div class="instance-manager-actions">
+          <button type="button" class="primary-btn instance-discover-btn" id="instance-discover-btn" aria-expanded="false" aria-controls="home-discover-wrap">
+            <i class="fa-solid fa-compass" aria-hidden="true"></i> ${escapeHtml(t('instance.discover'))}
+          </button>
+          <button type="button" class="secondary-btn" onclick="refreshInstancePanel()"><i class="fa-solid fa-rotate"></i> ${escapeHtml(t('instance.refresh'))}</button>
+          <button type="button" class="secondary-btn" id="toggle-mods-btn" onclick="toggleModsList()"><i class="fa-solid fa-chevron-down" id="toggle-mods-icon"></i> ${escapeHtml(t('instance.showMore'))}</button>
+        </div>
+      </div>
+      <div class="home-discover-wrap" id="home-discover-wrap">
+        <div class="home-discover-inner">
+          <div class="home-discover-panel" id="home-discover-panel">
+            <div class="home-discover-tabs" id="home-discover-tabs"></div>
+            <div class="home-discover-search-row">
+              <div class="home-discover-search-wrap">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input class="home-discover-search" id="home-discover-query" placeholder="${escapeHtml(t('home.search.mods'))}" oninput="scheduleHomeDiscoverSearch()">
+              </div>
+            </div>
+            <div class="home-discover-filters">
+              <select class="discover-select" id="home-discover-sort" onchange="searchHomeDiscover(true)" aria-label="${escapeHtml(t('home.sort.label'))}">
+                <option value="relevance">${escapeHtml(t('home.sort.relevance'))}</option>
+                <option value="downloads">${escapeHtml(t('home.sort.downloads'))}</option>
+                <option value="follows">${escapeHtml(t('home.sort.followers'))}</option>
+                <option value="updated">${escapeHtml(t('home.sort.updated'))}</option>
+                <option value="newest">${escapeHtml(t('home.sort.newest'))}</option>
+              </select>
+              <select class="discover-select" id="home-discover-limit" onchange="searchHomeDiscover(true)" aria-label="${escapeHtml(t('home.limit.label'))}">
+                <option value="12">${escapeHtml(t('home.limit', { count: 12 }))}</option>
+                <option value="18" selected>${escapeHtml(t('home.limit', { count: 18 }))}</option>
+                <option value="24">${escapeHtml(t('home.limit', { count: 24 }))}</option>
+              </select>
+              <div class="home-discover-badges">
+                <span class="home-discover-badge" id="home-discover-version-badge"><i class="fa-solid fa-cube"></i> <span id="home-discover-version">1.21.4</span></span>
+                <span class="home-discover-badge" id="home-discover-loader-badge"><i class="fa-solid fa-gears"></i> <span id="home-discover-loader">Vanilla</span></span>
+              </div>
+              <div class="home-discover-pagination" id="home-discover-pagination"></div>
+            </div>
+            <div class="home-discover-results-grid" id="home-discover-results"></div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-row">
+<button type="button" class="tab-btn active" id="instance-tab-content-btn" onclick="switchInstanceTab('content')"><i class="fa-solid fa-cubes"></i> ${escapeHtml(t('instance.content'))}</button>
+<button type="button" class="tab-btn" id="instance-tab-files-btn" onclick="switchInstanceTab('files')"><i class="fa-regular fa-folder-open"></i> ${escapeHtml(t('instance.folders'))}</button>
+<button type="button" class="tab-btn" id="instance-tab-worlds-btn" onclick="switchInstanceTab('worlds')"><i class="fa-solid fa-earth-americas"></i> ${escapeHtml(t('instance.worlds'))}</button>
+<button type="button" class="tab-btn" id="instance-tab-logs-btn" onclick="switchInstanceTab('logs')"><i class="fa-regular fa-rectangle-list"></i> Logs</button>
+      </div>
+      <div class="instance-tab active" id="instance-tab-content">
+        <div class="instance-actions">
+<button type="button" class="folder-btn" onclick="openInstanceTarget('mods')"><i class="fa-regular fa-folder-open"></i> ${escapeHtml(t('instance.openMods'))}</button>
+<button type="button" class="folder-btn" onclick="openInstanceTarget('resourcepacks')"><i class="fa-regular fa-folder-open"></i> Resource packs</button>
+<button type="button" class="folder-btn" onclick="openInstanceTarget('shaderpacks')"><i class="fa-regular fa-folder-open"></i> Shaders</button>
+        </div>
+        <div id="instance-content-list" class="content-table"></div>
+      </div>
+      <div class="instance-tab" id="instance-tab-files">
+        <div class="instance-actions" id="instance-folder-actions"></div>
+      </div>
+      <div class="instance-tab" id="instance-tab-worlds">
+        <div id="instance-worlds-list" class="content-table"></div>
+      </div>
+      <div class="instance-tab" id="instance-tab-logs">
+        <div class="instance-actions">
+          <button type="button" class="folder-btn"><i class="fa-regular fa-folder-open"></i> ${escapeHtml(t('instance.minecraftLogs'))}</button>
+          <button type="button" class="folder-btn"><i class="fa-regular fa-folder-open"></i> ${escapeHtml(t('instance.launcherLogs'))}</button>
+        </div>
+        <div id="instance-logs-list" class="content-table"></div>
+      </div>
+    </div>
+
+    <div class="console-panel" id="console-panel">
+      <div class="console-head">
+        <span>${escapeHtml(t('instance.console'))}</span>
+        <div class="console-actions">
+          <button type="button" class="console-btn">${escapeHtml(t('instance.clear'))}</button>
+        </div>
+      </div>
+      <div class="console-output" id="console-output"></div>
+    </div>
+  `
+  
+  // Attach event listeners after HTML injection
+  const playBtn = document.getElementById('play-btn')
+  const openFolderBtn = document.getElementById('open-folder-btn')
+  const refreshBtn = document.querySelector('.instance-manager-actions .secondary-btn')
+  const tabBtns = document.querySelectorAll('.tab-btn')
+  const consoleBtn = document.querySelector('.console-btn')
+
+  // playBtn event listener removed - using btn.onclick instead
+  if (openFolderBtn) {
+    openFolderBtn.addEventListener('click', openSelectedInstanceFolder)
+  }
+  const exportBtn = document.getElementById('export-mrpack-btn')
+  if (exportBtn) exportBtn.addEventListener('click', exportMrpack)
+  
+  // discoverBtn listener will be attached after loadHomeDiscoverScripts()
+  
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', refreshInstancePanel)
+  }
+  tabBtns.forEach(btn => {
+    const tabName = btn.id.replace('instance-tab-', '').replace('-btn', '')
+    btn.addEventListener('click', () => showInstanceTab(tabName))
+  })
+  // Attach folder button listeners with specific targets
+  const modsBtn = document.querySelector('.folder-btn:nth-of-type(1)')
+  const resourcepacksBtn = document.querySelector('.folder-btn:nth-of-type(2)')
+  const shaderpacksBtn = document.querySelector('.folder-btn:nth-of-type(3)')
+  const logsBtn = document.querySelector('#instance-tab-logs .folder-btn:nth-of-type(1)')
+  const launcherLogsBtn = document.querySelector('#instance-tab-logs .folder-btn:nth-of-type(2)')
+  
+  if (modsBtn) modsBtn.addEventListener('click', () => openInstanceTarget('mods'))
+  if (resourcepacksBtn) resourcepacksBtn.addEventListener('click', () => openInstanceTarget('resourcepacks'))
+  if (shaderpacksBtn) shaderpacksBtn.addEventListener('click', () => openInstanceTarget('shaderpacks'))
+  if (logsBtn) logsBtn.addEventListener('click', () => openInstanceTarget('logs'))
+  if (launcherLogsBtn) launcherLogsBtn.addEventListener('click', () => openInstanceTarget('launcherLogs'))
+  if (consoleBtn) {
+    consoleBtn.addEventListener('click', clearConsole)
+  }
+  
+  updateSelectedInstanceHero()
+  refreshInstancePanel()
+  loadHomeDiscoverScripts()
+  
+  // Attach discoverBtn listener after loadHomeDiscoverScripts()
+  const discoverBtn = document.getElementById('instance-discover-btn')
+  if (discoverBtn) {
+    discoverBtn.addEventListener('click', toggleHomeDiscoverPanel)
+  }
+}
+
+async function openInstanceView(rowOrId) {
+  applySelectedInstance(rowOrId)
+  const instance = launcherInstances.find(item => item.id === selectedInstance)
+  
+  // Actualizar currentSection para que no sea 'home' cuando estás en vista de instancia
+  currentSection = 'instance-detail'
+  
+  document.querySelectorAll('.view').forEach(view => view.classList.remove('active'))
+  
+  const detailView = document.getElementById('instance-detail-view')
+  detailView.classList.add('active')
+  
+  document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'))
+  
+  setTopbarMode('instance', instance?.name || 'Instancia')
+  setStatus(t('instance.selectedStatus', { name: instance?.name || selectedVersion }))
+  
+  if (!loadedSections.has('instance-detail')) {
+    loadInstanceDetailContent()
+    loadedSections.add('instance-detail')
+    // Esperar a que el HTML esté listo
+    await new Promise(resolve => setTimeout(resolve, 300))
+  } else {
+    await refreshInstancePanel()
+  }
+  updateSelectedInstanceHero()
+  
+  updateHomeDiscoverContext()
+  
+  // Check if Minecraft is running and update button accordingly
+  try {
+    window.zotlinAPI.launcher.status().then(result => {
+      // Resetear botón primero
+      resetPlayBtn()
+      
+      // Luego verificar si esta instancia específica está corriendo
+      if (result.running && result.instanceId === selectedInstance) {
+        const btn = document.getElementById('play-btn')
+        if (btn) {
+          btn.disabled = false
+          btn.innerHTML = '<i class="fa-solid fa-stop"></i> Cerrar Minecraft'
+          btn.classList.add('danger')
+          btn.onclick = function(e) {
+            cancelGame(e)
+          }
+          setStatus(t('app.playing'))
+        }
+      }
+    }).catch(err => {
+      console.error('Error en status check:', err)
+    })
+  } catch (err) {
+    console.error('Error al llamar status():', err)
+  }
+}
+function reloadSectionsForLanguage() {
+  const sectionsToReload = ['discover', 'home', 'instances']
+  sectionsToReload.forEach(section => {
+    loadedSections.delete(section)
+    sectionNodeCache.delete(section)
+    const view = document.getElementById(section + '-view')
+    if (view) view.innerHTML = ''
+  })
+  if (currentSection !== 'settings') {
+    const activeNav = document.getElementById('nav-' + currentSection)
+    loadSection(currentSection, activeNav)
+  }
+}
+
+function goHomeFromInstance() {
+  loadedSections.delete('instance-detail')
+  document.querySelectorAll('.view').forEach(view => view.classList.remove('active'))
+  document.getElementById('home-view').classList.add('active')
+  document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'))
+  document.getElementById('nav-home').classList.add('active')
+  setTopbarMode('nav', t('nav.home'))
+  currentSection = 'home'
+}
+
+function switchInstanceTab(tab) {
+  document.querySelectorAll('.instance-tab').forEach(t => t.classList.remove('active'))
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+  document.getElementById('instance-tab-' + tab).classList.add('active')
+  document.getElementById('instance-tab-' + tab + '-btn').classList.add('active')
+}
+
+function openInstanceTarget(target) {
+  if (window.zotlinAPI?.instances?.openTarget) {
+    window.zotlinAPI.instances.openTarget(selectedInstance, target)
+  }
+}
+
+function openInstanceFromList(event, button) {
+  event.stopPropagation()
+  openInstanceView(button.closest('.version-row'))
+}
+
+async function openSelectedInstanceFolder() {
+  const result = await window.zotlinAPI.instances.openFolder(selectedInstance)
+  setStatus(result.ok ? t('instance.folderOpened') : result.error)
+}
+
+let modsExpanded = false
+
+function toggleModsList() {
+  const list = document.getElementById('instance-content-list')
+  const btn = document.getElementById('toggle-mods-btn')
+  if (!list) return
+  const rows = list.querySelectorAll('.content-row')
+  if (rows.length <= 5) {
+    if (btn) btn.style.display = 'none'
+    return
+  }
+  if (btn) btn.style.display = ''
+  modsExpanded = !modsExpanded
+  const limit = 5
+  rows.forEach((row, i) => {
+    if (i >= limit) row.style.display = modsExpanded ? '' : 'none'
+  })
+  const icon = document.getElementById('toggle-mods-icon')
+  if (icon) {
+    icon.className = modsExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'
+  }
+  if (btn) {
+    btn.innerHTML = `<i class="${modsExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'}" id="toggle-mods-icon"></i> ${modsExpanded ? t('instance.showLess') : t('instance.showMore')}`
+  }
+}
+
+async function exportMrpack() {
+  if (!window.zotlinAPI?.instances?.exportMrpack) {
+    setStatus(t('instance.exportError'))
+    return
+  }
+  setStatus(t('instance.exporting'))
+  const result = await window.zotlinAPI.instances.exportMrpack(selectedInstance)
+  if (result.ok) {
+    setStatus(t('instance.exportSuccess', { name: result.name }))
+  } else if (result.cancelled) {
+    setStatus(t('app.ready'))
+  } else {
+    setStatus(result.error || t('instance.exportError'))
+  }
+}
+
+async function openInstanceFolder(event, button) {
+  event.stopPropagation()
+  const row = button.closest('.version-row')
+  const result = await window.zotlinAPI.instances.openFolder(row.dataset.instance)
+  setStatus(result.ok ? t('instance.folderOpened') : result.error)
+}
+
+// Load home discover scripts dynamically
+function loadHomeDiscoverScripts() {
+  const script = document.createElement('script')
+  script.textContent = `
+    let homeDiscoverOffset = 0
+    let homeDiscoverTotal = 0
+    let homeDiscoverTimer = null
+    let homeDiscoverLoading = false
+    let homeDiscoverType = 'mod'
+    let homeDiscoverOpen = false
+    function getHomeDiscoverTypes() {
+      return [
+        { id: 'mod', label: t('discover.type.mod'), placeholder: t('home.search.mods') },
+        { id: 'resourcepack', label: t('discover.type.resourcepack'), placeholder: t('home.search.resourcepacks') },
+        { id: 'datapack', label: t('discover.type.datapack'), placeholder: t('home.search.datapacks') },
+        { id: 'shader', label: t('discover.type.shader'), placeholder: t('home.search.shaders') }
+      ]
+    }
+    
+    function getHomeDiscoverLimit() {
+      return Math.max(12, Math.min(Number(document.getElementById('home-discover-limit')?.value) || 18, 24))
+    }
+    
+    function getHomeDiscoverPlaceholder() {
+      const type = getHomeDiscoverTypes().find(item => item.id === homeDiscoverType)
+      return type ? type.placeholder : t('home.search.content')
+    }
+    
+    function isHomeDiscoverOpen() {
+      return document.getElementById('home-discover-wrap')?.classList.contains('open')
+    }
+    
+    function matchesHomeDiscoverProject(project) {
+      if (homeDiscoverType === 'datapack') {
+        const categories = project.display_categories || project.categories || []
+        return categories.includes('datapack')
+      }
+      return project.project_type === homeDiscoverType
+    }
+    
+    function getProjectInstallKind(project) {
+      const categories = project.display_categories || project.categories || []
+      if (categories.includes('datapack')) return 'datapack'
+      return project.project_type || 'mod'
+    }
+    
+    function renderHomeDiscoverTabs() {
+      document.getElementById('home-discover-tabs').innerHTML = getHomeDiscoverTypes().map(type => (
+        '<button type="button" class="home-discover-tab ' + (type.id === homeDiscoverType ? 'active' : '') + '" onclick="selectHomeDiscoverType(&quot;' + type.id + '&quot;)">' + type.label + '</button>'
+      )).join('')
+      const query = document.getElementById('home-discover-query')
+      if (query) query.placeholder = getHomeDiscoverPlaceholder()
+    }
+    
+    function selectHomeDiscoverType(type) {
+      homeDiscoverType = type
+      homeDiscoverOffset = 0
+      renderHomeDiscoverTabs()
+      if (isHomeDiscoverOpen()) searchHomeDiscover(true)
+    }
+    
+    function updateHomeDiscoverContext() {
+      const meta = getSelectedInstanceMeta()
+      document.getElementById('home-discover-version').textContent = meta.version || selectedVersion
+      document.getElementById('home-discover-loader').textContent = getInstanceLoaderLabel(meta.loader)
+    }
+    
+    function syncDiscoverButtonState(isOpen) {
+      const btn = document.getElementById('instance-discover-btn')
+      if (!btn) return
+      btn.classList.toggle('active', isOpen)
+      btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false')
+    }
+    
+    function toggleHomeDiscoverPanel(forceOpen) {
+      const wrap = document.getElementById('home-discover-wrap')
+      const shouldOpen = forceOpen === true ? true : forceOpen === false ? false : !homeDiscoverOpen
+
+      if (!shouldOpen) {
+        homeDiscoverOpen = false
+        wrap.classList.remove('open')
+        syncDiscoverButtonState(false)
+        return
+      }
+
+      homeDiscoverOpen = true
+      wrap.classList.add('open')
+      syncDiscoverButtonState(true)
+      renderHomeDiscoverTabs()
+      updateHomeDiscoverContext()
+      document.getElementById('home-discover-sort').value = 'relevance'
+      homeDiscoverOffset = 0
+      searchHomeDiscover(true)
+    }
+    
+    function scheduleHomeDiscoverSearch() {
+      clearTimeout(homeDiscoverTimer)
+      homeDiscoverTimer = setTimeout(() => searchHomeDiscover(true), 450)
+    }
+    
+    function renderHomeDiscoverPagination() {
+      const limit = getHomeDiscoverLimit()
+      const totalPages = Math.max(1, Math.ceil(homeDiscoverTotal / limit))
+      const currentPage = Math.floor(homeDiscoverOffset / limit) + 1
+      const container = document.getElementById('home-discover-pagination')
+      if (!container) return
+
+      const pages = []
+      if (totalPages <= 5) {
+        for (let page = 1; page <= totalPages; page += 1) pages.push(page)
+      } else {
+        pages.push(1, 2, '…', totalPages)
+      }
+
+      container.innerHTML =
+        '<button type="button" class="home-discover-page-btn" onclick="changeHomeDiscoverPage(-1)" ' + (currentPage <= 1 || homeDiscoverLoading ? 'disabled' : '') + ' aria-label="' + escapeHtml(t('home.prevPage')) + '"><i class="fa-solid fa-chevron-left"></i></button>' +
+        pages.map(page => {
+          if (page === '…') return '<span style="color:#666;font-size:12px;">…</span>'
+          return '<button type="button" class="home-discover-page-btn ' + (page === currentPage ? 'active' : '') + '" onclick="goHomeDiscoverPage(' + page + ')">' + page + '</button>'
+        }).join('') +
+        '<button type="button" class="home-discover-page-btn" onclick="changeHomeDiscoverPage(1)" ' + (currentPage >= totalPages || homeDiscoverLoading ? 'disabled' : '') + ' aria-label="' + escapeHtml(t('home.nextPage')) + '"><i class="fa-solid fa-chevron-right"></i></button>'
+    }
+    
+    function renderHomeDiscoverMessage(message) {
+      document.getElementById('home-discover-results').innerHTML = '<div class="home-discover-message">' + escapeHtml(message) + '</div>'
+      renderHomeDiscoverPagination()
+    }
+    
+    function renderHomeDiscoverResults(projects) {
+      const results = document.getElementById('home-discover-results')
+      if (!results) return
+      results.innerHTML = ''
+      if (!projects.length) {
+        renderHomeDiscoverMessage(t('home.noCompatible'))
+        return
+      }
+
+      const chunkSize = 12
+      let idx = 0
+
+      function renderChunk() {
+        const frag = document.createDocumentFragment()
+        for (let i = 0; i < chunkSize && idx < projects.length; i++, idx++) {
+          const project = projects[idx]
+          const wrapper = document.createElement('div')
+          const icon = project.icon_url
+            ? '<img src="' + escapeHtml(project.icon_url) + '" alt="">'
+            : '<i class="fa-solid fa-cube"></i>'
+          const categories = (project.display_categories || project.categories || []).slice(0, 3)
+          const tags = [
+            getProjectTypeLabel(project.project_type),
+            ...categories,
+            (project.latest_version ? project.latest_version : '')
+          ].filter(Boolean).slice(0, 5)
+          const encodedProject = escapeHtml(JSON.stringify(project))
+          const encodedUrl = escapeHtml(JSON.stringify(getProjectUrl(project)))
+          wrapper.className = 'project-card'
+          wrapper.innerHTML =
+            '<div class="project-icon">' + icon + '</div>' +
+            '<div class="project-body">' +
+              '<div class="project-title" title="' + escapeHtml(project.title) + '">' + escapeHtml(project.title) + '</div>' +
+              '<div class="project-desc">' + escapeHtml(project.description || t('discover.noDescription')) + '</div>' +
+              '<div class="project-stats">' +
+                '<span class="project-tag"><i class="fa-solid fa-download"></i> ' + formatCompactNumber(project.downloads) + '</span>' +
+                '<span class="project-tag"><i class="fa-solid fa-star"></i> ' + formatCompactNumber(project.follows) + '</span>' +
+                tags.map(tag => '<span class="project-tag">' + escapeHtml(tag) + '</span>').join('') +
+              '</div>' +
+            '</div>' +
+            '<div class="project-actions">' +
+              '<button type="button" class="secondary-btn" onclick="openModrinthProject(' + encodedUrl + ')">' + escapeHtml(t('discover.view')) + '</button>' +
+              '<button type="button" class="primary-btn" onclick="quickInstallLatestRelease(' + encodedProject + ', this)">' + escapeHtml(t('discover.install')) + '</button>' +
+            '</div>'
+          frag.appendChild(wrapper)
+        }
+        results.appendChild(frag)
+        if (idx < projects.length) {
+          // yield to event loop so renderer can breathe
+          setTimeout(renderChunk, 0)
+        } else {
+          renderHomeDiscoverPagination()
+        }
+      }
+
+      renderChunk()
+    }
+    
+    async function searchHomeDiscover(resetPage = false) {
+      if (homeDiscoverLoading) return
+      if (resetPage) homeDiscoverOffset = 0
+      homeDiscoverLoading = true
+
+      const meta = getSelectedInstanceMeta()
+      const query = document.getElementById('home-discover-query').value
+      const sort = document.getElementById('home-discover-sort').value
+      const limit = getHomeDiscoverLimit()
+      updateHomeDiscoverContext()
+      renderHomeDiscoverMessage(t('home.loadingContent'))
+
+      const result = await window.zotlinAPI.modrinth.search({
+        query,
+        version: meta.version || selectedVersion,
+        sort,
+        type: homeDiscoverType,
+        offset: homeDiscoverOffset,
+        limit
+      })
+
+      homeDiscoverLoading = false
+      if (!result.ok) {
+        renderHomeDiscoverMessage(result.error || t('home.searchFailed'))
+        setStatus(result.error || t('home.searchFailed'))
+        return
+      }
+
+      homeDiscoverTotal = result.totalHits
+      const typeLabel = getHomeDiscoverTypes().find(item => item.id === homeDiscoverType)?.label || t('instance.content')
+      renderHomeDiscoverResults(result.hits.filter(matchesHomeDiscoverProject))
+      setStatus(t('home.loadedFor', { type: typeLabel, version: meta.version || selectedVersion }))
+    }
+    
+    function goHomeDiscoverPage(page) {
+      const limit = getHomeDiscoverLimit()
+      homeDiscoverOffset = Math.max(0, (page - 1) * limit)
+      searchHomeDiscover(false)
+    }
+    
+    function changeHomeDiscoverPage(direction) {
+      const limit = getHomeDiscoverLimit()
+      const nextOffset = homeDiscoverOffset + direction * limit
+      homeDiscoverOffset = Math.max(0, Math.min(nextOffset, Math.max(0, homeDiscoverTotal - limit)))
+      searchHomeDiscover(false)
+    }
+    
+    async function quickInstallLatestRelease(project, button) {
+      const meta = getSelectedInstanceMeta()
+      const projectType = getProjectInstallKind(project)
+      if (projectType === 'mod' && (!meta.loader || meta.loader === 'vanilla')) {
+        setStatus(t('home.vanillaModsWarning'))
+        return
+      }
+
+      const originalText = button.textContent
+      button.disabled = true
+      button.textContent = t('home.installing')
+      setStatus(t('home.installingRelease', { title: project.title }))
+
+      const result = await window.zotlinAPI.modrinth.installLatestRelease({
+        project,
+        instanceId: selectedInstance
+      })
+
+      button.disabled = false
+      button.textContent = originalText
+      if (!result.ok) {
+        setStatus(result.error)
+        return
+      }
+
+      setStatus(t('home.installed', { name: result.version?.name || result.version?.version_number || project.title }))
+      refreshInstancePanelSoon(3)
+      if (isHomeDiscoverOpen()) searchHomeDiscover(false)
+    }
+    
+    renderHomeDiscoverTabs()
+    updateHomeDiscoverContext()
+  `
+  document.head.appendChild(script)
+}
+
+// Additional shared functions
+function showInstanceTab(tabName) {
+  activeInstanceTab = tabName
+  requestAnimationFrame(() => {
+    const tabs = document.querySelectorAll('.instance-tab')
+    const btns = document.querySelectorAll('.tab-btn')
+    tabs.forEach(tab => tab.classList.remove('active'))
+    btns.forEach(btn => btn.classList.remove('active'))
+    const targetTab = document.getElementById('instance-tab-' + tabName)
+    const targetBtn = document.getElementById('instance-tab-' + tabName + '-btn')
+    if (targetTab) targetTab.classList.add('active')
+    if (targetBtn) targetBtn.classList.add('active')
+  })
+}
+
+function renderEmpty(targetId, message) {
+  const target = document.getElementById(targetId)
+  target.className = 'muted-empty'
+  target.textContent = message
+}
+
+async function refreshInstancePanel() {
+  const result = await window.zotlinAPI.instances.getDetails(selectedInstance)
+  if (!result.ok) {
+    setStatus(result.error)
+    return
+  }
+
+  const instance = result.instance
+  requestAnimationFrame(() => {
+    const nameEl = document.getElementById('instance-manager-name')
+    const metaEl = document.getElementById('instance-manager-meta')
+    const heroDetail = document.getElementById('instance-hero-detail')
+    if (nameEl) nameEl.textContent = instance.name
+    if (metaEl) metaEl.textContent = instance.loader + ' · ' + instance.version + ' · ' + t('instance.isolatedFolder')
+    if (heroDetail) {
+      heroDetail.textContent = (instance.loader || 'vanilla') + ' · ' + instance.version + ' · Java Edition'
+    }
+  })
+  renderInstanceContent(result.mods)
+modsExpanded = false
+toggleModsList()
+  renderInstanceWorlds(result.worlds)
+  renderInstanceLogs(result.logs)
+  renderInstanceFolders()
+}
+
+function renderInstanceContent(mods) {
+  const list = document.getElementById('instance-content-list')
+  if (!list) return
+  list.className = 'content-table'
+  if (!mods.length) {
+    renderEmpty('instance-content-list', t('instance.emptyMods'))
+    return
+  }
+
+  const fragment = document.createDocumentFragment()
+  mods.forEach(mod => {
+    const disabled = mod.name.endsWith('.disabled')
+    const status = disabled ? t('instance.disabled') : t('instance.active')
+    const action = disabled ? t('instance.enable') : t('instance.disable')
+    const encodedName = JSON.stringify(mod.name)
+    const div = document.createElement('div')
+    div.className = 'content-row'
+    div.innerHTML = '<div><strong title="' + escapeHtml(mod.name) + '">' + escapeHtml(mod.name) + '</strong><span>' + formatFileSize(mod.size) + '</span></div>' +
+      '<span class="pill ' + (disabled ? 'disabled' : '') + '">' + status + '</span>' +
+      '<button type="button" class="small-action" onclick="toggleInstanceMod(' + escapeHtml(encodedName) + ')">' + action + '</button>'
+    fragment.appendChild(div)
+  })
+  list.innerHTML = ''
+  list.appendChild(fragment)
+}
+
+function renderInstanceWorlds(worlds) {
+  const list = document.getElementById('instance-worlds-list')
+  if (!list) return
+  list.className = 'content-table'
+  if (!worlds.length) {
+    renderEmpty('instance-worlds-list', t('instance.emptyWorlds'))
+    return
+  }
+
+  const fragment = document.createDocumentFragment()
+  worlds.forEach(world => {
+    const div = document.createElement('div')
+    div.className = 'content-row'
+    div.innerHTML = '<div><strong title="' + escapeHtml(world.name) + '">' + escapeHtml(world.name) + '</strong><span>' + escapeHtml(t('instance.updatedAt', { date: new Date(world.updatedAt).toLocaleString() })) + '</span></div><span class="pill">' + escapeHtml(t('instance.world')) + '</span><button type="button" class="small-action" onclick="openInstanceTarget(&quot;saves&quot;)">' + escapeHtml(t('instances.open')) + '</button></div>'
+    fragment.appendChild(div)
+  })
+  list.innerHTML = ''
+  list.appendChild(fragment)
+}
+
+function renderInstanceLogs(logs) {
+  const list = document.getElementById('instance-logs-list')
+  if (!list) return
+  list.className = 'content-table'
+  if (!logs.length) {
+    renderEmpty('instance-logs-list', t('instance.emptyLogs'))
+    return
+  }
+
+  const fragment = document.createDocumentFragment()
+  logs.forEach(logFile => {
+    const div = document.createElement('div')
+    div.className = 'content-row'
+    div.innerHTML = '<div><strong title="' + escapeHtml(logFile.name) + '">' + escapeHtml(logFile.name) + '</strong><span>' + formatFileSize(logFile.size) + ' · ' + new Date(logFile.updatedAt).toLocaleString() + '</span></div><span class="pill">Log</span><button type="button" class="small-action" onclick="openInstanceTarget(&quot;launcherLogs&quot;)">' + escapeHtml(t('instances.open')) + '</button></div>'
+    fragment.appendChild(div)
+  })
+  list.innerHTML = ''
+  list.appendChild(fragment)
+}
+
+function renderInstanceFolders() {
+  const folders = [
+    ['root', t('instance.folder.root')],
+    ['minecraft', 'Minecraft root'],
+    ['mods', 'Mods'],
+    ['plugins', 'Plugins'],
+    ['datapacks', 'Datapacks'],
+    ['resourcepacks', 'Resource packs'],
+    ['shaderpacks', 'Shaders'],
+    ['saves', t('instance.folder.saves')],
+    ['logs', 'Logs MC'],
+    ['launcherLogs', 'Logs launcher']
+  ]
+  const actionsEl = document.getElementById('instance-folder-actions')
+  if (actionsEl) {
+    const fragment = document.createDocumentFragment()
+    folders.forEach(([target, label]) => {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'folder-btn'
+      btn.onclick = () => openInstanceTarget(target)
+      btn.innerHTML = '<i class="fa-regular fa-folder-open"></i> ' + escapeHtml(label)
+      fragment.appendChild(btn)
+    })
+    actionsEl.innerHTML = ''
+    actionsEl.appendChild(fragment)
+  }
+}
+
+function refreshInstancePanelSoon(times = 1) {
+  refreshInstancePanel()
+  if (times <= 1) return
+  setTimeout(() => refreshInstancePanelSoon(times - 1), 900)
+}
+
+async function openInstanceTarget(target) {
+  const result = await window.zotlinAPI.instances.openTarget(selectedInstance, target)
+  setStatus(result.ok ? t('instance.folderOpen') : result.error)
+  if (result.ok) refreshInstancePanelSoon(6)
+}
+
+async function toggleInstanceMod(fileName) {
+  const result = await window.zotlinAPI.instances.toggleMod(selectedInstance, fileName)
+  setStatus(result.ok ? t('instance.modUpdated') : result.error)
+  if (result.ok) refreshInstancePanelSoon(2)
+}
+
+// Create instance modal functions
+let createLoader = 'vanilla'
+let createVersions = []
+let createSelectedVersion = null
+let createVersionTimer = null
+const createLoaders = [
+  { id: 'vanilla', label: 'Vanilla' },
+  { id: 'fabric', label: 'Fabric' },
+  { id: 'forge', label: 'Forge' },
+  { id: 'neoforge', label: 'NeoForge' },
+  { id: 'quilt', label: 'Quilt' }
+]
+
+function renderCreateLoaders() {
+  const row = document.getElementById('create-loader-row')
+  if (row) {
+    row.innerHTML = createLoaders.map(loader => (
+      '<button type="button" class="loader-option ' + (loader.id === createLoader ? 'active' : '') + '" onclick="selectCreateLoader(&quot;' + loader.id + '&quot;)">' + loader.label + '</button>'
+    )).join('')
+  }
+}
+
+function selectCreateLoader(loader) {
+  createLoader = loader
+  createSelectedVersion = null
+  renderCreateLoaders()
+  loadCreateVersions()
+}
+
+function openCreateInstanceModal() {
+  createLoader = 'vanilla'
+  createSelectedVersion = null
+  const snapshots = document.getElementById('create-snapshots')
+  if (snapshots) snapshots.checked = false
+  const search = document.getElementById('create-version-search')
+  if (search) search.value = ''
+  const note = document.getElementById('create-instance-note')
+  if (note) note.textContent = t('create.loadingVersions')
+  const list = document.getElementById('create-version-list')
+  if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(t('create.loadingVersions')) + '</div>'
+  renderCreateLoaders()
+  document.getElementById('create-instance-modal').classList.add('active')
+  loadCreateVersions()
+}
+
+function closeCreateInstanceModal(event) {
+  if (event && event.target.id !== 'create-instance-modal') return
+  document.getElementById('create-instance-modal').classList.remove('active')
+}
+
+function scheduleCreateVersionLoad() {
+  clearTimeout(createVersionTimer)
+  createVersionTimer = setTimeout(loadCreateVersions, 250)
+}
+
+async function loadCreateVersions() {
+  const includeSnapshots = document.getElementById('create-snapshots').checked
+  const query = document.getElementById('create-version-search').value
+  const note = document.getElementById('create-instance-note')
+  if (note) note.textContent = t('install.searchingCompatible')
+  const list = document.getElementById('create-version-list')
+  if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.searchingCompatible')) + '</div>'
+
+  const result = await window.zotlinAPI.instances.versions({
+    loader: createLoader,
+    includeSnapshots,
+    query
+  })
+
+  if (!result.ok) {
+    createVersions = []
+    createSelectedVersion = null
+    if (note) note.textContent = result.error
+    if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(result.error) + '</div>'
+    return
+  }
+
+  createVersions = result.versions || []
+  createSelectedVersion = createVersions[0] || null
+  renderCreateVersions()
+}
+
+function renderCreateVersions() {
+  const list = document.getElementById('create-version-list')
+  if (!list) return
+  if (!createVersions.length) {
+    list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.noCompatible')) + '</div>'
+    const note = document.getElementById('create-instance-note')
+    if (note) note.textContent = t('install.noCompatibleNote')
+    return
+  }
+
+  list.innerHTML = createVersions.map(version => (
+    '<div class="version-picker-item ' + (createSelectedVersion && createSelectedVersion.id === version.id ? 'active' : '') + '" onclick="selectCreateVersion(&quot;' + version.id + '&quot;)">' +
+      '<strong>' + escapeHtml(version.id) + '</strong>' +
+      '<span class="version-kind ' + (version.type === 'snapshot' ? 'snapshot' : '') + '">' + escapeHtml(version.type) + '</span>' +
+      '<span>' + (version.loaderVersion ? escapeHtml(version.loaderVersion) : '<i class="fa-solid fa-check"></i>') + '</span>' +
+    '</div>'
+  )).join('')
+  const note = document.getElementById('create-instance-note')
+  if (note) note.textContent = t('create.compatibleVersions', { count: createVersions.length })
+}
+
+function selectCreateVersion(versionId) {
+  createSelectedVersion = createVersions.find(version => version.id === versionId) || null
+  renderCreateVersions()
+}
+
+async function createSelectedInstance() {
+  if (!createSelectedVersion) {
+    setStatus(t('create.pickVersion'))
+    return
+  }
+
+  const btn = document.getElementById('create-instance-confirm')
+  btn.disabled = true
+  btn.textContent = t('create.creating')
+  const result = await window.zotlinAPI.instances.create({
+    version: createSelectedVersion.id,
+    versionType: createSelectedVersion.type,
+    loader: createLoader,
+    loaderVersion: createSelectedVersion.loaderVersion
+  })
+  btn.disabled = false
+  btn.textContent = t('create.create')
+
+  if (!result.ok) {
+    const note = document.getElementById('create-instance-note')
+    if (note) note.textContent = result.error
+    setStatus(result.error)
+    return
+  }
+
+  await refreshLauncherInstances()
+  closeCreateInstanceModal()
+  openInstanceView(result.instance.id)
+  setStatus(t('create.created', { name: result.instance.name }))
+}
+
+// Install modal functions
+let installProject = null
+let installVersions = []
+let installVersionId = ''
+let installModpackLoader = ''
+let installModpackDestination = 'instance'
+const modpackLoaderDefs = [
+  { id: 'fabric', label: 'Fabric' },
+  { id: 'forge', label: 'Forge' },
+  { id: 'neoforge', label: 'NeoForge' },
+  { id: 'quilt', label: 'Quilt' },
+  { id: 'minecraft', label: 'Vanilla' }
+]
+
+function getInstallKind(project) {
+  const activeDiscoverType = typeof discoverType === 'string' ? discoverType : ''
+  if (activeDiscoverType === 'plugin' || activeDiscoverType === 'datapack') return activeDiscoverType
+  return project.project_type || 'mod'
+}
+
+function getDefaultLoader(project) {
+  if (project.project_type === 'resourcepack' || project.project_type === 'shader') return 'minecraft'
+  if (project.project_type === 'modpack') return 'any'
+  const activeDiscoverType = typeof discoverType === 'string' ? discoverType : ''
+  if (activeDiscoverType === 'plugin') return 'paper'
+  return 'any'
+}
+
+function setInstallModalMode(isModpack) {
+  const standard = document.getElementById('install-standard-view')
+  const modpack = document.getElementById('install-modpack-view')
+  if (standard) standard.style.display = isModpack ? 'none' : 'block'
+  if (modpack) modpack.style.display = isModpack ? 'block' : 'none'
+}
+
+function getCompatibleLoadersForVersion(version) {
+  const loaders = (version?.loaders || []).map(loader => String(loader).toLowerCase())
+  return modpackLoaderDefs
+    .map(loader => loader.id)
+    .filter(id => loaders.includes(id))
+}
+
+function getSelectedInstallVersion() {
+  return installVersions.find(version => version.id === installVersionId) || null
+}
+
+function selectModpackDestination(value, button) {
+  installModpackDestination = value
+  document.querySelectorAll('#install-modpack-destination .destination-option').forEach(option => {
+    option.classList.toggle('active', option === button)
+  })
+  const confirmBtn = document.getElementById('install-confirm')
+  if (confirmBtn) confirmBtn.textContent = value === 'downloads' ? t('install.download') : t('install.install')
+}
+
+function selectModpackLoader(loaderId) {
+  const compatible = getCompatibleLoadersForVersion(getSelectedInstallVersion())
+  if (!compatible.includes(loaderId) || compatible.length <= 1) return
+  installModpackLoader = loaderId
+  renderModpackLoaders()
+}
+
+function renderModpackLoaders() {
+  const container = document.getElementById('install-modpack-loaders')
+  if (!container) return
+  const version = getSelectedInstallVersion()
+  const compatible = getCompatibleLoadersForVersion(version)
+  if (!compatible.length) {
+    container.innerHTML = '<div class="install-note">' + escapeHtml(t('install.noLoaders')) + '</div>'
+    return
+  }
+  if (!compatible.includes(installModpackLoader)) {
+    installModpackLoader = compatible[0]
+  }
+  const canSwitch = compatible.length > 1
+  container.innerHTML = modpackLoaderDefs.map(loader => {
+    const isCompatible = compatible.includes(loader.id)
+    const isActive = installModpackLoader === loader.id
+    if (!isCompatible) {
+      return '<button type="button" class="loader-option blocked" disabled>' + loader.label + '<i class="fa-solid fa-xmark loader-block-icon" aria-hidden="true"></i></button>'
+    }
+    const onclick = canSwitch ? ' onclick="selectModpackLoader(&quot;' + loader.id + '&quot;)"' : ''
+    const disabled = canSwitch ? '' : ' disabled'
+    return '<button type="button" class="loader-option ' + (isActive ? 'active' : '') + '"' + onclick + disabled + '>' + loader.label + '</button>'
+  }).join('')
+}
+
+function renderModpackVersions() {
+  const list = document.getElementById('install-modpack-version-list')
+  if (!list) return
+  if (!installVersions.length) {
+    list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.noModpackVersions')) + '</div>'
+    const note = document.getElementById('install-note')
+    if (note) note.textContent = t('install.noVersions')
+    return
+  }
+
+  list.innerHTML = installVersions.map(version => {
+    const gameVersions = (version.game_versions || []).slice(0, 4).join(', ')
+    const loaders = (version.loaders || []).join(', ')
+    return '<div class="install-version-item ' + (version.id === installVersionId ? 'active' : '') + '" onclick="selectModpackVersion(&quot;' + version.id + '&quot;)">' +
+      '<span>' + escapeHtml(version.name || version.version_number) + '</span>' +
+      '<span>' + escapeHtml(version.version_type + ' · ' + loaders + ' · ' + gameVersions) + '</span>' +
+    '</div>'
+  }).join('')
+  const note = document.getElementById('install-note')
+  if (note) note.textContent = t('install.availableVersions', { count: installVersions.length })
+}
+
+function selectModpackVersion(versionId) {
+  installVersionId = versionId
+  renderModpackVersions()
+  renderModpackLoaders()
+}
+
+async function loadModpackInstallVersions() {
+  if (!installProject) return
+  const note = document.getElementById('install-note')
+  if (note) note.textContent = t('install.loadingModpackVersions')
+  const list = document.getElementById('install-modpack-version-list')
+  if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.loadingVersions')) + '</div>'
+
+  const result = await window.zotlinAPI.modrinth.versions({
+    projectId: installProject.project_id || installProject.slug,
+    loader: 'any'
+  })
+
+  if (!result.ok) {
+    installVersions = []
+    installVersionId = ''
+    if (note) note.textContent = result.error
+    if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(result.error) + '</div>'
+    return
+  }
+
+  installVersions = (result.versions || []).filter(version => version.version_type === 'release')
+  installVersionId = installVersions[0]?.id || ''
+  const compatible = getCompatibleLoadersForVersion(installVersions[0])
+  installModpackLoader = compatible[0] || 'minecraft'
+  renderModpackVersions()
+  renderModpackLoaders()
+}
+
+async function openInstallModal(project) {
+  installProject = project
+  installVersions = []
+  installVersionId = ''
+  const isModpack = project.project_type === 'modpack'
+  setInstallModalMode(isModpack)
+  const title = document.getElementById('install-title')
+  if (title) title.textContent = t('install.titleProject', { title: project.title })
+  const note = document.getElementById('install-note')
+  if (note) note.textContent = isModpack ? t('install.loadingModpackVersions') : t('install.searchingCompatible')
+  await refreshLauncherInstances()
+
+  if (isModpack) {
+    installModpackDestination = 'instance'
+    document.querySelectorAll('#install-modpack-destination .destination-option').forEach(option => {
+      option.classList.toggle('active', option.dataset.value === 'instance')
+    })
+    const confirmBtn = document.getElementById('install-confirm')
+    if (confirmBtn) confirmBtn.textContent = t('install.install')
+    document.getElementById('install-modal').classList.add('active')
+    loadModpackInstallVersions()
+    return
+  }
+
+  const gameVersion = document.getElementById('install-game-version')
+  if (gameVersion) gameVersion.value = selectedVersion
+  const loader = document.getElementById('install-loader')
+  if (loader) loader.value = getDefaultLoader(project)
+  const destination = document.getElementById('install-destination')
+  if (destination) destination.value = 'downloads'
+  const list = document.getElementById('install-version-list')
+  if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.loadingVersions')) + '</div>'
+  updateInstallDestination()
+  document.getElementById('install-modal').classList.add('active')
+  loadInstallVersions()
+}
+
+function closeInstallModal(event) {
+  if (event && event.target.id !== 'install-modal') return
+  document.getElementById('install-modal').classList.remove('active')
+}
+
+function updateInstallDestination() {
+  const destination = document.getElementById('install-destination').value
+  const wrap = document.getElementById('install-instance-wrap')
+  const isModpack = installProject && installProject.project_type === 'modpack'
+  if (wrap) wrap.style.display = destination === 'instance' && !isModpack ? 'block' : 'none'
+  const confirmBtn = document.getElementById('install-confirm')
+  if (confirmBtn) confirmBtn.textContent = destination === 'downloads' ? t('install.download') : t('install.install')
+}
+
+async function loadInstallVersions() {
+  if (!installProject) return
+  const gameVersion = document.getElementById('install-game-version').value.trim()
+  const loader = document.getElementById('install-loader').value
+  const note = document.getElementById('install-note')
+  if (note) note.textContent = t('install.checkingCompatibility')
+  const list = document.getElementById('install-version-list')
+  if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.searchingCompatible')) + '</div>'
+
+  const result = await window.zotlinAPI.modrinth.versions({
+    projectId: installProject.project_id || installProject.slug,
+    gameVersion,
+    loader
+  })
+
+  if (!result.ok) {
+    installVersions = []
+    installVersionId = ''
+    if (note) note.textContent = result.error
+    if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(result.error) + '</div>'
+    return
+  }
+
+  installVersions = result.versions || []
+  installVersionId = installVersions[0]?.id || ''
+  renderInstallVersions()
+}
+
+function renderInstallVersions() {
+  const list = document.getElementById('install-version-list')
+  if (!list) return
+  if (!installVersions.length) {
+    list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.noCompatible')) + '</div>'
+    const note = document.getElementById('install-note')
+    if (note) note.textContent = t('install.noCompatibleNote')
+    return
+  }
+
+  list.innerHTML = installVersions.slice(0, 30).map(version => {
+    const loaders = (version.loaders || []).join(', ')
+    const gameVersions = (version.game_versions || []).slice(0, 4).join(', ')
+    return '<div class="install-version-item ' + (version.id === installVersionId ? 'active' : '') + '" onclick="selectInstallVersion(&quot;' + version.id + '&quot;)">' +
+      '<span>' + escapeHtml(version.name || version.version_number) + '</span>' +
+      '<span>' + escapeHtml(version.version_type + ' · ' + loaders + ' · ' + gameVersions) + '</span>' +
+    '</div>'
+  }).join('')
+  const note = document.getElementById('install-note')
+  if (note) note.textContent = t('install.compatibleFound', { count: installVersions.length })
+}
+
+function selectInstallVersion(versionId) {
+  installVersionId = versionId
+  renderInstallVersions()
+}
+
+async function installSelectedProject() {
+  if (!installProject || !installVersionId) {
+    setStatus(t('install.pickVersion'))
+    return
+  }
+
+  const isModpack = installProject.project_type === 'modpack'
+  const selectedVersionData = getSelectedInstallVersion()
+  const destination = isModpack
+    ? installModpackDestination
+    : document.getElementById('install-destination').value
+  const btn = document.getElementById('install-confirm')
+  btn.disabled = true
+  btn.textContent = destination === 'downloads' ? t('install.downloading') : t('install.installing')
+  const note = document.getElementById('install-note')
+  if (note) note.textContent = t('install.working')
+
+  const result = await window.zotlinAPI.modrinth.install({
+    project: installProject,
+    installKind: getInstallKind(installProject),
+    versionId: installVersionId,
+    gameVersion: isModpack
+      ? (selectedVersionData?.game_versions?.[0] || selectedVersionData?.version_number || selectedVersion)
+      : document.getElementById('install-game-version').value.trim(),
+    loader: isModpack ? installModpackLoader : document.getElementById('install-loader').value,
+    destination,
+    instanceId: document.getElementById('install-instance').value
+  })
+
+  btn.disabled = false
+  if (isModpack) {
+    btn.textContent = installModpackDestination === 'downloads' ? t('install.download') : t('install.install')
+  } else {
+    updateInstallDestination()
+  }
+  if (!result.ok) {
+    if (note) note.textContent = result.error
+    setStatus(result.error)
+    return
+  }
+
+  await refreshLauncherInstances()
+  if (note) note.textContent = t('install.done', { path: result.path })
+  setStatus(destination === 'downloads' ? t('install.downloaded') : t('install.installedLauncher'))
+}
+
+// Launcher instances management
+async function refreshLauncherInstances() {
+  if (!window.zotlinAPI?.instances?.list) return
+  launcherInstances = await window.zotlinAPI.instances.list()
+  pruneRecentInstanceIds()
+  if (typeof renderLauncherInstancesList === 'function') renderLauncherInstancesList()
+  if (typeof renderRecentInstances === 'function') renderRecentInstances()
+  const select = document.getElementById('install-instance')
+  if (!select) return
+  select.innerHTML = launcherInstances.map(instance => (
+    '<option value="' + escapeHtml(instance.id) + '">' + escapeHtml(instance.name + ' · ' + instance.version + ' · ' + instance.loader) + '</option>'
+  )).join('')
+  select.value = selectedInstance
+}
+
+// Validate settings for launch
+function getValidatedSettings() {
+  try {
+    let minRam, maxRam
+    try {
+      minRam = parseRam(settings.minRam)
+    } catch (e) {
+      throw e
+    }
+
+    try {
+      maxRam = parseRam(settings.maxRam)
+    } catch (e) {
+      throw e
+    }
+
+    try {
+      const usernameValid = isValidUsername(settings.username)
+    } catch (e) {
+      throw e
+    }
+
+    if (!isValidUsername(settings.username)) {
+      return { ok: false, error: 'Nombre offline invalido: usa 3-16 letras, numeros o _' }
+    }
+    if (!minRam || !maxRam) {
+      return { ok: false, error: 'RAM invalida: usa algo como 2048, 4096M o 4G' }
+    }
+    if (minRam.mb > maxRam.mb) {
+      return { ok: false, error: 'La RAM minima no puede ser mayor que la maxima' }
+    }
+
+    return {
+      ok: true,
+      settings: {
+        username: settings.username,
+        minRam: minRam.value,
+        maxRam: maxRam.value,
+        minRamMb: minRam.mb,
+        maxRamMb: maxRam.mb,
+        language: settings.language,
+        theme: settings.theme,
+        backgroundImage: settings.backgroundImage,
+        javaArgs: settings.javaArgs || '',
+        maxConcurrentDownloads: settings.maxConcurrentDownloads || 6
+      }
+    }
+  } catch (error) {
+    return { ok: false, error: 'Error al validar ajustes' }
+}
+}
+
+// Game launch
+let launchInProgress = false
+
+async function launchGame() {
+  if (launchInProgress) {
+    return
+  }
+
+  launchInProgress = true
+
+  try {
+    const btn = document.getElementById('play-btn')
+    const status = document.getElementById('status')
+    const log = document.getElementById('log')
+    const validated = getValidatedSettings()
+    if (!validated.ok) {
+      setStatus(validated.error)
+      log.textContent = validated.error
+      return
+    }
+    settings = validated.settings
+    localStorage.setItem('zotlin-settings', JSON.stringify(settings))
+    recordRecentInstance(selectedInstance)
+    btn.disabled = true
+    btn.innerHTML = '<i class="fa-solid fa-stop"></i> Cancelar'
+    btn.classList.add('danger')
+    btn.onclick = function(e) {
+      cancelGame(e)
+    }
+    status.textContent = 'Descargando archivos...'
+    log.textContent = ''
+    clearConsole()
+    appendConsole('info', 'Iniciando ' + selectedInstance)
+    const result = await window.zotlinAPI.launcher.launch({
+      instanceId: selectedInstance,
+      username: settings.username,
+      minRam: settings.minRam,
+      maxRam: settings.maxRam,
+      customArgs: settings.javaArgs
+    })
+    if (!result.ok) {
+      status.textContent = t('app.launchError')
+      log.textContent = result.error.slice(0, 90)
+      appendConsole('error', result.error)
+      resetPlayBtn()
+    }
+  } finally {
+    launchInProgress = false
+  }
+}
+
+async function cancelGame() {
+  await window.zotlinAPI.launcher.kill()
+  resetPlayBtn()
+  setStatus(t('app.ready'))
+}
+
+function resetPlayBtn() {
+  const btn = document.getElementById('play-btn')
+  if (!btn) return
+  btn.disabled = false
+  btn.innerHTML = '<i class="fa-solid fa-play"></i> ' + escapeHtml(t('instance.play'))
+  btn.classList.remove('danger')
+  btn.onclick = function(e) {
+    launchGame(e)
+  }
+}
+
+// Launcher event handlers
+window.zotlinAPI.launcher.onStatus((event) => {
+  const btn = document.getElementById('play-btn')
+  const status = document.getElementById('status')
+  const log = document.getElementById('log')
+
+  if (event.type === 'starting') {
+    status.textContent = event.message
+    log.textContent = ''
+  }
+
+  appendConsole(event.type, event.message)
+
+  if (event.type === 'debug' || event.type === 'download' || event.type === 'progress') {
+    log.textContent = event.message.slice(0, 90)
+  }
+
+  if (event.type === 'data') {
+    status.textContent = t('app.minecraftStarting')
+  }
+
+  if (event.type === 'running') {
+    status.textContent = t('app.playing')
+    btn.disabled = false
+    btn.innerHTML = '<i class="fa-solid fa-stop"></i> Cerrar Minecraft'
+    btn.classList.add('danger')
+    btn.onclick = function(e) {
+      cancelGame(e)
+    }
+  }
+
+  if (event.type === 'close') {
+    status.textContent = t('app.ready')
+    log.textContent = event.message.slice(0, 90)
+    resetPlayBtn()
+  }
+
+  if (event.type === 'error') {
+    status.textContent = t('app.launchError')
+    log.textContent = event.message.slice(0, 90)
+    resetPlayBtn()
+  }
+})
+
+if (window.zotlinAPI?.settings?.onStatus) {
+  window.zotlinAPI.settings.onStatus((event) => {
+    if (event.message) setStatus(event.message)
+  })
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  loadSection('home', document.getElementById('nav-home'))
+  refreshLauncherInstances()
+})
+</script>
+
+</body>
+</html>

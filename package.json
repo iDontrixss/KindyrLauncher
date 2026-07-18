@@ -1,0 +1,86 @@
+{
+  "name": "zotlinlauncher",
+  "version": "1.2.0",
+  "description": "Zotlin Launcher - Tu launcher de Minecraft",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:dir": "electron-builder --win --dir"
+  },
+  "keywords": [],
+  "author": "iDontrixss",
+  "license": "ISC",
+  "dependencies": {
+    "adm-zip": "^0.4.16",
+    "electron-updater": "^6.8.9",
+    "ffmpeg-static": "^5.3.0",
+    "form-data": "^4.0.6",
+    "minecraft-launcher-core": "^3.18.2",
+    "msmc": "^5.0.5",
+    "semver": "^7.8.4"
+  },
+  "devDependencies": {
+    "electron": "^42.3.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.zotlin.launcher",
+    "productName": "Zotlin Launcher",
+    "afterPack": "scripts/after-pack.js",
+    "icon": "icon.ico",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "iDontrixss",
+      "repo": "ZotlinLauncher"
+    },
+    "extraResources": [
+      {
+        "from": "assets/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "preload-onboarding.js",
+      "preload-splash.js",
+      "common.js",
+      "index.html",
+      "onboarding.html",
+      "splash.html",
+      "update-confirmation.html",
+      "styles.css",
+      "package.json",
+      "icon.ico",
+      "assets/**/*",
+      "sections/**/*",
+      "scripts/after-pack.js"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.ico",
+      "artifactName": "${productName} Setup ${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Zotlin Launcher",
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

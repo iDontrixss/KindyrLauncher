@@ -1,0 +1,193 @@
+<div class="page-head">
+  <div>
+    <div class="page-title" data-i18n="discover.title">Descubrir</div>
+<div class="page-subtitle" data-i18n="discover.subtitle">Explora el universo de Modrinth.</div>
+  </div>
+</div>
+<div class="discover-panel">
+  <div class="discover-controls">
+    <input class="discover-search" id="discover-query" placeholder="Buscar en Modrinth..." data-i18n-placeholder="discover.search" oninput="scheduleModrinthSearch()">
+    <input class="discover-search" id="discover-version" placeholder="Versión, ej: 1.21.4" data-i18n-placeholder="discover.version" oninput="scheduleModrinthSearch()">
+    <select class="discover-select" id="discover-sort" onchange="searchModrinth(true)">
+      <option value="relevance" data-i18n="discover.relevance">Relevancia</option>
+<option value="downloads" data-i18n="discover.downloads">Descargas</option>
+<option value="follows" data-i18n="discover.followers">Seguidores</option>
+<option value="updated" data-i18n="discover.updated">Actualizados</option>
+<option value="newest" data-i18n="discover.newest">Nuevos</option>
+    </select>
+    <button type="button" class="primary-btn" onclick="searchModrinth(true)" data-i18n="discover.search.btn"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+  </div>
+  <div class="discover-types" id="discover-types"></div>
+  <div class="discover-meta">
+    <span id="discover-summary" data-i18n="discover.ready">Listo para buscar mods y contenido.</span>
+    <span id="discover-source">Modrinth</span>
+  </div>
+  <div class="discover-results" id="discover-results"></div>
+  <div class="discover-pager">
+    <button type="button" class="secondary-btn" id="discover-prev" onclick="changeDiscoverPage(-1)" data-i18n="discover.prev">Anterior</button>
+<button type="button" class="secondary-btn" id="discover-next" onclick="changeDiscoverPage(1)" data-i18n="discover.next">Siguiente</button>
+  </div>
+</div>
+
+<script>
+let discoverType = 'all'
+let discoverOffset = 0
+let discoverTotal = 0
+let discoverTimer = null
+let discoverLoading = false
+const discoverLimit = 18
+
+function getDiscoverTypes() {
+  return [
+    { id: 'all', label: t('discover.type.all'), icon: 'fa-border-all' },
+    { id: 'mod', label: t('discover.type.mod'), icon: 'fa-cube' },
+    { id: 'modpack', label: t('discover.type.modpack'), icon: 'fa-box-archive' },
+    { id: 'resourcepack', label: t('discover.type.resourcepack'), icon: 'fa-palette' },
+    { id: 'shader', label: t('discover.type.shader'), icon: 'fa-wand-magic-sparkles' },
+    { id: 'datapack', label: t('discover.type.datapack'), icon: 'fa-database' },
+    { id: 'plugin', label: t('discover.type.plugin'), icon: 'fa-plug' }
+  ]
+}
+
+function renderDiscoverTypes() {
+  const target = document.getElementById('discover-types')
+  
+  // Si el contenedor no está en la pantalla actual, frena acá y no rompe nada
+  if (!target) return
+
+  target.innerHTML = getDiscoverTypes().map(type => (
+    '<button type="button" class="type-chip ' + (type.id === discoverType ? 'active' : '') + '" onclick="selectDiscoverType(&quot;' + type.id + '&quot;)">' +
+      '<i class="fa-solid ' + type.icon + '"></i> ' + type.label +
+    '</button>'
+  )).join('')
+}
+
+function selectDiscoverType(type) {
+  discoverType = type
+  discoverOffset = 0
+  renderDiscoverTypes()
+  searchModrinth(true)
+}
+
+function scheduleModrinthSearch() {
+  clearTimeout(discoverTimer)
+  discoverTimer = setTimeout(() => searchModrinth(true), 450)
+}
+
+function getProjectTypeLabel(type) {
+  const labels = {
+    mod: 'Mod',
+    modpack: 'Modpack',
+    resourcepack: 'Resource pack',
+    shader: 'Shaderpack'
+  }
+  return labels[type] || type || 'Proyecto'
+}
+
+function getProjectUrl(project) {
+  return 'https://modrinth.com/' + encodeURIComponent(project.project_type || 'mod') + '/' + encodeURIComponent(project.slug)
+}
+
+function renderDiscoverMessage(message) {
+  document.getElementById('discover-results').innerHTML = '<div class="discover-message">' + escapeHtml(message) + '</div>'
+  document.getElementById('discover-prev').disabled = discoverOffset <= 0 || discoverLoading
+  document.getElementById('discover-next').disabled = true
+}
+
+function renderDiscoverResults(projects) {
+  const results = document.getElementById('discover-results')
+  if (!projects.length) {
+    renderDiscoverMessage(t('discover.noResults'))
+    return
+  }
+
+  results.innerHTML = projects.map(project => {
+    const icon = project.icon_url
+      ? '<img src="' + escapeHtml(project.icon_url) + '" alt="">'
+      : '<i class="fa-solid fa-cube"></i>'
+    const categories = (project.display_categories || project.categories || []).slice(0, 3)
+    const tags = [
+      getProjectTypeLabel(project.project_type),
+      ...categories,
+      (project.latest_version ? project.latest_version : '')
+    ].filter(Boolean).slice(0, 5)
+
+    const encodedProject = escapeHtml(JSON.stringify(project))
+    const encodedUrl = escapeHtml(JSON.stringify(getProjectUrl(project)))
+    return '<div class="project-card">' +
+      '<div class="project-icon">' + icon + '</div>' +
+      '<div class="project-body">' +
+        '<div class="project-title" title="' + escapeHtml(project.title) + '">' + escapeHtml(project.title) + '</div>' +
+        '<div class="project-desc">' + escapeHtml(project.description || t('discover.noDescription')) + '</div>' +
+        '<div class="project-stats">' +
+          '<span class="project-tag"><i class="fa-solid fa-download"></i> ' + formatCompactNumber(project.downloads) + '</span>' +
+          '<span class="project-tag"><i class="fa-solid fa-star"></i> ' + formatCompactNumber(project.follows) + '</span>' +
+          tags.map(tag => '<span class="project-tag">' + escapeHtml(tag) + '</span>').join('') +
+        '</div>' +
+      '</div>' +
+      '<div class="project-actions">' +
+        '<button type="button" class="secondary-btn" onclick="openModrinthProject(' + encodedUrl + ')">' + t('discover.view') + '</button>' +
+'<button type="button" class="primary-btn" onclick="openInstallModal(' + encodedProject + ')">' + t('discover.install') + '</button>' +
+      '</div>' +
+    '</div>'
+  }).join('')
+
+  document.getElementById('discover-prev').disabled = discoverOffset <= 0 || discoverLoading
+  document.getElementById('discover-next').disabled = discoverOffset + discoverLimit >= discoverTotal || discoverLoading
+}
+
+async function searchModrinth(resetPage = false) {
+  if (discoverLoading) return
+  if (resetPage) discoverOffset = 0
+  discoverLoading = true
+
+  const query = document.getElementById('discover-query').value
+  const version = document.getElementById('discover-version').value
+  const sort = document.getElementById('discover-sort').value
+  document.getElementById('discover-summary').textContent = t('discover.loading')
+  renderDiscoverMessage(t('discover.loadingResults'))
+
+  const result = await window.zotlinAPI.modrinth.search({
+    query,
+    version,
+    sort,
+    type: discoverType,
+    offset: discoverOffset,
+    limit: discoverLimit
+  })
+
+  discoverLoading = false
+  if (!result.ok) {
+    document.getElementById('discover-summary').textContent = t('discover.error')
+    renderDiscoverMessage(result.error || t('discover.searchFailed'))
+    setStatus(result.error || t('discover.searchFailed'))
+    return
+  }
+
+  discoverTotal = result.totalHits
+  const shownStart = discoverTotal ? result.offset + 1 : 0
+  const shownEnd = Math.min(result.offset + result.hits.length, discoverTotal)
+document.getElementById('discover-summary').textContent = t('discover.resultsSummary', {
+  start: shownStart,
+  end: shownEnd,
+  total: formatCompactNumber(discoverTotal)
+})
+  renderDiscoverResults(result.hits)
+  setStatus(t('discover.loaded'))
+}
+
+function changeDiscoverPage(direction) {
+  const nextOffset = discoverOffset + direction * discoverLimit
+  discoverOffset = Math.max(0, Math.min(nextOffset, Math.max(0, discoverTotal - discoverLimit)))
+  searchModrinth(false)
+}
+
+async function openModrinthProject(url) {
+  const result = await window.zotlinAPI.modrinth.openProject(url)
+  setStatus(result.ok ? t('discover.openingProject') : result.error)
+}
+
+// Initialize discover section
+renderDiscoverTypes()
+searchModrinth(true)
+</script>

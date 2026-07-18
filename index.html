@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es" style="background:#100d07;color-scheme:dark" data-theme="loryq">
+<head>
+  <meta charset="UTF-8">
+  <title>Zotlin Launcher</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+  <div class="logo-area">
+    <img src="assets/logo-dark.png" alt="Zotlin Logo">
+    <div class="logo-text">
+      <div class="logo-name">Zotlin Launcher</div>
+      <div class="logo-sub">v1.2.0</div>
+    </div>
+    <button type="button" class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()" aria-label="Contraer barra lateral" title="Contraer barra lateral" data-i18n-aria-label="sidebar.collapse" data-i18n-title="sidebar.collapse">
+      <i class="fa-solid fa-angles-left" id="sidebar-toggle-icon" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="sidebar-collapse-slot">
+    <button type="button" class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Expandir barra lateral" title="Expandir barra lateral" data-i18n-aria-label="sidebar.expand" data-i18n-title="sidebar.expand">
+      <i class="fa-solid fa-angles-right" aria-hidden="true"></i>
+    </button>
+  </div>
+  <nav aria-label="Navegación principal" data-i18n-aria-label="nav.main">
+    <button type="button" class="nav-item active" id="nav-home" data-view-title="Inicio" data-i18n-view-title="nav.home" onclick="loadSection('home', this)"><i class="fa-solid fa-house" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.home">Inicio</span></button>
+    <button type="button" class="nav-item" id="nav-instances" data-view-title="Instancias" data-i18n-view-title="nav.instances" onclick="loadSection('instances', this)"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.instances">Instancias</span></button>
+    <button type="button" class="nav-item" id="nav-discover" data-view-title="Descubrir" data-i18n-view-title="nav.discover" onclick="loadSection('discover', this)"><i class="fa-solid fa-compass" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.discover">Descubrir</span></button>
+    <button type="button" class="nav-item" id="nav-skins" data-view-title="Skins" data-i18n-view-title="nav.skins" onclick="loadSection('skins', this)"><i class="fa-solid fa-shirt" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.skins">Skins</span></button>
+    <button type="button" class="nav-item" id="nav-settings" data-view-title="Ajustes" data-i18n-view-title="nav.settings" onclick="loadSection('settings', this)"><i class="fa-solid fa-gear" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.settings">Ajustes</span></button>
+  </nav>
+  <button type="button" class="profile-area" onclick="openAccountManager()" aria-label="Abrir gestor de cuentas" data-i18n-aria-label="account.open">
+    <div class="avatar">ZT</div>
+    <div class="profile-text">
+      <div class="profile-name" id="username">ZotlinUser</div>
+      <div class="profile-mode" data-i18n="account.mode.offline">Modo offline</div>
+    </div>
+  </button>
+</div>
+
+<div class="modal-backdrop" id="account-modal" onclick="closeAccountManager(event)">
+  <div class="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title" id="account-modal-title" data-i18n="account.title">Gestor de cuentas</div>
+      <button type="button" class="modal-close" onclick="closeAccountManager()" aria-label="Cerrar" data-i18n-aria-label="app.close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="account-current">
+        <div class="avatar" id="modal-avatar">ZT</div>
+        <div class="account-meta">
+          <strong id="modal-current-name">ZotlinUser</strong>
+          <span data-i18n="account.offline">Cuenta offline actual</span>
+        </div>
+      </div>
+
+      <button type="button" class="microsoft-btn" id="ms-login-btn" onclick="loginMicrosoft()">
+  <i class="fa-brands fa-microsoft" aria-hidden="true"></i> <span data-i18n="account.ms.login">Iniciar sesión con Microsoft</span>
+</button>
+<div id="ms-login-status" style="font-size:12px;color:#888;margin-top:6px;"></div>
+
+<div class="section-label" data-i18n="account.ms.section">Cuentas Microsoft</div>
+<div class="account-list" id="ms-account-list"></div>
+<div class="section-label" data-i18n="account.offline.section">Cuentas offline</div>
+<div class="account-list" id="account-list"></div>
+
+      <div class="account-form">
+        <label for="new-account-name" class="sr-only" data-i18n="account.placeholder">Nuevo nombre offline</label>
+        <input class="setting-input" id="new-account-name" maxlength="16" placeholder="Nuevo nombre offline" data-i18n-placeholder="account.placeholder">
+        <button type="button" class="primary-btn" onclick="addOfflineAccount()" data-i18n="account.add">Agregar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="confirm-modal" onclick="closeConfirmModal(event)">
+  <div class="account-modal" style="max-width:360px;" role="dialog" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title" id="confirm-modal-title" data-i18n="confirm.title">Confirmar</div>
+      <button type="button" class="modal-close" onclick="closeConfirmModal()" aria-label="Cerrar" data-i18n-aria-label="app.close">×</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-modal-message" style="color:#ccc;font-size:14px;line-height:1.5;"></p>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px;">
+        <button type="button" class="secondary-btn" onclick="closeConfirmModal()" data-i18n="confirm.cancel">Cancelar</button>
+        <button type="button" class="primary-btn" id="confirm-modal-ok" style="background:#c0392b;" data-i18n="confirm.delete">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="install-modal" onclick="closeInstallModal(event)">
+  <div class="install-modal" role="dialog" aria-modal="true" aria-labelledby="install-title" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title" id="install-title" data-i18n="install.title">Instalar contenido</div>
+      <button type="button" class="modal-close" onclick="closeInstallModal()" aria-label="Cerrar" data-i18n-aria-label="app.close">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="install-standard-view">
+      <div class="install-grid">
+        <div>
+          <div class="section-label">Minecraft</div>
+          <input class="setting-input" id="install-game-version" placeholder="1.21.4" onchange="loadInstallVersions()">
+        </div>
+        <div>
+          <div class="section-label">Loader</div>
+          <select class="discover-select" id="install-loader" onchange="loadInstallVersions()">
+            <option value="any" data-i18n="install.any">Cualquiera</option>
+            <option value="minecraft">Minecraft</option>
+            <option value="fabric">Fabric</option>
+            <option value="forge">Forge</option>
+            <option value="neoforge">NeoForge</option>
+            <option value="quilt">Quilt</option>
+            <option value="paper">Paper</option>
+            <option value="spigot">Spigot</option>
+            <option value="bukkit">Bukkit</option>
+          </select>
+        </div>
+        <div class="install-row-full">
+          <div class="section-label" data-i18n="install.destination">Destino</div>
+          <select class="discover-select" id="install-destination" onchange="updateInstallDestination()">
+            <option value="downloads" data-i18n="install.destination.downloads">PC - Carpeta Descargas</option>
+            <option value="instance" data-i18n="install.destination.instance">Instalación del launcher</option>
+          </select>
+        </div>
+        <div class="install-row-full" id="install-instance-wrap">
+          <div class="section-label" data-i18n="install.instance">Instalación</div>
+          <select class="discover-select" id="install-instance"></select>
+        </div>
+        <div class="install-row-full">
+          <div class="section-label" data-i18n="install.compatibleVersions">Versiones compatibles</div>
+          <div class="install-version-list" id="install-version-list"></div>
+        </div>
+      </div>
+      </div>
+      <div id="install-modpack-view" style="display:none">
+        <div class="install-row-full">
+          <div class="section-label" data-i18n="install.versions">Versiones</div>
+          <div class="install-version-list" id="install-modpack-version-list"></div>
+        </div>
+        <div class="install-row-full" style="margin-top:14px">
+          <div class="section-label" data-i18n="install.destination">Destino</div>
+          <div class="destination-row" id="install-modpack-destination">
+            <button type="button" class="destination-option active" data-value="instance" onclick="selectModpackDestination('instance', this)" data-i18n="install.destination.newInstance">Nueva instancia</button>
+            <button type="button" class="destination-option" data-value="downloads" onclick="selectModpackDestination('downloads', this)" data-i18n="install.destination.downloadsShort">Carpeta Descargas</button>
+          </div>
+        </div>
+        <div class="install-row-full" style="margin-top:14px">
+          <div class="section-label">Loader</div>
+          <div class="loader-row" id="install-modpack-loaders"></div>
+        </div>
+      </div>
+      <div class="install-note" id="install-note" data-i18n="install.note">Elegí versión, loader y destino.</div>
+      <div class="install-actions">
+        <button type="button" class="secondary-btn" onclick="closeInstallModal()" data-i18n="install.cancel">Cancelar</button>
+        <button type="button" class="primary-btn" id="install-confirm" onclick="installSelectedProject()" data-i18n="install.install">Instalar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="create-instance-modal" onclick="closeCreateInstanceModal(event)">
+  <div class="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-instance-modal-title" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title" id="create-instance-modal-title" data-i18n="create.title">+ Nueva instalación</div>
+      <button type="button" class="modal-close" onclick="closeCreateInstanceModal()" aria-label="Cerrar" data-i18n-aria-label="app.close">×</button>
+    </div>
+    <div class="create-body">
+      <div>
+        <div class="section-label">Mod loader</div>
+        <div class="loader-row" id="create-loader-row"></div>
+      </div>
+      <label class="snapshot-row">
+        <input type="checkbox" id="create-snapshots" onchange="loadCreateVersions()">
+        <span data-i18n="create.snapshots">Mostrar snapshots · versiones de prueba</span>
+      </label>
+      <div>
+        <div class="section-label" data-i18n="create.minecraftVersion">Versión de Minecraft</div>
+        <input class="setting-input" id="create-version-search" placeholder="Buscar versión..." data-i18n-placeholder="create.searchVersion" oninput="scheduleCreateVersionLoad()">
+      </div>
+      <div class="version-picker-list" id="create-version-list"></div>
+      <div class="install-note" id="create-instance-note" data-i18n="create.note">Elegí loader y versión.</div>
+    </div>
+    <div class="create-footer">
+      <button type="button" class="secondary-btn" onclick="closeCreateInstanceModal()" data-i18n="install.cancel">Cancelar</button>
+      <button type="button" class="primary-btn" id="create-instance-confirm" onclick="createSelectedInstance()" data-i18n="create.create">Crear instalación</button>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+  <div class="topbar" id="topbar">
+    <div class="topbar-left">
+      <button type="button" class="topbar-back" id="topbar-back-btn" onclick="goHomeFromInstance()" aria-label="Volver a Inicio" title="Volver a Inicio" data-i18n-aria-label="nav.home" data-i18n-title="nav.home">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+      </button>
+      <span class="topbar-title" id="topbar-title" data-i18n-key="nav.home" data-i18n="nav.home">Inicio</span>
+    </div>
+    <div class="window-controls">
+      <button type="button" class="win-btn win-minimize" onclick="minimizeWindow()" aria-label="Minimizar ventana" data-i18n-aria-label="app.window.minimize"></button>
+      <button type="button" class="win-btn win-maximize" onclick="maximizeWindow()" aria-label="Maximizar ventana" data-i18n-aria-label="app.window.maximize"></button>
+      <button type="button" class="win-btn win-close" onclick="closeWindow()" aria-label="Cerrar ventana" data-i18n-aria-label="app.window.close"></button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="view active" id="home-view"></div>
+    <div class="view" id="instances-view"></div>
+    <div class="view" id="discover-view"></div>
+    <div class="view" id="skins-view"></div>
+    <div class="view" id="settings-view"></div>
+    <div class="view" id="instance-detail-view"></div>
+  </div>
+
+  <div class="bottombar">
+    <div class="status-dot"></div>
+    <span class="status-text" id="status" data-i18n="app.ready">Listo para jugar</span>
+    <span class="log-text" id="log"></span>
+  </div>
+</main>
+
+<script src="common.js"></script>
+<script src="navigation.js"></script>
+<script src="accounts.js"></script>
+<script src="instances.js"></script>
+<script src="modrinth.js"></script>
+<script src="launcher.js"></script>
+<script>
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  loadSection('home', document.getElementById('nav-home'))
+  refreshLauncherInstances()
+})
+</script>
+
+</body>
+</html>
