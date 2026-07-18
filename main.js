@@ -10,6 +10,14 @@ process.on('uncaughtException', (error) => {
   console.error('Error:', error)
 })
 
+// Linux safe graphics configuration
+if (process.platform === 'linux' && process.env.LORYQ_ENABLE_GPU !== '1') {
+  app.disableHardwareAcceleration()
+  app.commandLine.appendSwitch('ozone-platform', 'x11')
+  app.commandLine.appendSwitch('disable-gpu-compositing')
+  console.log('[Loryq] Linux safe graphics enabled')
+}
+
 let launcherClientClass = null
 let mclcAssetsFastPathPatched = false
 let msmcAuth = null
