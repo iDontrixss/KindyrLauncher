@@ -2524,7 +2524,7 @@ async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoo
       versionName: instance.version,
       versionType: instance.versionType || 'release',
       gamePath: minecraftRoot,
-      resourcePath: javaPath,
+      resourcePath: minecraftRoot,
       javaPath: javaPath,
       minMemory: memory.min,
       maxMemory: memory.max,
