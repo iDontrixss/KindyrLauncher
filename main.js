@@ -1,3 +1,8 @@
+// Set environment variable BEFORE requiring Electron
+if (process.platform === 'linux' && process.env.LORYQ_ENABLE_GPU !== '1') {
+  process.env.ELECTRON_OZONE_PLATFORM_HINT = 'x11'
+}
+
 const { app, BrowserWindow, ipcMain, shell, nativeImage } = require('electron')
 const fs = require('fs')
 const { autoUpdater } = require('electron-updater')
@@ -14,6 +19,7 @@ process.on('uncaughtException', (error) => {
 if (process.platform === 'linux' && process.env.LORYQ_ENABLE_GPU !== '1') {
   app.disableHardwareAcceleration()
   app.commandLine.appendSwitch('ozone-platform', 'x11')
+  app.commandLine.appendSwitch('disable-gpu')
   app.commandLine.appendSwitch('disable-gpu-compositing')
   console.log('[Loryq] Linux safe graphics enabled')
 }
