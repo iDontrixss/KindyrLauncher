@@ -4,6 +4,8 @@ const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const crypto = require('crypto')
 const semver = require('semver')
+const { launch: xmclLaunch, Version: XmclVersion, MinecraftPath } = require('@xmcl/core')
+const { getVersionList, install, installVersion } = require('@xmcl/installer')
 process.on('uncaughtException', (error) => {
   console.error('Error:', error)
 })
@@ -11,6 +13,7 @@ process.on('uncaughtException', (error) => {
 let launcherClientClass = null
 let mclcAssetsFastPathPatched = false
 let msmcAuth = null
+let xmclLaunchTask = null
 
 let microsoftAccounts = []
 
@@ -2256,56 +2259,7 @@ ipcMain.handle('open-external-url', (_event, url) => {
   }
 })
 
-ipcMain.handle('launch-game', async (_event, payload) => {
-  if (launcher) {
-    return { ok: false, error: 'Minecraft ya se esta iniciando o ejecutando.' }
-  }
-
-  const instance = getInstance(payload.instanceId)
-  if (!instance) {
-    return { ok: false, error: 'No existe la instancia seleccionada.' }
-  }
-
-  let username
-  let memory
-  try {
-    username = validateUsername(payload.username)
-    memory = validateMemory(payload.minRam, payload.maxRam)
-  } catch (error) {
-    return { ok: false, error: error.message || String(error) }
-  }
-
-  const minecraftRoot = ensureInstanceFolders(instance)
-  const launcherLogsDir = getLauncherLogsDir(instance.id)
-  fs.mkdirSync(launcherLogsDir, { recursive: true })
-  currentLogFile = path.join(launcherLogsDir, 'latest.log')
-  fs.writeFileSync(currentLogFile, '')
-
-  let javaPath = ''
-  try {
-    javaPath = await resolveLaunchJavaPath(instance.version)
-  } catch (error) {
-    writeLaunchLog(error.message || String(error))
-    currentLogFile = null
-    return { ok: false, error: error.message || String(error) }
-  }
-
-  // Validate Java path
-  if (!javaPath || typeof javaPath !== 'string' || javaPath.trim() === '') {
-    const errMsg = 'No se encontro ruta valida de Java. Asegurate de tener Java instalado o configurado en Ajustes.'
-    writeLaunchLog(errMsg)
-    currentLogFile = null
-    return { ok: false, error: errMsg }
-  }
-
-  // Validate memory values
-  if (typeof memory.min !== 'number' || typeof memory.max !== 'number' || memory.min <= 0 || memory.max <= 0) {
-    const errMsg = `Parametros de memoria invalidos: min=${memory.min}, max=${memory.max}`
-    writeLaunchLog(errMsg)
-    currentLogFile = null
-    return { ok: false, error: errMsg }
-  }
-
+async function launchWithMCLC(instance, username, memory, javaPath, minecraftRoot, customArgs) {
   const settings = loadLauncherSettings()
   const maxSockets = Math.max(2, Math.min(Number(settings.maxConcurrentDownloads) || 6, 20))
   const opts = {
@@ -2340,10 +2294,6 @@ ipcMain.handle('launch-game', async (_event, payload) => {
     }
   }
 
-  const customArgs = String(payload.customArgs || '')
-    .split(/\s+/)
-    .map(item => item.trim())
-    .filter(Boolean)
   if (customArgs.length) opts.customArgs = customArgs
 
   try {
@@ -2367,7 +2317,7 @@ ipcMain.handle('launch-game', async (_event, payload) => {
     clearTimeout(logFlushTimer)
     logFlushTimer = null
   }
-  logAndSend('starting', `Preparando ${instance.name}`)
+  logAndSend('starting', `Preparando ${instance.name} (MCLC)`)
   logOnly('debug', `Instancia: ${getInstanceDir(instance.id)}`)
   logOnly('debug', `Minecraft root: ${minecraftRoot}`)
   logOnly('debug', `Java: ${javaPath}`)
@@ -2417,9 +2367,7 @@ ipcMain.handle('launch-game', async (_event, payload) => {
   try {
     minecraftProcess = await launcher.launch(opts)
     
-    // Verificar si se canceló durante la descarga
     if (inicioCancelado) {
-      // Matar el proceso si se inició
       if (minecraftProcess) {
         minecraftProcess.kill('SIGKILL')
         minecraftProcess = null
@@ -2448,10 +2396,10 @@ ipcMain.handle('launch-game', async (_event, payload) => {
         })
       }
       child.on('close', (code, signal) => {
-        // Process close event
+        // Process close event - handled by launcher
       })
       child.on('exit', (code, signal) => {
-        // Process exit event
+        // Process exit event - handled by launcher
       })
     }
     runningInstanceId = instance.id
@@ -2463,6 +2411,262 @@ ipcMain.handle('launch-game', async (_event, payload) => {
     flushLaunchLog()
     currentLogFile = null
     return { ok: false, error: error.message || String(error) }
+  }
+}
+
+async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoot, customArgs) {
+  const settings = loadLauncherSettings()
+  const maxSockets = Math.max(2, Math.min(Number(settings.maxConcurrentDownloads) || 6, 20))
+  
+  launchStartedAt = Date.now()
+  inicioCancelado = false
+  lastProgressMessage = ''
+  lastProgressSentAt = 0
+  lastDataMessage = ''
+  lastDataSentAt = 0
+  pendingLogLines = []
+  if (logFlushTimer) {
+    clearTimeout(logFlushTimer)
+    logFlushTimer = null
+  }
+  
+  logAndSend('starting', `Preparando ${instance.name} (XMCL)`)
+  logOnly('debug', `Instancia: ${getInstanceDir(instance.id)}`)
+  logOnly('debug', `Minecraft root: ${minecraftRoot}`)
+  logOnly('debug', `Java: ${javaPath}`)
+  logOnly('debug', `Java major: ${getRequiredJavaMajor(instance.version)} para MC ${instance.version}`)
+  logOnly('debug', `Memoria: min=${memory.min}MB max=${memory.max}MB`)
+  logOnly('debug', `Descargas simultaneas: ${maxSockets}`)
+  logOnly('debug', `Custom args: ${customArgs.length > 0 ? customArgs.join(' ') : '(ninguno)'}`)
+
+  const msAccount = microsoftAccounts.find(a => a.active)
+  const auth = msAccount ? {
+    accessToken: msAccount.access_token,
+    gameProfile: {
+      id: msAccount.uuid,
+      name: msAccount.name
+    },
+    userType: 'msa'
+  } : {
+    accessToken: 'null',
+    gameProfile: {
+      id: createOfflineUuid(username),
+      name: username
+    },
+    userType: 'offline'
+  }
+
+  const minecraftPath = new MinecraftPath(minecraftRoot)
+  
+  try {
+    // Get version metadata from Mojang
+    logOnly('debug', 'Obteniendo metadata de version...')
+    const versionList = await getVersionList()
+    const versionMeta = versionList.versions.find(v => v.id === instance.version)
+    if (!versionMeta) {
+      throw new Error(`Version ${instance.version} no encontrada en el manifest de Mojang.`)
+    }
+    
+    // Parse version
+    logOnly('debug', 'Parseando version...')
+    const version = await XmclVersion.parse(minecraftPath, instance.version)
+    
+    // Install version with progress tracking
+    logOnly('debug', 'Instalando version y dependencias...')
+    const installTask = install(version, minecraftPath, {
+      side: 'client',
+      assetsDownloadConcurrency: maxSockets,
+      librariesDownloadConcurrency: maxSockets,
+      prevalidSizeOnly: true
+    })
+    
+    xmclLaunchTask = installTask
+    
+    // Track progress from XMCL task
+    installTask.on('update', (data) => {
+      if (inicioCancelado) {
+        installTask.cancel()
+        return
+      }
+      
+      const total = data.total || data.totalTasks || '?'
+      const current = data.current || data.currentTask || 0
+      const type = data.type || data.task || 'archivos'
+      const message = `Descargando ${type} ${current}/${total}`
+      writeLaunchLog(message)
+      if (shouldSendProgress(message)) sendLauncherStatus('progress', message)
+    })
+    
+    installTask.on('error', (error) => {
+      if (!inicioCancelado) {
+        logAndSend('error', error.message || String(error))
+      }
+    })
+    
+    await installTask
+    
+    if (inicioCancelado) {
+      currentLogFile = null
+      xmclLaunchTask = null
+      return { ok: false, error: 'Lanzamiento cancelado' }
+    }
+    
+    xmclLaunchTask = null
+    logOnly('debug', 'Instalacion completada. Iniciando lanzamiento...')
+    
+    // Prepare launch options
+    const launchOptions = {
+      gameProfile: auth.gameProfile,
+      accessToken: auth.accessToken,
+      userType: auth.userType,
+      launcherName: 'ZotlinLauncher',
+      launcherBrand: 'ZotlinLauncher',
+      versionName: instance.version,
+      versionType: instance.versionType || 'release',
+      gamePath: minecraftRoot,
+      resourcePath: javaPath,
+      javaPath: javaPath,
+      minMemory: memory.min,
+      maxMemory: memory.max,
+      version: version,
+      extraJVMArgs: [],
+      extraMCArgs: customArgs,
+      prechecks: []
+    }
+    
+    // Launch
+    minecraftProcess = await xmclLaunch(launchOptions)
+    
+    if (inicioCancelado) {
+      if (minecraftProcess) {
+        minecraftProcess.kill('SIGKILL')
+        minecraftProcess = null
+      }
+      currentLogFile = null
+      return { ok: false, error: 'Lanzamiento cancelado' }
+    }
+    
+    // Attach process event handlers
+    if (minecraftProcess && minecraftProcess.on) {
+      minecraftProcess.on('error', (error) => {
+        logAndSend('error', error.stack || error.message || String(error))
+        flushLaunchLog()
+        minecraftProcess = null
+        runningInstanceId = null
+        currentLogFile = null
+      })
+      
+      if (minecraftProcess.stdout) {
+        minecraftProcess.stdout.on('data', (data) => {
+          logData(data.toString())
+        })
+      }
+      
+      if (minecraftProcess.stderr) {
+        minecraftProcess.stderr.on('data', (data) => {
+          logData(data.toString())
+        })
+      }
+      
+      minecraftProcess.on('close', (code, signal) => {
+        const ranFor = Math.round((Date.now() - launchStartedAt) / 1000)
+        let cleanMessage
+        if (code === 0) {
+          cleanMessage = 'Minecraft se cerro correctamente.'
+        } else if (code === null || code === undefined) {
+          cleanMessage = `Minecraft se cerro (terminado por el launcher${signal ? ', señal: ' + signal : ''}).`
+        } else {
+          cleanMessage = `Minecraft se cerro/crasheo con codigo ${code}.`
+        }
+        logAndSend('close', `${cleanMessage} Duracion: ${ranFor}s`)
+        flushLaunchLog()
+        minecraftProcess = null
+        runningInstanceId = null
+        currentLogFile = null
+      })
+    }
+    
+    runningInstanceId = instance.id
+    logAndSend('running', 'Minecraft iniciado.')
+    return { ok: true }
+    
+  } catch (error) {
+    xmclLaunchTask = null
+    logAndSend('error', error.stack || error.message || String(error))
+    flushLaunchLog()
+    currentLogFile = null
+    return { ok: false, error: error.message || String(error) }
+  }
+}
+
+ipcMain.handle('launch-game', async (_event, payload) => {
+  if (launcher || minecraftProcess) {
+    return { ok: false, error: 'Minecraft ya se esta iniciando o ejecutando.' }
+  }
+
+  const instance = getInstance(payload.instanceId)
+  if (!instance) {
+    return { ok: false, error: 'No existe la instancia seleccionada.' }
+  }
+
+  let username
+  let memory
+  try {
+    username = validateUsername(payload.username)
+    memory = validateMemory(payload.minRam, payload.maxRam)
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+
+  const minecraftRoot = ensureInstanceFolders(instance)
+  const launcherLogsDir = getLauncherLogsDir(instance.id)
+  fs.mkdirSync(launcherLogsDir, { recursive: true })
+  currentLogFile = path.join(launcherLogsDir, 'latest.log')
+  fs.writeFileSync(currentLogFile, '')
+
+  let javaPath = ''
+  try {
+    javaPath = await resolveLaunchJavaPath(instance.version)
+  } catch (error) {
+    writeLaunchLog(error.message || String(error))
+    currentLogFile = null
+    return { ok: false, error: error.message || String(error) }
+  }
+
+  if (!javaPath || typeof javaPath !== 'string' || javaPath.trim() === '') {
+    const errMsg = 'No se encontro ruta valida de Java. Asegurate de tener Java instalado o configurado en Ajustes.'
+    writeLaunchLog(errMsg)
+    currentLogFile = null
+    return { ok: false, error: errMsg }
+  }
+
+  if (typeof memory.min !== 'number' || typeof memory.max !== 'number' || memory.min <= 0 || memory.max <= 0) {
+    const errMsg = `Parametros de memoria invalidos: min=${memory.min}, max=${memory.max}`
+    writeLaunchLog(errMsg)
+    currentLogFile = null
+    return { ok: false, error: errMsg }
+  }
+
+  const customArgs = String(payload.customArgs || '')
+    .split(/\s+/)
+    .map(item => item.trim())
+    .filter(Boolean)
+
+  // Route to XMCL or MCLC based on environment variable
+  const useXMCL = process.env.LORYQ_USE_XMCL === '1'
+  
+  if (useXMCL) {
+    logOnly('debug', 'Usando ruta XMCL (LORYQ_USE_XMCL=1)')
+    // For now, only vanilla instances are supported with XMCL
+    if (instance.loader && instance.loader !== 'vanilla') {
+      const errMsg = `XMCL: Loader ${instance.loader} no implementado aun. Usando MCLC como fallback.`
+      logOnly('debug', errMsg)
+      return await launchWithMCLC(instance, username, memory, javaPath, minecraftRoot, customArgs)
+    }
+    return await launchWithXMCL(instance, username, memory, javaPath, minecraftRoot, customArgs)
+  } else {
+    logOnly('debug', 'Usando ruta MCLC (default)')
+    return await launchWithMCLC(instance, username, memory, javaPath, minecraftRoot, customArgs)
   }
 })
 
@@ -2525,6 +2729,16 @@ ipcMain.handle('ms-set-active', (_event, accountId) => {
 })
 
 ipcMain.handle('kill-minecraft', () => {
+  if (xmclLaunchTask) {
+    // Cancel XMCL installation task
+    try {
+      xmclLaunchTask.cancel()
+    } catch (e) {
+      // Ignore cancel errors
+    }
+    xmclLaunchTask = null
+  }
+  
   if (minecraftProcess) {
     minecraftProcess.kill('SIGTERM')
     setTimeout(() => {
