@@ -2481,7 +2481,7 @@ async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoo
     
     // Install version with progress tracking (handles new and existing installations)
     logOnly('debug', 'Instalando version y dependencias...')
-    const installTask = install(versionMeta, minecraftLocation, {
+    const installTask = installVersion(versionMeta, minecraftLocation, {
       side: 'client',
       assetsDownloadConcurrency: maxSockets,
       librariesDownloadConcurrency: maxSockets,
