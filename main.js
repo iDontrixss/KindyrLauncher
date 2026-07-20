@@ -17,8 +17,6 @@ process.on('uncaughtException', (error) => {
 
 // Linux safe graphics configuration
 if (process.platform === 'linux' && process.env.LORYQ_ENABLE_GPU !== '1') {
-  app.disableHardwareAcceleration()
-  app.commandLine.appendSwitch('ozone-platform', 'x11')
   app.commandLine.appendSwitch('disable-gpu')
   app.commandLine.appendSwitch('disable-gpu-compositing')
   console.log('[Loryq] Linux safe graphics enabled')
