@@ -2476,16 +2476,12 @@ async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoo
     const versionList = await getVersionList()
     const versionMeta = versionList.versions.find(v => v.id === instance.version)
     if (!versionMeta) {
-      throw new Error(`Version ${instance.version} no encontrada en el manifest de Mojang.`)
+      throw new Error(`Version de Minecraft no encontrada en el manifest: ${instance.version}`)
     }
     
-    // Parse version
-    logOnly('debug', 'Parseando version...')
-    const version = await XmclVersion.parse(minecraftLocation, instance.version)
-    
-    // Install version with progress tracking
+    // Install version with progress tracking (handles new and existing installations)
     logOnly('debug', 'Instalando version y dependencias...')
-    const installTask = install(version, minecraftLocation, {
+    const installTask = install(versionMeta, minecraftLocation, {
       side: 'client',
       assetsDownloadConcurrency: maxSockets,
       librariesDownloadConcurrency: maxSockets,
@@ -2515,7 +2511,7 @@ async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoo
       }
     })
     
-    await installTask
+    const resolvedVersion = await installTask
     
     if (inicioCancelado) {
       currentLogFile = null
@@ -2540,7 +2536,7 @@ async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoo
       javaPath: javaPath,
       minMemory: memory.min,
       maxMemory: memory.max,
-      version: version,
+      version: resolvedVersion,
       extraJVMArgs: [],
       extraMCArgs: customArgs,
       prechecks: []
