@@ -10,7 +10,7 @@ const path = require('path')
 const crypto = require('crypto')
 const semver = require('semver')
 const { launch: xmclLaunch, Version: XmclVersion } = require('@xmcl/core')
-const { getVersionList, install, installVersion } = require('@xmcl/installer')
+const { getVersionList, install, installVersion, installVersionTask } = require('@xmcl/installer')
 process.on('uncaughtException', (error) => {
   console.error('Error:', error)
 })
@@ -2481,37 +2481,36 @@ async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoo
     
     // Install version with progress tracking (handles new and existing installations)
     logOnly('debug', 'Instalando version y dependencias...')
-    const installTask = installVersion(versionMeta, minecraftLocation, {
+    const task = installVersionTask(versionMeta, minecraftLocation, {
       side: 'client',
       assetsDownloadConcurrency: maxSockets,
       librariesDownloadConcurrency: maxSockets,
       prevalidSizeOnly: true
     })
     
-    xmclLaunchTask = installTask
+    xmclLaunchTask = task
     
-    // Track progress from XMCL task
-    installTask.on('update', (data) => {
-      if (inicioCancelado) {
-        installTask.cancel()
-        return
+    // Create task context for progress tracking
+    const context = {
+      onUpdate: (t) => {
+        if (inicioCancelado) {
+          task.cancel()
+          return
+        }
+        const total = t.total || '?'
+        const current = t.progress || 0
+        const message = `Descargando ${current}/${total}`
+        writeLaunchLog(message)
+        if (shouldSendProgress(message)) sendLauncherStatus('progress', message)
+      },
+      onFailed: (t, error) => {
+        if (!inicioCancelado) {
+          logAndSend('error', error.message || String(error))
+        }
       }
-      
-      const total = data.total || data.totalTasks || '?'
-      const current = data.current || data.currentTask || 0
-      const type = data.type || data.task || 'archivos'
-      const message = `Descargando ${type} ${current}/${total}`
-      writeLaunchLog(message)
-      if (shouldSendProgress(message)) sendLauncherStatus('progress', message)
-    })
+    }
     
-    installTask.on('error', (error) => {
-      if (!inicioCancelado) {
-        logAndSend('error', error.message || String(error))
-      }
-    })
-    
-    const resolvedVersion = await installTask
+    const resolvedVersion = await task.startAndWait(context)
     
     if (inicioCancelado) {
       currentLogFile = null
