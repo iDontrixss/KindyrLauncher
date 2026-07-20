@@ -9,7 +9,7 @@ const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const crypto = require('crypto')
 const semver = require('semver')
-const { launch: xmclLaunch, Version: XmclVersion, MinecraftPath } = require('@xmcl/core')
+const { launch: xmclLaunch, Version: XmclVersion } = require('@xmcl/core')
 const { getVersionList, install, installVersion } = require('@xmcl/installer')
 process.on('uncaughtException', (error) => {
   console.error('Error:', error)
@@ -2468,7 +2468,7 @@ async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoo
     userType: 'offline'
   }
 
-  const minecraftPath = new MinecraftPath(minecraftRoot)
+  const minecraftLocation = minecraftRoot
   
   try {
     // Get version metadata from Mojang
@@ -2481,11 +2481,11 @@ async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoo
     
     // Parse version
     logOnly('debug', 'Parseando version...')
-    const version = await XmclVersion.parse(minecraftPath, instance.version)
+    const version = await XmclVersion.parse(minecraftLocation, instance.version)
     
     // Install version with progress tracking
     logOnly('debug', 'Instalando version y dependencias...')
-    const installTask = install(version, minecraftPath, {
+    const installTask = install(version, minecraftLocation, {
       side: 'client',
       assetsDownloadConcurrency: maxSockets,
       librariesDownloadConcurrency: maxSockets,
