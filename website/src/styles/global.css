@@ -317,7 +317,7 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
 .meter-foot { justify-content: flex-start; gap: 22px; }
 
 .workflow { display: grid; grid-template-columns: .8fr 1.2fr; gap: 70px; padding-top: 145px; padding-bottom: 145px; }
-.workflow-title { position: sticky; top: 130px; align-self: start; }
+.workflow-title { position: static; align-self: start; }
 .workflow-title h2 { margin-top: 28px; font-size: clamp(42px, 4.8vw, 68px); }
 .workflow-list { list-style: none; margin: 0; padding: 0; }
 .workflow-list li { position: relative; display: grid; grid-template-columns: 56px 1fr 40px; gap: 20px; min-height: 220px; padding: 30px 24px; border: 3px solid var(--ink); border-bottom: 0; background: var(--surface); }
