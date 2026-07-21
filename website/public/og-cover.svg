@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0v36" fill="none" stroke="#4c8dff" stroke-opacity=".14"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="#030f2b"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <path fill="#ff5a3c" stroke="#010712" stroke-width="7" d="M936-70h330v330H936z" transform="rotate(35 1100 95)"/>
+  <path fill="#0a2559" stroke="#010712" stroke-width="8" d="M86 86h245v245H86z"/>
+  <path fill="#010712" d="m208 104 105 59v117l-105 59-105-59V163Z"/>
+  <path fill="#1943f5" d="m208 127 80 45-80 45-80-45Z"/>
+  <path fill="#111a53" d="M128 191v76l65 37v-76Z"/>
+  <path fill="#f4f8ff" d="M185 184h37v48l47-39 29 28-52 43 55 43-31 27-48-42v38h-37Z"/>
+  <text x="375" y="177" fill="#aacdff" font-family="monospace" font-size="22" font-weight="700" letter-spacing="4">LAUNCHER DE MINECRAFT</text>
+  <text x="375" y="295" fill="#f4f8ff" font-family="Arial, sans-serif" font-size="108" font-weight="800" letter-spacing="-6">KINDYR</text>
+  <text x="375" y="375" fill="#4c8dff" font-family="Arial, sans-serif" font-size="55" font-weight="800" letter-spacing="-2">TU MINECRAFT.</text>
+  <text x="375" y="438" fill="#ff5a3c" font-family="Arial, sans-serif" font-size="55" font-weight="800" letter-spacing="-2">SIN VUELTAS.</text>
+  <path stroke="#4c8dff" stroke-width="5" d="M87 528h1026"/>
+  <rect x="87" y="516" width="78" height="25" fill="#ff5a3c" stroke="#010712" stroke-width="5"/>
+  <text x="89" y="580" fill="#aacdff" font-family="monospace" font-size="18" font-weight="700" letter-spacing="3">INSTANCIAS · CONTENIDO · JUEGO</text>
+</svg>

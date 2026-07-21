@@ -1,17 +1,353 @@
 ---
+import BaseLayout from '../layouts/BaseLayout.astro';
 
+const githubURL = 'https://github.com/iDontrixss/KindyrLauncher';
+
+const features = [
+  {
+    number: '01',
+    title: 'Instancias sin caos',
+    text: 'Cada mundo, versión y loader vive en su propio espacio. Cambiá de experiencia sin romper la anterior.',
+    className: 'feature-card feature-instances',
+    icon: 'layers',
+  },
+  {
+    number: '02',
+    title: 'Descubrí. Instalá. Jugá.',
+    text: 'Mods y modpacks desde Modrinth, con compatibilidad guiada y destino automático cuando entrás desde una instancia.',
+    className: 'feature-card feature-discover',
+    icon: 'compass',
+  },
+  {
+    number: '03',
+    title: 'Rendimiento primero',
+    text: 'Perfiles optimizados para empezar rápido, mantener el control y dedicar menos tiempo a configurar.',
+    className: 'feature-card feature-performance',
+    icon: 'bolt',
+  },
+  {
+    number: '04',
+    title: 'Tu identidad',
+    text: 'Gestioná tus skins sin salir del launcher.',
+    className: 'feature-card feature-small feature-skins',
+    icon: 'shirt',
+  },
+  {
+    number: '05',
+    title: 'Todo conectado',
+    text: 'Modrinth y Litematics dentro del mismo recorrido.',
+    className: 'feature-card feature-small feature-connected',
+    icon: 'plug',
+  },
+];
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout
+  title="Kindyr — Tu Minecraft, a tu manera"
+  description="Un launcher de Minecraft claro, rápido y hecho para organizar instancias, descubrir contenido y jugar sin vueltas."
+>
+  <div class="site-shell">
+    <header class="site-header" data-header>
+      <a class="brand" href="#inicio" aria-label="Kindyr, volver al inicio">
+        <img src="/kindyr-logo.png" alt="" width="52" height="52" />
+        <span class="brand-copy">
+          <strong>KINDYR</strong>
+          <span>LAUNCHER</span>
+        </span>
+      </a>
+
+      <nav class="desktop-nav" aria-label="Navegación principal">
+        <a href="#porque">La idea</a>
+        <a href="#funciones">Funciones</a>
+        <a href="#recorrido">Cómo funciona</a>
+      </nav>
+
+      <div class="header-actions">
+        <a class="header-github" href={githubURL} target="_blank" rel="noreferrer">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49v-1.91c-2.78.62-3.37-1.2-3.37-1.2-.45-1.19-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.55-1.14-4.55-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.34 9.34 0 0 1 12 6.93a9.4 9.4 0 0 1 2.5.34c1.9-1.33 2.74-1.05 2.74-1.05.55 1.42.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.79-4.56 5.04.36.32.68.94.68 1.9v2.82c0 .27.18.59.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z"/></svg>
+          <span>GitHub</span>
+        </a>
+        <a class="button button-small" href="#descargar">OBTENER KINDYR</a>
+        <button class="menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" data-menu-toggle>
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+
+      <nav class="mobile-nav" aria-label="Navegación móvil" data-mobile-nav>
+        <a href="#porque">La idea</a>
+        <a href="#funciones">Funciones</a>
+        <a href="#recorrido">Cómo funciona</a>
+        <a href={githubURL} target="_blank" rel="noreferrer">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="contenido">
+      <section class="hero section-grid" id="inicio">
+        <div class="hero-copy reveal">
+          <div class="eyebrow"><span></span> LAUNCHER DE MINECRAFT · EN DESARROLLO</div>
+          <h1>
+            TU MINECRAFT.<br />
+            <span>ORDENADO.</span><br />
+            SIN VUELTAS.
+          </h1>
+          <p class="hero-lead">
+            Kindyr reúne tus instancias, contenido y personalización en un recorrido claro. Menos tiempo administrando el juego. Más tiempo jugándolo.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#funciones">
+              EXPLORAR KINDYR
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 14 0M13 6l6 6-6 6"/></svg>
+            </a>
+            <a class="text-link" href={githubURL} target="_blank" rel="noreferrer">VER EL PROYECTO <span>↗</span></a>
+          </div>
+          <div class="hero-meta" aria-label="Características principales">
+            <span><i></i> CÓDIGO ABIERTO</span>
+            <span><i></i> MULTI-LOADER</span>
+            <span><i></i> SIN PUBLICIDAD</span>
+          </div>
+        </div>
+
+        <div class="route-board reveal reveal-delay" aria-label="Del perfil al juego en tres pasos">
+          <div class="board-topline">
+            <span>RUTA DE JUEGO</span>
+            <span class="board-status"><i></i> LISTO</span>
+          </div>
+          <div class="board-gridline" aria-hidden="true"></div>
+          <div class="route-step route-step-one">
+            <span class="route-num">01</span>
+            <div class="route-icon">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>
+            </div>
+            <div>
+              <small>CREÁ TU ESPACIO</small>
+              <strong>Instancia propia</strong>
+              <p>Versión y loader separados.</p>
+            </div>
+            <span class="route-chip">FABRIC 1.21.4</span>
+          </div>
+          <div class="route-connector"><span></span><b>CONTEXTO AUTOMÁTICO</b><span></span></div>
+          <div class="route-step route-step-two">
+            <span class="route-num">02</span>
+            <div class="route-icon coral">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></svg>
+            </div>
+            <div>
+              <small>ENCONTRÁ LO TUYO</small>
+              <strong>Contenido compatible</strong>
+              <p>Mods, packs y construcciones.</p>
+            </div>
+            <span class="route-chip coral-chip">UN CLIC</span>
+          </div>
+          <div class="route-connector"><span></span><b>TODO PREPARADO</b><span></span></div>
+          <div class="route-step route-step-three">
+            <span class="route-num">03</span>
+            <div class="route-icon yellow">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7V5Z"/></svg>
+            </div>
+            <div>
+              <small>YA ESTÁ</small>
+              <strong>Entrá a jugar</strong>
+              <p>Sin rehacer la misma configuración.</p>
+            </div>
+            <span class="route-chip yellow-chip">PLAY</span>
+          </div>
+          <div class="board-sticker">3 PASOS<br /><strong>1 LUGAR</strong></div>
+        </div>
+      </section>
+
+      <div class="ticker" aria-label="Tecnologías compatibles">
+        <div class="ticker-track">
+          <span>FABRIC</span><i></i><span>FORGE</span><i></i><span>NEOFORGE</span><i></i><span>VANILLA</span><i></i><span>MODRINTH</span><i></i><span>LITEMATICS</span><i></i>
+          <span aria-hidden="true">FABRIC</span><i aria-hidden="true"></i><span aria-hidden="true">FORGE</span><i aria-hidden="true"></i><span aria-hidden="true">NEOFORGE</span><i aria-hidden="true"></i><span aria-hidden="true">VANILLA</span><i aria-hidden="true"></i><span aria-hidden="true">MODRINTH</span><i aria-hidden="true"></i><span aria-hidden="true">LITEMATICS</span><i aria-hidden="true"></i>
+        </div>
+      </div>
+
+      <section class="manifesto section-grid" id="porque">
+        <div class="section-kicker reveal"><span>01</span> LA IDEA</div>
+        <div class="manifesto-main reveal">
+          <h2>UN LAUNCHER DEBERÍA<br />QUITARTE <em>TRABAJO.</em></h2>
+        </div>
+        <div class="manifesto-copy reveal">
+          <p>
+            Minecraft puede ser simple. Sus versiones, loaders, mods y carpetas no siempre lo son. Kindyr pone cada decisión en contexto para que sepas qué estás cambiando y dónde.
+          </p>
+          <p>
+            No busca esconder el control: busca hacerlo entendible.
+          </p>
+        </div>
+        <div class="principle-card reveal">
+          <span class="principle-index">K / 01</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>
+          <strong>CLARO POR<br />DEFECTO.</strong>
+          <p>Cada acción tiene un lugar, un destino y una respuesta visible.</p>
+        </div>
+      </section>
+
+      <section class="features" id="funciones">
+        <div class="section-heading section-grid reveal">
+          <div class="section-kicker"><span>02</span> EL SISTEMA</div>
+          <h2>TODO LO QUE NECESITÁS.<br /><em>NI UNA PESTAÑA DE MÁS.</em></h2>
+          <p>Una colección de herramientas conectadas por la misma lógica: elegís una instancia, Kindyr conserva el contexto.</p>
+        </div>
+
+        <div class="feature-grid section-grid">
+          {features.map((feature) => (
+            <article class={`${feature.className} reveal`}>
+              <div class="feature-head">
+                <span>{feature.number}</span>
+                <div class="feature-icon">
+                  {feature.icon === 'layers' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>}
+                  {feature.icon === 'compass' && <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></svg>}
+                  {feature.icon === 'bolt' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>}
+                  {feature.icon === 'shirt' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m8 4-5 3 3 5 2-1v9h8v-9l2 1 3-5-5-3c-.5 1.2-1.9 2-4 2s-3.5-.8-4-2Z"/></svg>}
+                  {feature.icon === 'plug' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 2v5M16 2v5M6 7h12v3a6 6 0 0 1-6 6v6M9 22h6"/></svg>}
+                </div>
+              </div>
+              <div class="feature-copy">
+                <h3>{feature.title}</h3>
+                <p>{feature.text}</p>
+              </div>
+
+              {feature.icon === 'layers' && (
+                <div class="instance-stack" aria-hidden="true">
+                  <div class="instance-line instance-line-back"><b>V</b><span><strong>Vanilla limpio</strong><small>1.21.4 · VANILLA</small></span><i></i></div>
+                  <div class="instance-line instance-line-mid"><b>K</b><span><strong>Keo Optimized</strong><small>1.21.4 · FABRIC</small></span><i></i></div>
+                  <div class="instance-line instance-line-front"><b>C</b><span><strong>Creativo</strong><small>1.20.1 · FORGE</small></span><i></i></div>
+                </div>
+              )}
+
+              {feature.icon === 'compass' && (
+                <div class="discover-cloud" aria-hidden="true">
+                  <span class="tag-main">MODRINTH</span><span>MODS</span><span>PACKS</span><span>SHADERS</span><span class="tag-accent">LITEMATICS</span>
+                </div>
+              )}
+
+              {feature.icon === 'bolt' && (
+                <div class="performance-meter" aria-hidden="true">
+                  <div class="meter-label"><span>CONFIGURACIÓN</span><b>LISTA</b></div>
+                  <div class="meter-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                  <div class="meter-foot"><span>JAVA</span><span>MEMORIA</span><span>LOADER</span></div>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section class="workflow section-grid" id="recorrido">
+        <div class="workflow-title reveal">
+          <div class="section-kicker"><span>03</span> EL RECORRIDO</div>
+          <h2>DE CERO A TU MUNDO<br />SIN PERDER EL HILO.</h2>
+        </div>
+        <ol class="workflow-list">
+          <li class="reveal">
+            <span class="workflow-number">01</span>
+            <div><small>PREPARÁ</small><h3>Elegí cómo querés jugar.</h3><p>Una versión, un loader y un nombre. Esa instancia se convierte en el contexto de todo lo que sigue.</p></div>
+            <span class="workflow-arrow">↘</span>
+          </li>
+          <li class="reveal">
+            <span class="workflow-number">02</span>
+            <div><small>CONSTRUÍ</small><h3>Sumale contenido sin adivinar.</h3><p>Kindyr filtra lo compatible y descarga cada elemento en el lugar correcto.</p></div>
+            <span class="workflow-arrow">↘</span>
+          </li>
+          <li class="reveal">
+            <span class="workflow-number">03</span>
+            <div><small>JUGÁ</small><h3>Volvé cuando quieras.</h3><p>Tu configuración queda separada, reconocible y lista para iniciar otra vez.</p></div>
+            <span class="workflow-arrow">✓</span>
+          </li>
+        </ol>
+      </section>
+
+      <section class="ecosystem section-grid">
+        <div class="ecosystem-copy reveal">
+          <div class="section-kicker"><span>04</span> CONECTADO</div>
+          <h2>EL ECOSISTEMA<br />ENTRA CON VOS.</h2>
+          <p>Kindyr no reemplaza a la comunidad. La acerca a tu partida con integraciones claras y reconocibles.</p>
+        </div>
+        <div class="integration-board reveal">
+          <div class="integration-card modrinth-card">
+            <div class="integration-symbol">M</div>
+            <div><small>FUENTE PRINCIPAL</small><strong>MODRINTH</strong><p>Mods, modpacks, shaders y más.</p></div>
+            <span>↗</span>
+          </div>
+          <div class="integration-card phantom-card">
+            <div class="integration-symbol">P</div>
+            <div><small>CONSTRUCCIONES</small><strong>PHANTOM MARKET</strong><p>Litematics y esquemas para tu mundo.</p></div>
+            <span>↗</span>
+          </div>
+          <div class="integration-note">MÁS INTEGRACIONES <b>EN CAMINO</b></div>
+        </div>
+      </section>
+
+      <section class="download" id="descargar">
+        <div class="download-grid" aria-hidden="true"></div>
+        <div class="download-mark reveal">
+          <img src="/kindyr-logo.png" alt="" width="210" height="210" loading="lazy" />
+        </div>
+        <div class="download-copy reveal">
+          <div class="eyebrow"><span></span> PRIMERA VERSIÓN EN CAMINO</div>
+          <h2>TU PRÓXIMA PARTIDA<br /><em>EMPIEZA ACÁ.</em></h2>
+          <p>Kindyr sigue en desarrollo abierto. Mirá el código, seguí los avances y ayudanos a construir un launcher más simple.</p>
+          <div class="download-actions">
+            <a class="button button-light" href={githubURL} target="_blank" rel="noreferrer">
+              SEGUIR EN GITHUB
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 14 0M13 6l6 6-6 6"/></svg>
+            </a>
+            <span class="coming-soon">DESCARGAS · PRÓXIMAMENTE</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a class="brand footer-brand" href="#inicio">
+        <img src="/kindyr-logo.png" alt="" width="46" height="46" loading="lazy" />
+        <span class="brand-copy"><strong>KINDYR</strong><span>LAUNCHER</span></span>
+      </a>
+      <p>Hecho para jugar, no para configurar eternamente.</p>
+      <div class="footer-meta"><span>© <span data-year></span> KINDYR</span><a href={githubURL} target="_blank" rel="noreferrer">GITHUB ↗</a></div>
+    </footer>
+  </div>
+
+  <script>
+    const menuToggle = document.querySelector('[data-menu-toggle]');
+    const mobileNav = document.querySelector('[data-mobile-nav]');
+    const header = document.querySelector('[data-header]');
+
+    const closeMenu = () => {
+      menuToggle?.setAttribute('aria-expanded', 'false');
+      mobileNav?.classList.remove('is-open');
+    };
+
+    menuToggle?.addEventListener('click', () => {
+      const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
+      menuToggle.setAttribute('aria-expanded', String(!isOpen));
+      mobileNav?.classList.toggle('is-open', !isOpen);
+    });
+
+    mobileNav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+
+    const syncHeader = () => header?.classList.toggle('is-scrolled', window.scrollY > 24);
+    syncHeader();
+    window.addEventListener('scroll', syncHeader, { passive: true });
+
+    document.querySelectorAll('[data-year]').forEach((node) => {
+      node.textContent = String(new Date().getFullYear());
+    });
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduceMotion && 'IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -40px' });
+      document.querySelectorAll('.reveal').forEach((element) => observer.observe(element));
+    } else {
+      document.querySelectorAll('.reveal').forEach((element) => element.classList.add('is-visible'));
+    }
+  </script>
+</BaseLayout>
