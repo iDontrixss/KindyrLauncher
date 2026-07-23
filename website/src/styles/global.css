@@ -455,3 +455,10 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
 .app-window.has-shot { min-height: 0; }
 .discover-window.has-shot { min-height: 0; padding: 0; }
 .instance-manager.has-shot { min-height: 0; }
+
+/* Give the real launcher screenshots a bit more room. */
+@media (min-width: 1161px) {
+  .hero { grid-template-columns: minmax(0, .76fr) minmax(660px, 1.24fr); }
+  .showcase-discover { grid-template-columns: .72fr 1.28fr; }
+  .showcase-instances { grid-template-columns: 1.28fr .72fr; }
+}
