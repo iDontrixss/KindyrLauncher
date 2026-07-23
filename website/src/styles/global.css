@@ -450,3 +450,8 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
 @media (forced-colors: active) {
   .button, .benefit-card, .app-window, .discover-window, .instance-manager, .faq-item { border-color: ButtonText; }
 }
+
+.launcher-shot { display: block; width: 100%; height: auto; }
+.app-window.has-shot { min-height: 0; }
+.discover-window.has-shot { min-height: 0; padding: 0; }
+.instance-manager.has-shot { min-height: 0; }
