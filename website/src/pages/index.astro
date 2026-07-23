@@ -143,61 +143,8 @@ const faqItems = [
         </div>
 
         <div class="hero-product reveal reveal-delay" aria-label="Vista de la interfaz de Kindyr">
-          <div class="app-window">
-            <div class="app-titlebar">
-              <div class="app-title-brand">
-                <img src="/kindyr-logo.png" alt="" width="28" height="28" />
-                <strong>KINDYR</strong>
-              </div>
-              <div class="window-controls" aria-hidden="true"><i></i><i></i><i></i></div>
-            </div>
-
-            <div class="app-body">
-              <aside class="app-sidebar" aria-hidden="true">
-                <span class="account-avatar">N</span>
-                <nav>
-                  <i class="active"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-6v-6h-4v6H4Z"/></svg></i>
-                  <i><svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg></i>
-                  <i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></svg></i>
-                  <i><svg viewBox="0 0 24 24"><path d="M4 7h16M7 4v6M17 4v6M5 13h6v6H5zM14 13h5v6h-5z"/></svg></i>
-                </nav>
-                <i class="settings-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.4 2.9a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2L3 14.5l2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 2.9h5l.4-2.9a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1Z"/></svg></i>
-              </aside>
-
-              <div class="app-main">
-                <div class="app-heading">
-                  <div>
-                    <small>BUENAS TARDES</small>
-                    <h2>¿Qué vas a jugar hoy?</h2>
-                  </div>
-                  <button type="button" tabindex="-1">+ NUEVA INSTANCIA</button>
-                </div>
-
-                <article class="active-instance">
-                  <div class="instance-cover"><span>K</span><i></i></div>
-                  <div class="instance-info">
-                    <span class="status-pill"><i></i> LISTA PARA JUGAR</span>
-                    <h3>Keo Optimized</h3>
-                    <p>Fabric · 1.21.4 · 24 mods</p>
-                    <div class="instance-chips"><span>SODIUM</span><span>IRIS</span><span>MOD MENU</span></div>
-                  </div>
-                  <button class="play-cta" type="button" tabindex="-1"><svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></svg> JUGAR</button>
-                </article>
-
-                <div class="app-panels">
-                  <article class="instances-panel">
-                    <div class="panel-heading"><span>MIS INSTANCIAS</span><b>03</b></div>
-                    <div class="mini-instance"><i>V</i><span><strong>Vanilla</strong><small>1.21.4</small></span><em></em></div>
-                    <div class="mini-instance"><i>C</i><span><strong>Creativo</strong><small>Forge · 1.20.1</small></span><em></em></div>
-                  </article>
-                  <article class="discover-panel">
-                    <div class="panel-heading"><span>DESCUBRIR</span><b>↗</b></div>
-                    <strong>Tu próxima partida empieza acá.</strong>
-                    <div><span>MODS</span><span>MODPACKS</span><span>SHADERS</span></div>
-                  </article>
-                </div>
-              </div>
-            </div>
+          <div class="app-window has-shot">
+            <img class="launcher-shot" src="/screenshot-inicio.png" width="1024" height="576" alt="Pantalla de inicio de Kindyr: instalación recomendada, acciones rápidas e instancias recientes" />
           </div>
           <span class="floating-tag floating-tag-loader">FABRIC · 1.21.4</span>
           <span class="floating-tag floating-tag-ready"><i></i> LISTO</span>
@@ -261,38 +208,14 @@ const faqItems = [
           </ul>
         </div>
 
-        <div class="discover-window reveal reveal-delay" aria-label="Vista conceptual del explorador de contenido">
-          <div class="mock-window-header"><span>DESCUBRIR / MODRINTH</span><b><i></i> CONECTADO</b></div>
-          <div class="search-box"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg><span>Buscar mods, modpacks, shaders...</span><kbd>⌘ K</kbd></div>
-          <div class="filter-row"><span class="active">TODO</span><span>MODS</span><span>MODPACKS</span><span>SHADERS</span></div>
-          <div class="project-grid">
-            <article><div class="project-icon project-green">S</div><div><strong>Sodium</strong><small>Rendimiento</small></div><button type="button" tabindex="-1">INSTALAR</button></article>
-            <article><div class="project-icon project-purple">I</div><div><strong>Iris Shaders</strong><small>Shaders</small></div><button type="button" tabindex="-1">INSTALAR</button></article>
-            <article><div class="project-icon project-coral">C</div><div><strong>Cobblemon</strong><small>Modpack</small></div><button type="button" tabindex="-1">INSTALAR</button></article>
-            <article><div class="project-icon project-yellow">A</div><div><strong>Ad Astra</strong><small>Aventura</small></div><button type="button" tabindex="-1">INSTALAR</button></article>
-          </div>
-          <div class="install-toast"><i>✓</i><span><strong>Sodium instalado</strong>Keo Optimized · Fabric 1.21.4</span></div>
+        <div class="discover-window has-shot reveal reveal-delay" aria-label="Explorador de contenido de Modrinth en Kindyr">
+          <img class="launcher-shot" src="/screenshot-descubrir.png" width="1024" height="576" alt="Sección Descubrir de Kindyr explorando proyectos de Modrinth: mods, modpacks y shaders" />
         </div>
       </section>
 
       <section class="showcase showcase-instances section-grid">
-        <div class="instance-manager reveal" aria-label="Vista conceptual de configuración de instancia">
-          <div class="mock-window-header"><span>INSTANCIA / KEO OPTIMIZED</span><b>EDITANDO</b></div>
-          <div class="instance-manager-body">
-            <aside>
-              <span class="active">GENERAL</span>
-              <span>CONTENIDO</span>
-              <span>JAVA</span>
-              <span>EXPORTAR</span>
-            </aside>
-            <div class="settings-content">
-              <div class="settings-title"><div class="settings-cover">K</div><div><small>INSTANCIA</small><strong>Keo Optimized</strong><span>Fabric · Minecraft 1.21.4</span></div></div>
-              <label><span>MEMORIA ASIGNADA <b>6 GB</b></span><i><em></em></i></label>
-              <div class="setting-row"><span><strong>Versión de Java</strong><small>Detectada automáticamente</small></span><b>JAVA 21</b></div>
-              <div class="setting-row"><span><strong>Directorio</strong><small>Archivos separados de otras instancias</small></span><b>ABRIR ↗</b></div>
-              <div class="settings-actions"><button type="button" tabindex="-1">GUARDAR CAMBIOS</button><span>Todo bajo control.</span></div>
-            </div>
-          </div>
+        <div class="instance-manager has-shot reveal" aria-label="Configuración de una instancia en Kindyr">
+          <img class="launcher-shot" src="/screenshot-instancia.png" width="1024" height="576" alt="Instancia Minecraft 26.2 Fabric en Kindyr con centro de control y mods activos" />
         </div>
 
         <div class="showcase-copy reveal">
