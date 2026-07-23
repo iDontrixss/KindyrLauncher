@@ -12,11 +12,11 @@
   <path fill="#1943f5" d="m208 127 80 45-80 45-80-45Z"/>
   <path fill="#111a53" d="M128 191v76l65 37v-76Z"/>
   <path fill="#f4f8ff" d="M185 184h37v48l47-39 29 28-52 43 55 43-31 27-48-42v38h-37Z"/>
-  <text x="375" y="177" fill="#aacdff" font-family="monospace" font-size="22" font-weight="700" letter-spacing="4">LAUNCHER DE MINECRAFT</text>
-  <text x="375" y="295" fill="#f4f8ff" font-family="Arial, sans-serif" font-size="108" font-weight="800" letter-spacing="-6">KINDYR</text>
-  <text x="375" y="375" fill="#4c8dff" font-family="Arial, sans-serif" font-size="55" font-weight="800" letter-spacing="-2">TU MINECRAFT.</text>
-  <text x="375" y="438" fill="#ff5a3c" font-family="Arial, sans-serif" font-size="55" font-weight="800" letter-spacing="-2">SIN VUELTAS.</text>
+  <text x="375" y="168" fill="#aacdff" font-family="monospace" font-size="22" font-weight="700" letter-spacing="4">MINECRAFT LAUNCHER · OPEN SOURCE</text>
+  <text x="375" y="286" fill="#f4f8ff" font-family="Arial, sans-serif" font-size="108" font-weight="800" letter-spacing="-6">KINDYR</text>
+  <text x="375" y="374" fill="#4c8dff" font-family="Arial, sans-serif" font-size="52" font-weight="800" letter-spacing="-2">TODO EN SU LUGAR.</text>
+  <text x="375" y="437" fill="#ff5a3c" font-family="Arial, sans-serif" font-size="44" font-weight="800" letter-spacing="-1">MENOS CONFIGURAR. MÁS JUGAR.</text>
   <path stroke="#4c8dff" stroke-width="5" d="M87 528h1026"/>
-  <rect x="87" y="516" width="78" height="25" fill="#ff5a3c" stroke="#010712" stroke-width="5"/>
-  <text x="89" y="580" fill="#aacdff" font-family="monospace" font-size="18" font-weight="700" letter-spacing="3">INSTANCIAS · CONTENIDO · JUEGO</text>
+  <rect x="87" y="516" width="78" height="25" fill="#f5c518" stroke="#010712" stroke-width="5"/>
+  <text x="89" y="580" fill="#aacdff" font-family="monospace" font-size="18" font-weight="700" letter-spacing="3">INSTANCIAS · MODRINTH · .MRPACK · CUENTAS</text>
 </svg>

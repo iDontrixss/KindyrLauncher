@@ -8,6 +8,23 @@ interface Props {
 
 const { title, description } = Astro.props;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://kindyrlauncher.pages.dev');
+const socialImage = new URL('/og-cover.svg', canonicalURL);
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Kindyr',
+  description,
+  applicationCategory: 'GameApplication',
+  operatingSystem: 'Windows, Linux',
+  isAccessibleForFree: true,
+  url: canonicalURL.toString(),
+  codeRepository: 'https://github.com/iDontrixss/KindyrLauncher',
+  author: {
+    '@type': 'Person',
+    name: 'iDontrixss',
+    url: 'https://github.com/iDontrixss',
+  },
+};
 ---
 
 <!doctype html>
@@ -18,10 +35,14 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://kindyrla
     <meta name="theme-color" content="#061840" />
     <meta name="color-scheme" content="dark" />
     <meta name="description" content={description} />
+    <meta name="keywords" content="Kindyr, launcher de Minecraft, Minecraft launcher, Modrinth, modpacks, Forge, Fabric, NeoForge, Quilt, open source" />
+    <meta name="author" content="iDontrixss" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="generator" content={Astro.generator} />
     <link rel="canonical" href={canonicalURL} />
     <link rel="icon" type="image/png" href="/kindyr-favicon.png?v=3" sizes="500x500" />
     <link rel="apple-touch-icon" href="/kindyr-favicon.png?v=3" />
+    <link rel="preload" href="/kindyr-logo.png" as="image" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -34,11 +55,15 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://kindyrla
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalURL} />
-    <meta property="og:image" content={new URL('/og-cover.svg', canonicalURL)} />
+    <meta property="og:image" content={socialImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Kindyr, launcher de Minecraft open source" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={new URL('/og-cover.svg', canonicalURL)} />
+    <meta name="twitter:image" content={socialImage} />
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
     <script is:inline>document.documentElement.classList.add('js');</script>
     <title>{title}</title>
   </head>
