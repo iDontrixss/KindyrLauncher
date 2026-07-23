@@ -3,82 +3,81 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 const githubURL = 'https://github.com/iDontrixss/KindyrLauncher';
 const releasesURL = `${githubURL}/releases`;
-const issuesURL = `${githubURL}/issues`;
 
-const features = [
+const benefits = [
   {
     number: '01',
-    label: 'INSTANCIAS',
-    title: 'Cada partida, en su propio espacio.',
-    text: 'Separá versiones, loaders, mundos y configuraciones para probar cosas nuevas sin desarmar lo que ya funciona.',
-    tone: 'blue',
+    tag: 'INSTANCIAS',
+    title: 'Un espacio para cada forma de jugar.',
+    text: 'Separá versiones, loaders, mundos y mods. Probá algo nuevo sin tocar la partida que ya funciona.',
     icon: 'layers',
+    className: 'benefit-card benefit-card-wide benefit-blue',
   },
   {
     number: '02',
-    label: 'CONTENIDO',
-    title: 'Encontrá contenido sin salir del launcher.',
-    text: 'Explorá proyectos de Modrinth, instalá modpacks y mantené el contexto de la instancia que estás preparando.',
-    tone: 'green',
+    tag: 'MODRINTH',
+    title: 'Encontrá e instalá contenido desde Kindyr.',
+    text: 'Buscá mods y modpacks sin saltar entre el navegador, descargas y carpetas.',
     icon: 'compass',
+    className: 'benefit-card benefit-green',
   },
   {
     number: '03',
-    label: 'MODPACKS',
-    title: 'Importá .mrpack y seguí jugando.',
-    text: 'Convertí un paquete de Modrinth en una instancia organizada, reconocible y lista para ajustar.',
-    tone: 'coral',
-    icon: 'box',
+    tag: '.MRPACK',
+    title: 'Importá un modpack y empezá.',
+    text: 'Convertí un paquete de Modrinth en una instancia organizada y lista para configurar.',
+    icon: 'package',
+    className: 'benefit-card benefit-coral',
   },
   {
     number: '04',
-    label: 'CUENTAS',
-    title: 'Tus perfiles, siempre a mano.',
-    text: 'Gestioná cuentas de Microsoft y cambiá de identidad sin romper el ritmo de tu sesión.',
-    tone: 'yellow',
+    tag: 'CUENTAS',
+    title: 'Tus perfiles de Microsoft, a mano.',
+    text: 'Cambiá de cuenta sin perder el contexto de lo que estabas preparando.',
     icon: 'user',
+    className: 'benefit-card benefit-yellow',
   },
   {
     number: '05',
-    label: 'CONTROL',
-    title: 'Configuración visible, no escondida.',
-    text: 'Kindyr busca explicar qué cambia, dónde se guarda y qué instancia estás modificando antes de tocar nada.',
-    tone: 'navy',
-    icon: 'sliders',
-  },
-  {
-    number: '06',
-    label: 'OPEN SOURCE',
-    title: 'Un proyecto que podés inspeccionar.',
-    text: 'El desarrollo ocurre de forma abierta en GitHub: código, avances, problemas y decisiones en un mismo lugar.',
-    tone: 'white',
+    tag: 'OPEN SOURCE',
+    title: 'Sin anuncios. Sin caja negra.',
+    text: 'Kindyr es un proyecto abierto: podés revisar el código, seguir los cambios y reportar problemas.',
     icon: 'code',
+    className: 'benefit-card benefit-white',
   },
+];
+
+const comparisonRows = [
+  ['Instancias separadas', 'Incluido', 'Carpetas y perfiles manuales'],
+  ['Mods y modpacks', 'Dentro del launcher', 'Navegador + descargas + mover archivos'],
+  ['Importación .mrpack', 'Flujo directo', 'Varios pasos y configuración'],
+  ['Loaders', 'Desde la creación de instancia', 'Instaladores por separado'],
+  ['Código abierto', 'Sí', 'Depende de cada herramienta'],
 ];
 
 const faqItems = [
   {
-    question: '¿Kindyr ya está disponible para descargar?',
-    answer: 'Kindyr sigue en desarrollo activo. Las compilaciones públicas y sus notas se concentran en GitHub Releases cuando están listas para probarse.',
+    question: '¿Qué puedo hacer con Kindyr?',
+    answer: 'Crear y administrar instancias de Minecraft, trabajar con diferentes versiones y loaders, explorar contenido de Modrinth, importar paquetes .mrpack y gestionar cuentas desde una sola aplicación.',
   },
   {
-    question: '¿Qué sistemas operativos apunta a soportar?',
-    answer: 'El proyecto está orientado a Windows y Linux. La disponibilidad exacta puede variar según cada release y su estado de pruebas.',
+    question: '¿Qué loaders contempla?',
+    answer: 'Kindyr está pensado para trabajar con experiencias Vanilla y con loaders como Fabric, Forge, NeoForge y Quilt. La compatibilidad exacta depende de cada versión y del estado de desarrollo.',
   },
   {
-    question: '¿Kindyr tiene publicidad?',
-    answer: 'La propuesta de Kindyr es ofrecer una experiencia limpia y sin anuncios dentro del launcher.',
+    question: '¿Kindyr tiene anuncios?',
+    answer: 'No. La propuesta del launcher es mantener una experiencia limpia, directa y sin publicidad integrada.',
   },
   {
-    question: '¿Es un launcher oficial de Minecraft?',
-    answer: 'No. Kindyr es un proyecto independiente y no está asociado, aprobado ni patrocinado por Mojang Studios o Microsoft.',
+    question: '¿Es gratuito y open source?',
+    answer: 'Sí. El código del proyecto está disponible públicamente en GitHub, junto con los avances, reportes y releases.',
   },
 ];
 ---
 
 <BaseLayout
-  title="Kindyr — Minecraft organizado, sin vueltas"
-  description="Kindyr es un launcher de Minecraft open source para organizar instancias, descubrir contenido e importar modpacks desde una experiencia clara y moderna."
+  title="Kindyr — El launcher de Minecraft para jugar a tu manera"
+  description="Creá instancias, instalá mods y modpacks desde Modrinth, importá .mrpack y organizá Minecraft desde un launcher open source, claro y sin anuncios."
 >
   <div class="site-shell">
     <header class="site-header" data-header>
@@ -91,10 +90,10 @@ const faqItems = [
       </a>
 
       <nav class="desktop-nav" aria-label="Navegación principal">
-        <a href="#producto">Producto</a>
         <a href="#funciones">Funciones</a>
-        <a href="#desarrollo">Desarrollo</a>
-        <a href="#preguntas">Preguntas</a>
+        <a href="#modrinth">Contenido</a>
+        <a href="#comparativa">Por qué Kindyr</a>
+        <a href="#preguntas">FAQ</a>
       </nav>
 
       <div class="header-actions">
@@ -102,17 +101,18 @@ const faqItems = [
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49v-1.91c-2.78.62-3.37-1.2-3.37-1.2-.45-1.19-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.55-1.14-4.55-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.34 9.34 0 0 1 12 6.93a9.4 9.4 0 0 1 2.5.34c1.9-1.33 2.74-1.05 2.74-1.05.55 1.42.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.79-4.56 5.04.36.32.68.94.68 1.9v2.82c0 .27.18.59.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z"/></svg>
           <span>GitHub</span>
         </a>
-        <a class="button button-small" href={releasesURL} target="_blank" rel="noreferrer">VER RELEASES</a>
+        <a class="button button-small" href={releasesURL} target="_blank" rel="noreferrer">DESCARGAR</a>
         <button class="menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" data-menu-toggle>
           <span></span><span></span><span></span>
         </button>
       </div>
 
       <nav class="mobile-nav" aria-label="Navegación móvil" data-mobile-nav>
-        <a href="#producto">Producto</a>
         <a href="#funciones">Funciones</a>
-        <a href="#desarrollo">Desarrollo</a>
-        <a href="#preguntas">Preguntas</a>
+        <a href="#modrinth">Contenido</a>
+        <a href="#comparativa">Por qué Kindyr</a>
+        <a href="#preguntas">FAQ</a>
+        <a href={releasesURL} target="_blank" rel="noreferrer">Descargar ↗</a>
         <a href={githubURL} target="_blank" rel="noreferrer">GitHub ↗</a>
       </nav>
     </header>
@@ -120,233 +120,243 @@ const faqItems = [
     <main id="contenido">
       <section class="hero section-grid" id="inicio">
         <div class="hero-copy reveal">
-          <div class="eyebrow"><span></span> OPEN SOURCE · EN DESARROLLO ACTIVO</div>
+          <div class="eyebrow"><span></span> LAUNCHER DE MINECRAFT · OPEN SOURCE</div>
           <h1>
             TU MINECRAFT.<br />
-            <span>TODO EN SU LUGAR.</span>
+            <span>LISTO PARA JUGAR.</span>
           </h1>
           <p class="hero-lead">
-            Kindyr reúne instancias, mods, modpacks y cuentas en un launcher diseñado para que preparar Minecraft sea tan claro como jugarlo.
+            Creá instancias, instalá mods y modpacks, cambiá de versión y entrá al juego desde un solo lugar. Sin anuncios y sin pelearte con carpetas.
           </p>
           <div class="hero-actions">
-            <a class="button button-primary" href={releasesURL} target="_blank" rel="noreferrer">
-              VER AVANCES
-              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <a class="button button-primary button-large" href={releasesURL} target="_blank" rel="noreferrer">
+              DESCARGAR KINDYR
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
             </a>
-            <a class="text-link" href="#producto">CONOCER KINDYR <span>↓</span></a>
+            <a class="text-link" href={githubURL} target="_blank" rel="noreferrer">VER EN GITHUB <span>↗</span></a>
           </div>
-          <div class="hero-meta" aria-label="Principios del producto">
-            <span><i></i> SIN PUBLICIDAD</span>
-            <span><i></i> INSTANCIAS SEPARADAS</span>
+          <div class="hero-meta" aria-label="Características principales">
             <span><i></i> WINDOWS + LINUX</span>
+            <span><i></i> SIN PUBLICIDAD</span>
+            <span><i></i> CÓDIGO ABIERTO</span>
           </div>
         </div>
 
-        <div class="product-preview reveal reveal-delay" aria-label="Vista conceptual de la interfaz de Kindyr">
-          <div class="preview-windowbar">
-            <div class="preview-brand"><img src="/kindyr-logo.png" alt="" width="30" height="30" /><span>KINDYR</span></div>
-            <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-          </div>
-          <div class="preview-app">
-            <aside class="preview-sidebar" aria-hidden="true">
-              <span class="preview-avatar">N</span>
-              <nav>
-                <i class="is-active"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-6v-6h-4v6H4Z"/></svg></i>
-                <i><svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg></i>
-                <i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></svg></i>
-                <i><svg viewBox="0 0 24 24"><path d="M4 7h16M7 4v6M17 4v6M5 13h6v6H5zM14 13h5v6h-5z"/></svg></i>
-              </nav>
-              <i class="preview-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg></i>
-            </aside>
-
-            <div class="preview-content">
-              <div class="preview-heading">
-                <div><small>BUENAS TARDES</small><strong>¿Qué vas a jugar hoy?</strong></div>
-                <button type="button" tabindex="-1">+ NUEVA INSTANCIA</button>
+        <div class="hero-product reveal reveal-delay" aria-label="Vista de la interfaz de Kindyr">
+          <div class="app-window">
+            <div class="app-titlebar">
+              <div class="app-title-brand">
+                <img src="/kindyr-logo.png" alt="" width="28" height="28" />
+                <strong>KINDYR</strong>
               </div>
+              <div class="window-controls" aria-hidden="true"><i></i><i></i><i></i></div>
+            </div>
 
-              <article class="instance-spotlight">
-                <div class="instance-art" aria-hidden="true"><span>K</span><i></i></div>
-                <div class="instance-copy">
-                  <span class="instance-status"><i></i> LISTA PARA JUGAR</span>
-                  <h2>Keo Optimized</h2>
-                  <p>Fabric · 1.21.4 · 24 mods</p>
-                  <div class="instance-tags"><span>SODIUM</span><span>IRIS</span><span>MOD MENU</span></div>
+            <div class="app-body">
+              <aside class="app-sidebar" aria-hidden="true">
+                <span class="account-avatar">N</span>
+                <nav>
+                  <i class="active"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-6v-6h-4v6H4Z"/></svg></i>
+                  <i><svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg></i>
+                  <i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></svg></i>
+                  <i><svg viewBox="0 0 24 24"><path d="M4 7h16M7 4v6M17 4v6M5 13h6v6H5zM14 13h5v6h-5z"/></svg></i>
+                </nav>
+                <i class="settings-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.4 2.9a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2L3 14.5l2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 2.9h5l.4-2.9a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1Z"/></svg></i>
+              </aside>
+
+              <div class="app-main">
+                <div class="app-heading">
+                  <div>
+                    <small>BUENAS TARDES</small>
+                    <h2>¿Qué vas a jugar hoy?</h2>
+                  </div>
+                  <button type="button" tabindex="-1">+ NUEVA INSTANCIA</button>
                 </div>
-                <button class="play-button" type="button" tabindex="-1"><svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></svg> JUGAR</button>
-              </article>
 
-              <div class="preview-panels">
-                <article>
-                  <div class="panel-top"><span>INSTANCIAS</span><b>03</b></div>
-                  <div class="mini-instance"><i>V</i><span><strong>Vanilla</strong><small>1.21.4</small></span><em></em></div>
-                  <div class="mini-instance"><i>C</i><span><strong>Creativo</strong><small>Forge · 1.20.1</small></span><em></em></div>
+                <article class="active-instance">
+                  <div class="instance-cover"><span>K</span><i></i></div>
+                  <div class="instance-info">
+                    <span class="status-pill"><i></i> LISTA PARA JUGAR</span>
+                    <h3>Keo Optimized</h3>
+                    <p>Fabric · 1.21.4 · 24 mods</p>
+                    <div class="instance-chips"><span>SODIUM</span><span>IRIS</span><span>MOD MENU</span></div>
+                  </div>
+                  <button class="play-cta" type="button" tabindex="-1"><svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></svg> JUGAR</button>
                 </article>
-                <article class="discover-panel">
-                  <div class="panel-top"><span>DESCUBRIR</span><b>↗</b></div>
-                  <strong>Tu próxima experiencia está a un clic.</strong>
-                  <div class="content-pills"><span>MODS</span><span>MODPACKS</span><span>SHADERS</span></div>
-                </article>
+
+                <div class="app-panels">
+                  <article class="instances-panel">
+                    <div class="panel-heading"><span>MIS INSTANCIAS</span><b>03</b></div>
+                    <div class="mini-instance"><i>V</i><span><strong>Vanilla</strong><small>1.21.4</small></span><em></em></div>
+                    <div class="mini-instance"><i>C</i><span><strong>Creativo</strong><small>Forge · 1.20.1</small></span><em></em></div>
+                  </article>
+                  <article class="discover-panel">
+                    <div class="panel-heading"><span>DESCUBRIR</span><b>↗</b></div>
+                    <strong>Tu próxima partida empieza acá.</strong>
+                    <div><span>MODS</span><span>MODPACKS</span><span>SHADERS</span></div>
+                  </article>
+                </div>
               </div>
             </div>
           </div>
-          <div class="preview-sticker">MENOS MENÚS.<br /><strong>MÁS MINECRAFT.</strong></div>
+          <span class="floating-tag floating-tag-loader">FABRIC · 1.21.4</span>
+          <span class="floating-tag floating-tag-ready"><i></i> LISTO</span>
+          <div class="product-sticker">TODO TU JUEGO.<br /><strong>UN SOLO LUGAR.</strong></div>
         </div>
       </section>
 
-      <div class="trust-strip" aria-label="Características destacadas">
-        <div class="trust-track">
-          <span>GESTIÓN DE INSTANCIAS</span><i></i><span>MODRINTH</span><i></i><span>IMPORTACIÓN .MRPACK</span><i></i><span>CUENTAS MICROSOFT</span><i></i><span>CÓDIGO ABIERTO</span><i></i>
-          <span aria-hidden="true">GESTIÓN DE INSTANCIAS</span><i aria-hidden="true"></i><span aria-hidden="true">MODRINTH</span><i aria-hidden="true"></i><span aria-hidden="true">IMPORTACIÓN .MRPACK</span><i aria-hidden="true"></i><span aria-hidden="true">CUENTAS MICROSOFT</span><i aria-hidden="true"></i><span aria-hidden="true">CÓDIGO ABIERTO</span><i aria-hidden="true"></i>
+      <div class="compatibility-strip" aria-label="Compatibilidad destacada">
+        <div class="compatibility-track">
+          <span>VANILLA</span><i></i><span>FABRIC</span><i></i><span>FORGE</span><i></i><span>NEOFORGE</span><i></i><span>QUILT</span><i></i><span>MODRINTH</span><i></i><span>.MRPACK</span><i></i>
+          <span aria-hidden="true">VANILLA</span><i aria-hidden="true"></i><span aria-hidden="true">FABRIC</span><i aria-hidden="true"></i><span aria-hidden="true">FORGE</span><i aria-hidden="true"></i><span aria-hidden="true">NEOFORGE</span><i aria-hidden="true"></i><span aria-hidden="true">QUILT</span><i aria-hidden="true"></i><span aria-hidden="true">MODRINTH</span><i aria-hidden="true"></i><span aria-hidden="true">.MRPACK</span><i aria-hidden="true"></i>
         </div>
       </div>
 
-      <section class="problem section-grid" id="producto">
-        <div class="section-kicker reveal"><span>01</span> LA PROPUESTA</div>
-        <div class="problem-heading reveal">
-          <h2>MINECRAFT ES ENORME.<br /><em>ADMINISTRARLO NO DEBERÍA SERLO.</em></h2>
-        </div>
-        <div class="problem-copy reveal">
-          <p>Versiones, loaders, Java, mods, carpetas y perfiles suelen vivir en pantallas distintas. Kindyr los reúne alrededor de una idea simple: primero elegís dónde vas a jugar; después, todo lo demás conserva ese contexto.</p>
-          <a class="inline-link" href={githubURL} target="_blank" rel="noreferrer">VER CÓMO SE CONSTRUYE ↗</a>
-        </div>
-        <div class="principles-grid">
-          <article class="principle-card reveal">
-            <span>01 / CONTEXTO</span>
-            <strong>UNA INSTANCIA<br />GUÍA TODO.</strong>
-            <p>El contenido, la versión y la configuración permanecen ligados al espacio correcto.</p>
-          </article>
-          <article class="principle-card principle-card-alt reveal">
-            <span>02 / CLARIDAD</span>
-            <strong>SABÉS QUÉ<br />ESTÁS CAMBIANDO.</strong>
-            <p>Menos decisiones ambiguas y más respuestas visibles antes de ejecutar una acción.</p>
-          </article>
-          <article class="principle-card principle-card-light reveal">
-            <span>03 / CONTROL</span>
-            <strong>TU JUEGO.<br />TUS ARCHIVOS.</strong>
-            <p>Una experiencia guiada que no necesita esconder la estructura real del juego.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="features" id="funciones">
+      <section class="benefits" id="funciones">
         <div class="section-heading section-grid reveal">
-          <div class="section-kicker"><span>02</span> FUNCIONES</div>
-          <h2>LO NECESARIO PARA<br /><em>PASAR DE IDEA A PARTIDA.</em></h2>
-          <p>Kindyr conecta las tareas habituales del launcher en un flujo coherente, sin convertir cada acción en una configuración interminable.</p>
+          <div class="section-kicker"><span>01</span> TODO EN KINDYR</div>
+          <h2>MENOS CONFIGURAR.<br /><em>MÁS JUGAR.</em></h2>
+          <p>Las herramientas que usás antes de entrar a Minecraft, conectadas dentro de la misma experiencia.</p>
         </div>
 
-        <div class="feature-grid section-grid">
-          {features.map((feature) => (
-            <article class={`feature-card feature-${feature.tone} reveal`}>
-              <div class="feature-head">
-                <span>{feature.number}</span>
-                <span class="feature-label">{feature.label}</span>
+        <div class="benefit-grid section-grid">
+          {benefits.map((benefit) => (
+            <article class={`${benefit.className} reveal`}>
+              <div class="benefit-top">
+                <span>{benefit.number}</span>
+                <b>{benefit.tag}</b>
               </div>
-              <div class="feature-icon">
-                {feature.icon === 'layers' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>}
-                {feature.icon === 'compass' && <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></svg>}
-                {feature.icon === 'box' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/></svg>}
-                {feature.icon === 'user' && <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>}
-                {feature.icon === 'sliders' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"/></svg>}
-                {feature.icon === 'code' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m8 5-5 7 5 7M16 5l5 7-5 7M14 3l-4 18"/></svg>}
+              <div class="benefit-icon">
+                {benefit.icon === 'layers' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>}
+                {benefit.icon === 'compass' && <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></svg>}
+                {benefit.icon === 'package' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/></svg>}
+                {benefit.icon === 'user' && <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>}
+                {benefit.icon === 'code' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m8 5-5 7 5 7M16 5l5 7-5 7M14 3l-4 18"/></svg>}
               </div>
-              <div class="feature-copy">
-                <h3>{feature.title}</h3>
-                <p>{feature.text}</p>
+              <div class="benefit-copy">
+                <h3>{benefit.title}</h3>
+                <p>{benefit.text}</p>
               </div>
-              <span class="feature-corner" aria-hidden="true"></span>
+              {benefit.icon === 'layers' && (
+                <div class="benefit-instance-stack" aria-hidden="true">
+                  <div><b>V</b><span><strong>Vanilla limpio</strong><small>1.21.4 · VANILLA</small></span><i></i></div>
+                  <div><b>K</b><span><strong>Keo Optimized</strong><small>1.21.4 · FABRIC</small></span><i></i></div>
+                  <div><b>C</b><span><strong>Creativo</strong><small>1.20.1 · FORGE</small></span><i></i></div>
+                </div>
+              )}
             </article>
           ))}
         </div>
       </section>
 
-      <section class="workflow section-grid">
-        <div class="workflow-intro reveal">
-          <div class="section-kicker"><span>03</span> EL FLUJO</div>
-          <h2>PREPARÁ UNA PARTIDA<br />SIN PERDER EL HILO.</h2>
-          <p>El launcher acompaña el recorrido completo y mantiene cada decisión dentro de la instancia correcta.</p>
+      <section class="showcase showcase-discover section-grid" id="modrinth">
+        <div class="showcase-copy reveal">
+          <div class="section-kicker"><span>02</span> CONTENIDO INTEGRADO</div>
+          <h2>ENCONTRÁ TU PRÓXIMA<br /><em>EXPERIENCIA.</em></h2>
+          <p>Explorá mods y modpacks de Modrinth desde el launcher. Elegí una instancia y mantené cada descarga donde corresponde.</p>
+          <ul class="feature-points">
+            <li><i>✓</i><span><strong>Búsqueda integrada</strong>Encontrá contenido sin abrir diez pestañas.</span></li>
+            <li><i>✓</i><span><strong>Contexto de instancia</strong>Sabés para qué versión y loader estás instalando.</span></li>
+            <li><i>✓</i><span><strong>Importación .mrpack</strong>Pasá de un paquete a una instancia organizada.</span></li>
+          </ul>
         </div>
-        <ol class="workflow-list">
-          <li class="reveal">
-            <span class="workflow-number">01</span>
-            <div><small>CREÁ</small><h3>Elegí versión, loader y nombre.</h3><p>Kindyr convierte esa elección en un espacio separado para jugar, probar o crear.</p></div>
-            <span class="workflow-arrow">↘</span>
-          </li>
-          <li class="reveal">
-            <span class="workflow-number">02</span>
-            <div><small>ARMÁ</small><h3>Instalá contenido con contexto.</h3><p>Buscá mods, importá un .mrpack y mantené cada archivo en la instancia adecuada.</p></div>
-            <span class="workflow-arrow">↘</span>
-          </li>
-          <li class="reveal">
-            <span class="workflow-number">03</span>
-            <div><small>JUGÁ</small><h3>Volvé a entrar sin reconfigurar todo.</h3><p>Tu perfil queda reconocible, aislado y listo para la próxima sesión.</p></div>
-            <span class="workflow-arrow">✓</span>
-          </li>
-        </ol>
+
+        <div class="discover-window reveal reveal-delay" aria-label="Vista conceptual del explorador de contenido">
+          <div class="mock-window-header"><span>DESCUBRIR / MODRINTH</span><b><i></i> CONECTADO</b></div>
+          <div class="search-box"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg><span>Buscar mods, modpacks, shaders...</span><kbd>⌘ K</kbd></div>
+          <div class="filter-row"><span class="active">TODO</span><span>MODS</span><span>MODPACKS</span><span>SHADERS</span></div>
+          <div class="project-grid">
+            <article><div class="project-icon project-green">S</div><div><strong>Sodium</strong><small>Rendimiento</small></div><button type="button" tabindex="-1">INSTALAR</button></article>
+            <article><div class="project-icon project-purple">I</div><div><strong>Iris Shaders</strong><small>Shaders</small></div><button type="button" tabindex="-1">INSTALAR</button></article>
+            <article><div class="project-icon project-coral">C</div><div><strong>Cobblemon</strong><small>Modpack</small></div><button type="button" tabindex="-1">INSTALAR</button></article>
+            <article><div class="project-icon project-yellow">A</div><div><strong>Ad Astra</strong><small>Aventura</small></div><button type="button" tabindex="-1">INSTALAR</button></article>
+          </div>
+          <div class="install-toast"><i>✓</i><span><strong>Sodium instalado</strong>Keo Optimized · Fabric 1.21.4</span></div>
+        </div>
       </section>
 
-      <section class="development" id="desarrollo">
-        <div class="development-inner section-grid">
-          <div class="development-copy reveal">
-            <div class="section-kicker"><span>04</span> DESARROLLO ABIERTO</div>
-            <h2>NO HAY CAJA NEGRA.<br /><em>HAY UN PROYECTO EN MOVIMIENTO.</em></h2>
-            <p>Kindyr se construye públicamente. Eso permite seguir los cambios, revisar el código y entender qué está listo, qué se está probando y qué todavía es una idea.</p>
-            <div class="development-actions">
-              <a class="button button-light" href={githubURL} target="_blank" rel="noreferrer">ABRIR GITHUB <span>↗</span></a>
-              <a class="text-link dark-link" href={issuesURL} target="_blank" rel="noreferrer">REPORTAR O SUGERIR <span>↗</span></a>
+      <section class="showcase showcase-instances section-grid">
+        <div class="instance-manager reveal" aria-label="Vista conceptual de configuración de instancia">
+          <div class="mock-window-header"><span>INSTANCIA / KEO OPTIMIZED</span><b>EDITANDO</b></div>
+          <div class="instance-manager-body">
+            <aside>
+              <span class="active">GENERAL</span>
+              <span>CONTENIDO</span>
+              <span>JAVA</span>
+              <span>EXPORTAR</span>
+            </aside>
+            <div class="settings-content">
+              <div class="settings-title"><div class="settings-cover">K</div><div><small>INSTANCIA</small><strong>Keo Optimized</strong><span>Fabric · Minecraft 1.21.4</span></div></div>
+              <label><span>MEMORIA ASIGNADA <b>6 GB</b></span><i><em></em></i></label>
+              <div class="setting-row"><span><strong>Versión de Java</strong><small>Detectada automáticamente</small></span><b>JAVA 21</b></div>
+              <div class="setting-row"><span><strong>Directorio</strong><small>Archivos separados de otras instancias</small></span><b>ABRIR ↗</b></div>
+              <div class="settings-actions"><button type="button" tabindex="-1">GUARDAR CAMBIOS</button><span>Todo bajo control.</span></div>
             </div>
           </div>
+        </div>
 
-          <div class="status-board reveal">
-            <div class="status-header"><span>KINDYR / ESTADO DEL PROYECTO</span><b><i></i> ACTIVO</b></div>
-            <div class="status-column">
-              <small>BASE DEL PRODUCTO</small>
-              <ul>
-                <li><i></i><span>Gestión de instancias</span><b>EN EL PROYECTO</b></li>
-                <li><i></i><span>Descubrimiento con Modrinth</span><b>EN EL PROYECTO</b></li>
-                <li><i></i><span>Importación de paquetes .mrpack</span><b>EN EL PROYECTO</b></li>
-                <li><i></i><span>Gestión de cuentas</span><b>EN EL PROYECTO</b></li>
-              </ul>
-            </div>
-            <div class="status-column status-next">
-              <small>SIGUIENTE ENFOQUE</small>
-              <ul>
-                <li><span>Pruebas de compatibilidad entre versiones y loaders</span><b>VALIDACIÓN</b></li>
-                <li><span>Más integraciones de contenido y construcciones</span><b>PLANEADO</b></li>
-                <li><span>Refinamiento continuo de interfaz y rendimiento</span><b>ITERANDO</b></li>
-              </ul>
-            </div>
-            <div class="status-note">Las funciones y plataformas finales pueden cambiar durante el desarrollo.</div>
+        <div class="showcase-copy reveal">
+          <div class="section-kicker"><span>03</span> INSTANCIAS</div>
+          <h2>CADA PARTIDA,<br /><em>A SU MANERA.</em></h2>
+          <p>Tené una instancia Vanilla, otra con Fabric y otra para probar un modpack. Cada una conserva su versión, loader, contenido y configuración.</p>
+          <div class="big-statements">
+            <article><strong>SIN CONFLICTOS</strong><span>Lo que instalás en una instancia no desarma las demás.</span></article>
+            <article><strong>SIN ADIVINAR</strong><span>Siempre ves qué perfil estás editando y dónde se guardan los cambios.</span></article>
           </div>
         </div>
       </section>
 
-      <section class="integrations section-grid">
-        <div class="integrations-copy reveal">
-          <div class="section-kicker"><span>05</span> ECOSISTEMA</div>
-          <h2>LA COMUNIDAD<br />MÁS CERCA DE TU MUNDO.</h2>
-          <p>Kindyr no intenta reemplazar las plataformas de contenido. Busca conectarlas con atribución clara y llevar cada descarga al contexto correcto.</p>
+      <section class="why-kindyr" id="comparativa">
+        <div class="why-inner section-grid">
+          <div class="why-heading reveal">
+            <div class="section-kicker"><span>04</span> POR QUÉ KINDYR</div>
+            <h2>DEL ARCHIVO SUELTO<br /><em>A TODO ORGANIZADO.</em></h2>
+            <p>Kindyr reemplaza el recorrido de descargar, mover, instalar y volver a configurar por una experiencia conectada.</p>
+          </div>
+
+          <div class="comparison-table reveal" role="table" aria-label="Comparación entre Kindyr y la configuración manual">
+            <div class="comparison-head" role="row">
+              <span role="columnheader">TAREA</span>
+              <strong role="columnheader">CON KINDYR</strong>
+              <span role="columnheader">CONFIGURACIÓN MANUAL</span>
+            </div>
+            {comparisonRows.map((row) => (
+              <div class="comparison-row" role="row">
+                <span role="cell">{row[0]}</span>
+                <strong role="cell"><i>✓</i>{row[1]}</strong>
+                <span role="cell">{row[2]}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div class="integration-board reveal">
-          <article class="integration-card modrinth-card">
-            <div class="integration-symbol">M</div>
-            <div><small>INTEGRACIÓN PRINCIPAL</small><strong>MODRINTH</strong><p>Mods, modpacks, shaders y resource packs.</p></div>
-            <span>ACTIVO</span>
-          </article>
-          <article class="integration-card phantom-card">
-            <div class="integration-symbol">P</div>
-            <div><small>INTEGRACIÓN PROPUESTA</small><strong>PHANTOMMARKET</strong><p>Litematics, schematics y construcciones con acceso a la publicación original.</p></div>
-            <span>EN DESARROLLO</span>
-          </article>
-          <div class="integration-note">ATRIBUCIÓN CLARA · ENLACE AL CREADOR · SIN REPUBLICAR CONTENIDO</div>
-        </div>
+      </section>
+
+      <section class="values section-grid">
+        <article class="value-card value-open reveal">
+          <span>01 / OPEN SOURCE</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m8 5-5 7 5 7M16 5l5 7-5 7M14 3l-4 18"/></svg>
+          <h3>EL CÓDIGO<br />ESTÁ A LA VISTA.</h3>
+          <p>Revisá cómo funciona, seguí el desarrollo y participá desde GitHub.</p>
+          <a href={githubURL} target="_blank" rel="noreferrer">ABRIR REPOSITORIO ↗</a>
+        </article>
+        <article class="value-card value-clean reveal">
+          <span>02 / EXPERIENCIA LIMPIA</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>
+          <h3>SIN ANUNCIOS.<br />SIN DISTRACCIONES.</h3>
+          <p>El launcher se concentra en tus instancias, tu contenido y el botón de jugar.</p>
+        </article>
+        <article class="value-card value-platform reveal">
+          <span>03 / MULTIPLATAFORMA</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16v11H4zM8 20h8M12 16v4"/></svg>
+          <h3>WINDOWS<br />Y LINUX.</h3>
+          <p>Una misma propuesta visual y funcional para los dos sistemas principales del proyecto.</p>
+        </article>
       </section>
 
       <section class="faq section-grid" id="preguntas">
         <div class="faq-heading reveal">
-          <div class="section-kicker"><span>06</span> PREGUNTAS</div>
-          <h2>ANTES DE<br />DARLE A PLAY.</h2>
+          <div class="section-kicker"><span>05</span> PREGUNTAS FRECUENTES</div>
+          <h2>LO IMPORTANTE,<br /><em>SIN VUELTAS.</em></h2>
         </div>
         <div class="faq-list">
           {faqItems.map((item, index) => (
@@ -360,22 +370,22 @@ const faqItems = [
 
       <section class="download" id="descargar">
         <div class="download-grid" aria-hidden="true"></div>
-        <div class="download-mark reveal">
-          <img src="/kindyr-logo.png" alt="" width="230" height="230" loading="lazy" />
+        <div class="download-logo reveal">
+          <img src="/kindyr-logo.png" alt="" width="240" height="240" loading="lazy" />
           <span>OPEN SOURCE</span>
         </div>
         <div class="download-copy reveal">
-          <div class="eyebrow"><span></span> SEGUÍ EL DESARROLLO DESDE AHORA</div>
-          <h2>TU PRÓXIMA PARTIDA<br /><em>EMPIEZA MÁS SIMPLE.</em></h2>
-          <p>Revisá las releases, seguí los cambios y ayudá a convertir Kindyr en un launcher cada vez más claro, rápido y confiable.</p>
+          <div class="eyebrow"><span></span> EMPEZÁ TU PRÓXIMA PARTIDA</div>
+          <h2>DEJÁ DE ORDENAR<br /><em>CARPETAS.</em></h2>
+          <p>Descargá Kindyr y prepará Minecraft desde un launcher diseñado para mantener todo en su lugar.</p>
           <div class="download-actions">
-            <a class="button button-light" href={releasesURL} target="_blank" rel="noreferrer">
-              VER RELEASES
-              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <a class="button button-light button-large" href={releasesURL} target="_blank" rel="noreferrer">
+              DESCARGAR KINDYR
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
             </a>
-            <a class="button button-dark" href={githubURL} target="_blank" rel="noreferrer">EXPLORAR EL CÓDIGO ↗</a>
+            <a class="button button-dark button-large" href={githubURL} target="_blank" rel="noreferrer">VER EL CÓDIGO ↗</a>
           </div>
-          <small>Proyecto independiente. La disponibilidad puede variar según la versión.</small>
+          <small>Proyecto independiente. No afiliado con Mojang Studios ni Microsoft.</small>
         </div>
       </section>
     </main>
@@ -385,9 +395,9 @@ const faqItems = [
         <img src="/kindyr-logo.png" alt="" width="46" height="46" loading="lazy" />
         <span class="brand-copy"><strong>KINDYR</strong><span>MINECRAFT LAUNCHER</span></span>
       </a>
-      <p>Hecho para jugar, no para configurar eternamente.</p>
-      <div class="footer-meta"><span>© <span data-year></span> KINDYR</span><a href={githubURL} target="_blank" rel="noreferrer">GITHUB ↗</a></div>
-      <p class="legal-note">Kindyr no es un servicio oficial de Minecraft y no está afiliado con Mojang Studios o Microsoft.</p>
+      <p>Tu Minecraft. Listo para jugar.</p>
+      <div class="footer-links"><a href={releasesURL} target="_blank" rel="noreferrer">DESCARGAR ↗</a><a href={githubURL} target="_blank" rel="noreferrer">GITHUB ↗</a></div>
+      <p class="legal-note">© <span data-year></span> Kindyr. Minecraft es una marca de Microsoft. Kindyr no es un producto oficial.</p>
     </footer>
   </div>
 
@@ -426,8 +436,7 @@ const faqItems = [
             observer.unobserve(entry.target);
           }
         });
-      }, { threshold: 0.12, rootMargin: '0px 0px -40px' });
-
+      }, { threshold: 0.1, rootMargin: '0px 0px -40px' });
       document.querySelectorAll('.reveal').forEach((element) => observer.observe(element));
     } else {
       document.querySelectorAll('.reveal').forEach((element) => element.classList.add('is-visible'));
