@@ -1,0 +1,330 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { content, routes, type Lang } from '../i18n/content';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = content[lang];
+
+const githubURL = 'https://github.com/iDontrixss/KindyrLauncher';
+const releasesURL = `${githubURL}/releases`;
+---
+
+<BaseLayout lang={lang} title={t.meta.title} description={t.meta.description}>
+  <div class="site-shell">
+    <header class="site-header" data-header>
+      <a class="brand" href="#inicio" aria-label={t.aria.brand}>
+        <img src="/kindyr-logo.png" alt="" width="52" height="52" />
+        <span class="brand-copy">
+          <strong>KINDYR</strong>
+          <span>MINECRAFT LAUNCHER</span>
+        </span>
+      </a>
+
+      <nav class="desktop-nav" aria-label={t.aria.mainNav}>
+        <a href="#funciones">{t.nav.funciones}</a>
+        <a href="#modrinth">{t.nav.contenido}</a>
+        <a href="#comparativa">{t.nav.comparativa}</a>
+        <a href="#preguntas">{t.nav.faq}</a>
+      </nav>
+
+      <div class="header-actions">
+        <div class="header-tools">
+          <div class="lang-switch" role="group" aria-label="Language">
+            <a href={routes.es} hreflang="es" aria-current={lang === 'es' ? 'true' : 'false'}>ES</a>
+            <a href={routes.en} hreflang="en" aria-current={lang === 'en' ? 'true' : 'false'}>EN</a>
+          </div>
+          <button class="icon-btn theme-toggle" type="button" aria-label={t.aria.themeToggle} aria-pressed="false" data-theme-toggle>
+            <svg class="icon-moon" aria-hidden="true" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+            <svg class="icon-sun" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+          </button>
+        </div>
+        <a class="header-github" href={githubURL} target="_blank" rel="noreferrer">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49v-1.91c-2.78.62-3.37-1.2-3.37-1.2-.45-1.19-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.55-1.14-4.55-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.34 9.34 0 0 1 12 6.93a9.4 9.4 0 0 1 2.5.34c1.9-1.33 2.74-1.05 2.74-1.05.55 1.42.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.79-4.56 5.04.36.32.68.94.68 1.9v2.82c0 .27.18.59.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z"/></svg>
+          <span>{t.nav.github}</span>
+        </a>
+        <a class="button button-small" href={releasesURL} target="_blank" rel="noreferrer">{t.nav.descargar}</a>
+        <button class="menu-toggle" type="button" aria-label={t.aria.openMenu} aria-expanded="false" data-menu-toggle>
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+
+      <nav class="mobile-nav" aria-label={t.aria.mobileNav} data-mobile-nav>
+        <a href="#funciones">{t.nav.funciones}</a>
+        <a href="#modrinth">{t.nav.contenido}</a>
+        <a href="#comparativa">{t.nav.comparativa}</a>
+        <a href="#preguntas">{t.nav.faq}</a>
+        <a href={releasesURL} target="_blank" rel="noreferrer">{t.nav.descargar} ↗</a>
+        <a href={githubURL} target="_blank" rel="noreferrer">GitHub ↗</a>
+      </nav>
+    </header>
+
+    <main id="contenido">
+      <section class="hero section-grid" id="inicio">
+        <div class="hero-copy reveal">
+          <div class="eyebrow"><span></span> {t.hero.eyebrow}</div>
+          <h1>
+            {t.hero.titleTop}<br />
+            <span>{t.hero.titleBottom}</span>
+          </h1>
+          <p class="hero-lead">{t.hero.lead}</p>
+          <div class="hero-actions">
+            <a class="button button-primary button-large" href={releasesURL} target="_blank" rel="noreferrer">
+              {t.hero.download}
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            </a>
+            <a class="text-link" href={githubURL} target="_blank" rel="noreferrer">{t.hero.github} <span>↗</span></a>
+          </div>
+          <div class="hero-meta" aria-label={t.aria.features}>
+            <span><i></i> {t.hero.meta[0]}</span>
+            <span><i></i> {t.hero.meta[1]}</span>
+            <span><i></i> {t.hero.meta[2]}</span>
+          </div>
+        </div>
+
+        <div class="hero-product reveal reveal-delay" aria-label={t.aria.heroProduct}>
+          <div class="app-window has-shot">
+            <img class="launcher-shot" src="/screenshot-inicio.png" width="2048" height="1152" alt={t.hero.imgAlt} />
+          </div>
+          <span class="floating-tag floating-tag-loader">FABRIC · 1.21.4</span>
+          <span class="floating-tag floating-tag-ready"><i></i> {t.hero.tagReady}</span>
+          <div class="product-sticker">{t.hero.stickerTop}<br /><strong>{t.hero.stickerBottom}</strong></div>
+        </div>
+      </section>
+
+      <div class="compatibility-strip" aria-label={t.aria.compat}>
+        <div class="compatibility-track">
+          <span>VANILLA</span><i></i><span>FABRIC</span><i></i><span>FORGE</span><i></i><span>NEOFORGE</span><i></i><span>QUILT</span><i></i><span>MODRINTH</span><i></i><span>.MRPACK</span><i></i>
+          <span aria-hidden="true">VANILLA</span><i aria-hidden="true"></i><span aria-hidden="true">FABRIC</span><i aria-hidden="true"></i><span aria-hidden="true">FORGE</span><i aria-hidden="true"></i><span aria-hidden="true">NEOFORGE</span><i aria-hidden="true"></i><span aria-hidden="true">QUILT</span><i aria-hidden="true"></i><span aria-hidden="true">MODRINTH</span><i aria-hidden="true"></i><span aria-hidden="true">.MRPACK</span><i aria-hidden="true"></i>
+        </div>
+      </div>
+
+      <section class="benefits" id="funciones">
+        <div class="section-heading section-grid reveal">
+          <div class="section-kicker"><span>01</span> {t.benefitsSection.kicker}</div>
+          <h2>{t.benefitsSection.titleTop}<br /><em>{t.benefitsSection.titleBottom}</em></h2>
+          <p>{t.benefitsSection.text}</p>
+        </div>
+
+        <div class="benefit-grid section-grid">
+          {t.benefits.map((benefit) => (
+            <article class={`${benefit.className} reveal`}>
+              <div class="benefit-top">
+                <span>{benefit.number}</span>
+                <b>{benefit.tag}</b>
+              </div>
+              <div class="benefit-icon">
+                {benefit.icon === 'layers' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>}
+                {benefit.icon === 'compass' && <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></svg>}
+                {benefit.icon === 'package' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/></svg>}
+                {benefit.icon === 'user' && <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>}
+                {benefit.icon === 'code' && <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m8 5-5 7 5 7M16 5l5 7-5 7M14 3l-4 18"/></svg>}
+              </div>
+              <div class="benefit-copy">
+                <h3>{benefit.title}</h3>
+                <p>{benefit.text}</p>
+              </div>
+              {benefit.icon === 'layers' && (
+                <div class="benefit-instance-stack" aria-hidden="true">
+                  {t.benefitStack.map((item) => (
+                    <div><b>{item.strong.charAt(0)}</b><span><strong>{item.strong}</strong><small>{item.small}</small></span><i></i></div>
+                  ))}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section class="showcase showcase-discover section-grid" id="modrinth">
+        <div class="showcase-copy reveal">
+          <div class="section-kicker"><span>02</span> {t.discover.kicker}</div>
+          <h2>{t.discover.titleTop}<br /><em>{t.discover.titleBottom}</em></h2>
+          <p>{t.discover.text}</p>
+          <ul class="feature-points">
+            {t.discover.points.map((point) => (
+              <li><i>✓</i><span><strong>{point.strong}</strong>{point.text}</span></li>
+            ))}
+          </ul>
+        </div>
+
+        <div class="discover-window has-shot reveal reveal-delay" aria-label={t.aria.discover}>
+          <img class="launcher-shot" src="/screenshot-descubrir.png" width="2048" height="1152" alt={t.discover.imgAlt} />
+        </div>
+      </section>
+
+      <section class="showcase showcase-instances section-grid">
+        <div class="instance-manager has-shot reveal" aria-label={t.aria.instance}>
+          <img class="launcher-shot" src="/screenshot-instancia.png" width="2048" height="1152" alt={t.instances.imgAlt} />
+        </div>
+
+        <div class="showcase-copy reveal">
+          <div class="section-kicker"><span>03</span> {t.instances.kicker}</div>
+          <h2>{t.instances.titleTop}<br /><em>{t.instances.titleBottom}</em></h2>
+          <p>{t.instances.text}</p>
+          <div class="big-statements">
+            {t.instances.statements.map((statement) => (
+              <article><strong>{statement.title}</strong><span>{statement.text}</span></article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section class="why-kindyr" id="comparativa">
+        <div class="why-inner section-grid">
+          <div class="why-heading reveal">
+            <div class="section-kicker"><span>04</span> {t.why.kicker}</div>
+            <h2>{t.why.titleTop}<br /><em>{t.why.titleBottom}</em></h2>
+            <p>{t.why.text}</p>
+          </div>
+
+          <div class="comparison-table reveal" role="table" aria-label={t.aria.comparison}>
+            <div class="comparison-head" role="row">
+              <span role="columnheader">{t.why.head[0]}</span>
+              <strong role="columnheader">{t.why.head[1]}</strong>
+              <span role="columnheader">{t.why.head[2]}</span>
+            </div>
+            {t.why.rows.map((row) => (
+              <div class="comparison-row" role="row">
+                <span role="cell">{row[0]}</span>
+                <strong role="cell"><i>✓</i>{row[1]}</strong>
+                <span role="cell">{row[2]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section class="values section-grid">
+        <article class="value-card value-open reveal">
+          <span>{t.values[0].label}</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m8 5-5 7 5 7M16 5l5 7-5 7M14 3l-4 18"/></svg>
+          <h3>{t.values[0].titleTop}<br />{t.values[0].titleBottom}</h3>
+          <p>{t.values[0].text}</p>
+          <a href={githubURL} target="_blank" rel="noreferrer">{t.values[0].link}</a>
+        </article>
+        <article class="value-card value-clean reveal">
+          <span>{t.values[1].label}</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>
+          <h3>{t.values[1].titleTop}<br />{t.values[1].titleBottom}</h3>
+          <p>{t.values[1].text}</p>
+        </article>
+        <article class="value-card value-platform reveal">
+          <span>{t.values[2].label}</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16v11H4zM8 20h8M12 16v4"/></svg>
+          <h3>{t.values[2].titleTop}<br />{t.values[2].titleBottom}</h3>
+          <p>{t.values[2].text}</p>
+        </article>
+      </section>
+
+      <section class="faq section-grid" id="preguntas">
+        <div class="faq-heading reveal">
+          <div class="section-kicker"><span>05</span> {t.faqSection.kicker}</div>
+          <h2>{t.faqSection.titleTop}<br /><em>{t.faqSection.titleBottom}</em></h2>
+        </div>
+        <div class="faq-list">
+          {t.faq.map((item, index) => (
+            <details class="faq-item reveal">
+              <summary><span>{String(index + 1).padStart(2, '0')}</span>{item.question}<i>+</i></summary>
+              <p>{item.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section class="download" id="descargar">
+        <div class="download-grid" aria-hidden="true"></div>
+        <div class="download-logo reveal">
+          <img src="/kindyr-logo.png" alt="" width="240" height="240" loading="lazy" />
+          <span>{t.download.badge}</span>
+        </div>
+        <div class="download-copy reveal">
+          <div class="eyebrow"><span></span> {t.download.eyebrow}</div>
+          <h2>{t.download.titleTop}<br /><em>{t.download.titleBottom}</em></h2>
+          <p>{t.download.text}</p>
+          <div class="download-actions">
+            <a class="button button-light button-large" href={releasesURL} target="_blank" rel="noreferrer">
+              {t.download.download}
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            </a>
+            <a class="button button-dark button-large" href={githubURL} target="_blank" rel="noreferrer">{t.download.code}</a>
+          </div>
+          <small>{t.download.small}</small>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a class="brand footer-brand" href="#inicio">
+        <img src="/kindyr-logo.png" alt="" width="46" height="46" loading="lazy" />
+        <span class="brand-copy"><strong>KINDYR</strong><span>MINECRAFT LAUNCHER</span></span>
+      </a>
+      <p>{t.footer.tagline}</p>
+      <div class="footer-links"><a href={releasesURL} target="_blank" rel="noreferrer">{t.footer.download}</a><a href={githubURL} target="_blank" rel="noreferrer">{t.footer.github}</a></div>
+      <p class="legal-note">© <span data-year></span> {t.footer.legal}</p>
+    </footer>
+  </div>
+
+  <script>
+    const menuToggle = document.querySelector('[data-menu-toggle]');
+    const mobileNav = document.querySelector('[data-mobile-nav]');
+    const header = document.querySelector('[data-header]');
+
+    const closeMenu = () => {
+      menuToggle?.setAttribute('aria-expanded', 'false');
+      mobileNav?.classList.remove('is-open');
+    };
+
+    menuToggle?.addEventListener('click', () => {
+      const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
+      menuToggle.setAttribute('aria-expanded', String(!isOpen));
+      mobileNav?.classList.toggle('is-open', !isOpen);
+    });
+
+    mobileNav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+
+    const themeToggle = document.querySelector('[data-theme-toggle]');
+    const syncThemeButton = () => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      themeToggle?.setAttribute('aria-pressed', String(isLight));
+    };
+    syncThemeButton();
+    themeToggle?.addEventListener('click', () => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      const next = isLight ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      try {
+        localStorage.setItem('kindyr-theme', next);
+      } catch (error) {
+        /* ignore storage errors */
+      }
+      syncThemeButton();
+    });
+
+    const syncHeader = () => header?.classList.toggle('is-scrolled', window.scrollY > 24);
+    syncHeader();
+    window.addEventListener('scroll', syncHeader, { passive: true });
+
+    document.querySelectorAll('[data-year]').forEach((node) => {
+      node.textContent = String(new Date().getFullYear());
+    });
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduceMotion && 'IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -40px' });
+      document.querySelectorAll('.reveal').forEach((element) => observer.observe(element));
+    } else {
+      document.querySelectorAll('.reveal').forEach((element) => element.classList.add('is-visible'));
+    }
+  </script>
+</BaseLayout>
