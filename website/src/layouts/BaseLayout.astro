@@ -1,14 +1,21 @@
 ---
 import '../styles/global.css';
+import { content, routes, defaultLang, type Lang } from '../i18n/content';
 
 interface Props {
   title: string;
   description: string;
+  lang?: Lang;
 }
 
-const { title, description } = Astro.props;
+const { title, description, lang = defaultLang } = Astro.props;
+const t = content[lang];
 const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://kindyrlauncher.pages.dev');
 const socialImage = new URL('/og-cover.svg', canonicalURL);
+const alternates = (Object.keys(routes) as Lang[]).map((code) => ({
+  code,
+  href: new URL(routes[code], Astro.site ?? 'https://kindyrlauncher.pages.dev').toString(),
+}));
 const structuredData = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
@@ -20,13 +27,7 @@ const structuredData = {
   url: canonicalURL.toString(),
   downloadUrl: 'https://github.com/iDontrixss/KindyrLauncher/releases',
   codeRepository: 'https://github.com/iDontrixss/KindyrLauncher',
-  featureList: [
-    'Gestión de instancias de Minecraft',
-    'Integración con Modrinth',
-    'Importación de paquetes .mrpack',
-    'Compatibilidad con múltiples loaders',
-    'Gestión de cuentas Microsoft',
-  ],
+  featureList: t.featureList,
   author: {
     '@type': 'Person',
     name: 'iDontrixss',
@@ -36,18 +37,33 @@ const structuredData = {
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang={t.htmlLang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#061840" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#061840" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#e9eff9" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="light dark" />
+    <script is:inline>
+      (function () {
+        try {
+          var stored = localStorage.getItem('kindyr-theme');
+          var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (error) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+        document.documentElement.classList.add('js');
+      })();
+    </script>
     <meta name="description" content={description} />
     <meta name="keywords" content="Kindyr, launcher de Minecraft, Minecraft launcher, Modrinth, modpacks, Forge, Fabric, NeoForge, Quilt, open source" />
     <meta name="author" content="iDontrixss" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="generator" content={Astro.generator} />
     <link rel="canonical" href={canonicalURL} />
+    {alternates.map((alt) => <link rel="alternate" hreflang={alt.code} href={alt.href} />)}
+    <link rel="alternate" hreflang="x-default" href={alternates[0].href} />
     <link rel="icon" type="image/png" href="/kindyr-favicon.png?v=3" sizes="500x500" />
     <link rel="apple-touch-icon" href="/kindyr-favicon.png?v=3" />
     <link rel="preload" href="/kindyr-logo.png" as="image" />
@@ -58,7 +74,7 @@ const structuredData = {
       rel="stylesheet"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:locale" content="es_UY" />
+    <meta property="og:locale" content={t.ogLocale} />
     <meta property="og:site_name" content="Kindyr" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -66,17 +82,16 @@ const structuredData = {
     <meta property="og:image" content={socialImage} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Kindyr, el launcher de Minecraft para jugar a tu manera" />
+    <meta property="og:image:alt" content="Kindyr" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImage} />
     <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
-    <script is:inline>document.documentElement.classList.add('js');</script>
     <title>{title}</title>
   </head>
   <body>
-    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+    <a class="skip-link" href="#contenido">{t.skip}</a>
     <slot />
   </body>
 </html>
