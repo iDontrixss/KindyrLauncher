@@ -1,10 +1,16 @@
 /*
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; style-src 'self'; font-src 'self'; script-src 'self' 'sha256-/knxtvXtWKbee+KgfZEEQIoEfIlbTMqHC5vp8HdcYXc=' 'sha256-1SeSv9G6FinrfZ4ra7hSm1/nyEcdEwcH3QZQX4xdaFc='; connect-src 'self'; manifest-src 'self'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
+  Cross-Origin-Opener-Policy: same-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
 
 /kindyr-logo.png
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
   Cache-Control: public, max-age=31536000, immutable
 
 /kindyr-favicon.png
