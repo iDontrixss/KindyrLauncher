@@ -17,7 +17,7 @@ const releasesURL = `${githubURL}/releases`;
   <div class="site-shell">
     <header class="site-header" data-header>
       <a class="brand" href="#inicio" aria-label={t.aria.brand}>
-        <img src="/kindyr-logo.png" alt="" width="52" height="52" />
+        <img src="/kindyr-logo.webp" alt="" width="52" height="52" />
         <span class="brand-copy">
           <strong>KINDYR</strong>
           <span>MINECRAFT LAUNCHER</span>
@@ -87,7 +87,7 @@ const releasesURL = `${githubURL}/releases`;
 
         <div class="hero-product reveal reveal-delay" aria-label={t.aria.heroProduct}>
           <div class="app-window has-shot">
-            <img class="launcher-shot" src="/screenshot-inicio.png" width="2048" height="1152" alt={t.hero.imgAlt} />
+            <img class="launcher-shot" src="/screenshot-inicio.webp" width="2048" height="1152" fetchpriority="high" decoding="async" alt={t.hero.imgAlt} />
           </div>
           <span class="floating-tag floating-tag-loader">FABRIC · 1.21.4</span>
           <span class="floating-tag floating-tag-ready"><i></i> {t.hero.tagReady}</span>
@@ -152,13 +152,13 @@ const releasesURL = `${githubURL}/releases`;
         </div>
 
         <div class="discover-window has-shot reveal reveal-delay" aria-label={t.aria.discover}>
-          <img class="launcher-shot" src="/screenshot-descubrir.png" width="2048" height="1152" alt={t.discover.imgAlt} />
+          <img class="launcher-shot" src="/screenshot-descubrir.webp" width="2048" height="1152" loading="lazy" decoding="async" alt={t.discover.imgAlt} />
         </div>
       </section>
 
       <section class="showcase showcase-instances section-grid">
         <div class="instance-manager has-shot reveal" aria-label={t.aria.instance}>
-          <img class="launcher-shot" src="/screenshot-instancia.png" width="2048" height="1152" alt={t.instances.imgAlt} />
+          <img class="launcher-shot" src="/screenshot-instancia.webp" width="2048" height="1152" loading="lazy" decoding="async" alt={t.instances.imgAlt} />
         </div>
 
         <div class="showcase-copy reveal">
@@ -238,7 +238,7 @@ const releasesURL = `${githubURL}/releases`;
       <section class="download" id="descargar">
         <div class="download-grid" aria-hidden="true"></div>
         <div class="download-logo reveal">
-          <img src="/kindyr-logo.png" alt="" width="240" height="240" loading="lazy" />
+          <img src="/kindyr-logo.webp" alt="" width="240" height="240" loading="lazy" />
           <span>{t.download.badge}</span>
         </div>
         <div class="download-copy reveal">
@@ -259,7 +259,7 @@ const releasesURL = `${githubURL}/releases`;
 
     <footer class="site-footer">
       <a class="brand footer-brand" href="#inicio">
-        <img src="/kindyr-logo.png" alt="" width="46" height="46" loading="lazy" />
+        <img src="/kindyr-logo.webp" alt="" width="46" height="46" loading="lazy" />
         <span class="brand-copy"><strong>KINDYR</strong><span>MINECRAFT LAUNCHER</span></span>
       </a>
       <p>{t.footer.tagline}</p>
