@@ -1,4 +1,4 @@
-// Account management (Microsoft + offline)
+
 
 let confirmCallback = null
 
@@ -27,7 +27,7 @@ async function loginMicrosoft() {
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + escapeHtml(t('account.ms.opening'))
   statusEl.textContent = t('account.ms.waiting')
 
-  const result = await window.zotlinAPI.microsoft.login()
+  const result = await window.kindyrAPI.microsoft.login()
 
   btn.disabled = false
   btn.innerHTML = '<i class="fa-brands fa-microsoft"></i> ' + escapeHtml(t('account.ms.login'))
@@ -42,7 +42,7 @@ async function loginMicrosoft() {
 }
 
 async function loadMicrosoftAccounts() {
-  const result = await window.zotlinAPI.microsoft.list()
+  const result = await window.kindyrAPI.microsoft.list()
   if (!result.ok) return
   const list = document.getElementById('ms-account-list')
   if (!list) return
@@ -51,7 +51,7 @@ async function loadMicrosoftAccounts() {
   const activeAccountId = result.accounts?.find(a => a.active)?.id
   const msHtml = msAccounts.map(account => `
     <div class="account-item ${account.id === activeAccountId ? 'active microsoft' : ''}" onclick="setActiveMicrosoftAccount('${account.id}')">
-      <div class="avatar" style="background:#1a2f4a;color:#2F6FD4;">
+      <div class="avatar">
         <i class="fa-brands fa-microsoft"></i>
       </div>
       <div class="account-meta">
@@ -68,8 +68,8 @@ async function loadMicrosoftAccounts() {
 }
 
 async function setActiveMicrosoftAccount(accountId) {
-  await window.zotlinAPI.microsoft.setActive(accountId)
-  const result = await window.zotlinAPI.microsoft.list()
+  await window.kindyrAPI.microsoft.setActive(accountId)
+  const result = await window.kindyrAPI.microsoft.list()
   const active = result.accounts?.find(a => a.id === accountId)
   if (active) {
     applyActiveAccount(active.name, 'microsoft')
@@ -82,7 +82,7 @@ async function setActiveMicrosoftAccount(accountId) {
 async function logoutMicrosoft(event, accountId) {
   event.stopPropagation()
   showConfirm(t('confirm.logout.ms'), async () => {
-    await window.zotlinAPI.microsoft.logout(accountId)
+    await window.kindyrAPI.microsoft.logout(accountId)
     await loadMicrosoftAccounts()
   })
 }

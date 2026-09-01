@@ -1,0 +1,36 @@
+{
+  "status": "complete",
+  "classification": {
+    "primary": "B",
+    "secondary": ["C", "D"],
+    "meaning": "One-time cached view loading; transient V8 collection; native Chromium/resource contribution to retained PSS."
+  },
+  "raw_snapshots": {
+    "capture_directory": "/tmp/kindyr-phase-4-1-final",
+    "versioned": false,
+    "removed_after_documentation": true
+  },
+  "points": {
+    "A_idle_60s": { "snapshot_bytes": 4009183, "sha256": "1c23a42778f79e3f5f936607f140996a0b7060c4d7d3e380aef25c6947ee80db", "total_pss_kib": 282509, "renderer_pss_kib": 79404, "renderer_private_dirty_kib": 24588, "heap_used_bytes": 1577160, "dom_nodes": 1210, "listeners": 91 },
+    "B_cycle_1": { "snapshot_bytes": 5991849, "sha256": "869822281c698712b9c365ae654ea76b2037e12388c81d7c19b2cdda96d97d26", "total_pss_kib": 313994, "renderer_pss_kib": 97841, "renderer_private_dirty_kib": 37528, "heap_used_bytes": 2017016, "dom_nodes": 3938, "listeners": 348 },
+    "C_cycle_4": { "snapshot_bytes": 5889736, "sha256": "266365781b05dfa4273cb2c924cde3c0c22feb487c461acc39509d385ec48fb6", "total_pss_kib": 336779, "renderer_pss_kib": 119299, "renderer_private_dirty_kib": 59088, "heap_used_bytes": 3202072, "dom_nodes": 5623, "listeners": 427 },
+    "D_recovery_60s": { "snapshot_bytes": 5889596, "sha256": "b96719e816078a133276a891f7431d179408c3c223b6e5574780f0ed47d8a33e", "total_pss_kib": 318310, "renderer_pss_kib": 100838, "renderer_private_dirty_kib": 40628, "heap_used_bytes": 1869948, "dom_nodes": 3938, "listeners": 348 },
+    "E_diagnostic_gc": { "snapshot_bytes": 5889596, "sha256": "54b1978390529f4d00857862c1149ea7cfca9b470e51e6fbe088db72c7dc2dfc", "total_pss_kib": 322302, "renderer_pss_kib": 102114, "renderer_private_dirty_kib": 41904, "heap_used_bytes": 1869948, "dom_nodes": 3938, "listeners": 348 }
+  },
+  "object_deltas": {
+    "A_to_B": { "Text": { "count": 1170, "shallow_bytes": 93520 }, "ShadowRoot": { "count": 140, "shallow_bytes": 23520 }, "EventListener": { "count": 264, "shallow_bytes": 19216 }, "Array": { "count": 293, "shallow_bytes": 4688 }, "ArrayBuffer": { "count": 7, "shallow_bytes": 364 }, "Map": { "count": 2, "shallow_bytes": 32 } },
+    "B_to_C": { "Text": { "count": 0, "shallow_bytes": 96 } },
+    "C_to_D": {},
+    "D_to_E": {},
+    "A_to_E": { "Text": { "count": 1170, "shallow_bytes": 93616 }, "ShadowRoot": { "count": 140, "shallow_bytes": 23520 }, "EventListener": { "count": 264, "shallow_bytes": 19216 }, "Array": { "count": 293, "shallow_bytes": 4688 }, "ArrayBuffer": { "count": 7, "shallow_bytes": 364 }, "Map": { "count": 2, "shallow_bytes": 32 } }
+  },
+  "listener_audit": {
+    "cdp_listener_count": 345,
+    "native_snapshot_count_after_navigation": 348,
+    "largest_group": { "type": "click", "source": "common.js:965", "count": 133, "purpose": "one listener per dynamically generated custom-select option button" },
+    "other_custom_select_groups": [{ "type": "click", "source": "common.js:1022", "count": 7 }, { "type": "change", "source": "common.js:1040", "count": 7 }],
+    "detached_kindyr_dom_found": false,
+    "heap_retainer_sample": "native:InternalNode --t:--> EventListener"
+  },
+  "interpretation": "The retained delta appears once when the five cached views load. It does not grow from B to C and remains identical after D/E; the C runtime spike returns during idle before explicit GC."
+}

@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --include=dev
+      - run: npm run check:syntax
+      - run: npm test
+      - run: npm audit --omit=dev
+      - run: npm ls --include=dev
+
+  package-linux:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --include=dev
+      - run: npm run build:linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kindyr-linux
+          path: dist/*.AppImage
+          if-no-files-found: error
+
+  package-windows:
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --include=dev
+      - run: npm run build:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kindyr-windows
+          path: dist/*.exe
+          if-no-files-found: error

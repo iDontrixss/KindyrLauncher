@@ -1,28 +1,89 @@
 <div class="home-intro">
-  <div class="page-title" data-i18n="home.title">Inicio</div>
-  <div class="page-subtitle" data-i18n="home.subtitle">Elegí una instalación reciente para gestionarla, instalar mods y jugar.</div>
+  <div>
+    <div class="page-title" data-i18n="home.title">Inicio</div>
+    <div class="page-subtitle" data-i18n="home.subtitle">Elegí una instalación reciente para gestionarla, instalar mods y jugar.</div>
+  </div>
+  <div class="hero-actions">
+    <button type="button" class="secondary-btn" onclick="loadSection('instances', document.getElementById('nav-instances'))">
+      <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+      <span data-i18n="home.allInstances">Ver todas</span>
+    </button>
+    <button type="button" class="primary-btn" onclick="openCreateInstanceModal()">
+      <i class="fa-solid fa-plus" aria-hidden="true"></i>
+      <span data-i18n="instances.add">Nueva</span>
+    </button>
+  </div>
 </div>
-<button type="button" class="optimized-install-card" id="keo-optimized-card" onclick="openKeoOptimizedInstall()" aria-label="Crear instalación optimizada" data-i18n-aria-label="home.optimized.title">
-  <div class="optimized-install-icon" id="keo-optimized-icon">
-    <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+
+<div class="bento-grid">
+  <div class="bento-cell bento-feature span-8">
+    <button type="button" class="optimized-install-card" id="keo-optimized-card" onclick="openKeoOptimizedInstall()" aria-label="Crear instalación optimizada" data-i18n-aria-label="home.optimized.title">
+      <div class="optimized-install-content">
+        <div class="optimized-install-icon" id="keo-optimized-icon">
+          <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+        </div>
+        <div class="optimized-install-main">
+          <div class="bento-label" data-i18n="home.recommended">Recomendado</div>
+          <div class="optimized-install-title-row">
+            <strong id="keo-optimized-title" data-i18n="home.optimized.title">Crear instalación optimizada</strong>
+            <span class="optimized-install-chip" id="keo-optimized-loader">Modpack</span>
+          </div>
+          <div class="optimized-install-meta" id="keo-optimized-meta" data-i18n="home.optimized.loading">Keo Optimized · cargando desde Modrinth...</div>
+          <div class="optimized-install-desc" id="keo-optimized-desc" data-i18n="home.optimized.fallbackDesc">Pack de optimización para mejorar FPS y mantener una experiencia vanilla.</div>
+        </div>
+      </div>
+      <div class="optimized-install-footer">
+        <span class="bento-mini-stat"><i class="fa-solid fa-cube" aria-hidden="true"></i><span id="keo-optimized-version">...</span></span>
+        <span class="optimized-install-arrow"><span data-i18n="discover.install">Instalar</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span>
+      </div>
+    </button>
   </div>
-  <div class="optimized-install-main">
-    <div class="optimized-install-title-row">
-      <strong id="keo-optimized-title" data-i18n="home.optimized.title">Crear instalación optimizada</strong>
-      <span class="optimized-install-chip" id="keo-optimized-loader">Modpack</span>
-      <span class="optimized-install-chip" id="keo-optimized-version">...</span>
+
+  <div class="bento-cell span-4">
+    <div class="bento-label" data-i18n="home.status">Estado</div>
+    <div class="bento-big-num" id="home-instance-count">0<span>instancias</span></div>
+    <div class="bento-desc" id="home-account-status">Cuenta: offline</div>
+    <div class="bento-mini-stats">
+      <span class="bento-mini-stat is-ready"><i class="fa-solid fa-circle" aria-hidden="true"></i><span data-i18n="home.ready">Listo</span></span>
+      <span class="bento-mini-stat"><i class="fa-solid fa-cube" aria-hidden="true"></i><span id="home-selected-version">Minecraft</span></span>
     </div>
-    <div class="optimized-install-meta" id="keo-optimized-meta" data-i18n="home.optimized.loading">Keo Optimized · cargando desde Modrinth...</div>
-    <div class="optimized-install-desc" id="keo-optimized-desc" data-i18n="home.optimized.fallbackDesc">Pack de optimización para mejorar FPS y mantener una experiencia vanilla.</div>
   </div>
-  <i class="fa-solid fa-chevron-right optimized-install-arrow" aria-hidden="true"></i>
-</button>
-<div class="section-label" data-i18n="home.recent">Instancias recientes</div>
-<div class="versions-grid" id="recent-instances-grid"></div>
-<div class="home-footer-link">
-  <button type="button" class="secondary-btn" onclick="showView('instances', document.getElementById('nav-instances'))">
-    <i class="fa-solid fa-layer-group" aria-hidden="true"></i> <span data-i18n="home.allInstances">Ver todas las instancias</span>
-  </button>
+
+  <div class="bento-cell span-12">
+    <div class="bento-label" data-i18n="home.quickActions">Acciones rápidas</div>
+    <div class="quick-actions">
+      <button type="button" class="quick-action" onclick="openCreateInstanceModal()">
+        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        <span><strong data-i18n="home.action.new">Nueva instancia</strong><small data-i18n="home.action.new.desc">Crea un perfil desde cero</small></span>
+      </button>
+      <button type="button" class="quick-action" onclick="openDiscoverSection(document.getElementById('nav-discover'))">
+        <i class="fa-solid fa-compass" aria-hidden="true"></i>
+        <span><strong data-i18n="home.action.discover">Explorar contenido</strong><small data-i18n="home.action.discover.desc">Busca mods y modpacks</small></span>
+      </button>
+      <button type="button" class="quick-action" onclick="loadSection('skins', document.getElementById('nav-skins'))">
+        <i class="fa-solid fa-shirt" aria-hidden="true"></i>
+        <span><strong data-i18n="home.action.skins">Cambiar skin</strong><small data-i18n="home.action.skins.desc">Gestiona tu apariencia</small></span>
+      </button>
+      <button type="button" class="quick-action" onclick="importMrpack()">
+        <i class="fa-solid fa-file-import" aria-hidden="true"></i>
+        <span><strong data-i18n="instances.import">Importar modpack</strong><small data-i18n="home.action.import.desc">Desde un archivo .mrpack</small></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="bento-cell span-12 recent-bento">
+    <div class="bento-heading-row">
+      <div>
+        <div class="bento-label" data-i18n="home.recentLabel">Recientes</div>
+        <div class="bento-title" data-i18n="home.recent">Instancias recientes</div>
+      </div>
+      <button type="button" class="secondary-btn" onclick="loadSection('instances', document.getElementById('nav-instances'))">
+        <span data-i18n="home.allInstances">Ver todas</span>
+        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="versions-grid" id="recent-instances-grid"></div>
+  </div>
 </div>
 
 <script>
@@ -33,17 +94,30 @@ var keoOptimizedLoading = false
 
 function formatRecentCardTitle(name) {
   const clean = String(name || '').trim()
-  if (clean.length <= 20) return clean
-  return clean.slice(0, 18) + '…'
+  if (clean.length <= 22) return clean
+  return clean.slice(0, 20) + '…'
+}
+
+function updateHomeStats() {
+  const count = document.getElementById('home-instance-count')
+  const account = document.getElementById('home-account-status')
+  const version = document.getElementById('home-selected-version')
+  const total = Array.isArray(launcherInstances) ? launcherInstances.length : 0
+  if (count) count.innerHTML = total + '<span>' + t(total === 1 ? 'home.instanceUnit' : 'home.instancesUnit') + '</span>'
+  if (account) account.textContent = t('home.accountStatus', { name: document.getElementById('username')?.textContent || 'offline' })
+  if (version) version.textContent = selectedVersion || 'Minecraft'
 }
 
 function renderRecentInstances() {
   const grid = document.getElementById('recent-instances-grid')
   if (!grid) return
 
+  const instancesById = new Map(launcherInstances.map(instance => [instance.id, instance]))
   const instances = loadRecentInstanceIds()
-    .map(id => launcherInstances.find(instance => instance.id === id))
+    .map(id => instancesById.get(id))
     .filter(Boolean)
+
+  updateHomeStats()
 
   if (!instances.length) {
     grid.innerHTML = '<div class="recent-empty">' + escapeHtml(t('home.empty')) + '</div>'
@@ -51,11 +125,13 @@ function renderRecentInstances() {
   }
 
   grid.innerHTML = instances.map(instance => {
-    const selected = instance.id === selectedInstance
     const loaderLabel = instance.loader || 'vanilla'
-    return '<div class="ver-card' + (selected ? ' selected' : '') + '" data-instance="' + escapeHtml(instance.id) + '" data-version="' + escapeHtml(instance.version) + '" onclick="selectRecentInstance(this)">' +
-      '<div class="ver-num">' + escapeHtml(formatRecentCardTitle(instance.name)) + '</div>' +
-      '<div class="ver-type">' + escapeHtml(loaderLabel + ' · ' + instance.version) + '</div>' +
+    const initial = String(instance.name || 'M').charAt(0).toUpperCase()
+    return '<div class="ver-card" data-instance="' + escapeHtml(instance.id) + '" data-version="' + escapeHtml(instance.version) + '" onclick="selectRecentInstance(this)">' +
+      '<div class="ver-card-icon">' + escapeHtml(initial) + '</div>' +
+      '<div class="ver-card-copy"><div class="ver-num">' + escapeHtml(formatRecentCardTitle(instance.name)) + '</div>' +
+      '<div class="ver-type">' + escapeHtml(loaderLabel + ' · ' + instance.version) + '</div></div>' +
+      '<i class="fa-solid fa-arrow-right ver-card-arrow" aria-hidden="true"></i>' +
     '</div>'
   }).join('')
 }
@@ -121,7 +197,7 @@ async function loadKeoOptimizedProject() {
   keoOptimizedLoading = true
   renderKeoOptimizedCard(null)
 
-  const result = await window.zotlinAPI?.modrinth?.search?.({
+  const result = await window.kindyrAPI?.modrinth?.search?.({
     query: KEO_OPTIMIZED_QUERY,
     type: 'modpack',
     sort: 'relevance',
@@ -155,7 +231,7 @@ async function openKeoOptimizedInstall() {
   openInstallModal(keoOptimizedProject)
 }
 
-// Load recent instances when this section is shown
+
 if (typeof refreshLauncherInstances === 'function') {
   refreshLauncherInstances()
 }

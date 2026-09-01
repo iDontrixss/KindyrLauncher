@@ -1,6 +1,5 @@
-// Modrinth API integration (search, install, home discover)
 
-// Load home discover scripts dynamically
+
 function loadHomeDiscoverScripts() {
   const script = document.createElement('script')
   script.textContent = `
@@ -44,6 +43,20 @@ function loadHomeDiscoverScripts() {
       const categories = project.display_categories || project.categories || []
       if (categories.includes('datapack')) return 'datapack'
       return project.project_type || 'mod'
+    }
+
+    function getHomeProjectTypeLabel(type) {
+      const labels = {
+        mod: t('discover.type.modSingle'),
+        modpack: t('discover.type.modpackSingle'),
+        resourcepack: t('discover.type.resourcepackSingle'),
+        shader: t('discover.type.shaderSingle')
+      }
+      return labels[type] || type || t('discover.project')
+    }
+
+    function getHomeProjectUrl(project) {
+      return 'https://modrinth.com/' + encodeURIComponent(project.project_type || 'mod') + '/' + encodeURIComponent(project.slug)
     }
     
     function renderHomeDiscoverTabs() {
@@ -150,12 +163,11 @@ function loadHomeDiscoverScripts() {
             : '<i class="fa-solid fa-cube"></i>'
           const categories = (project.display_categories || project.categories || []).slice(0, 3)
           const tags = [
-            getProjectTypeLabel(project.project_type),
-            ...categories,
-            (project.latest_version ? project.latest_version : '')
+            getHomeProjectTypeLabel(project.project_type),
+            ...categories
           ].filter(Boolean).slice(0, 5)
           const encodedProject = escapeHtml(JSON.stringify(project))
-          const encodedUrl = escapeHtml(JSON.stringify(getProjectUrl(project)))
+          const encodedUrl = escapeHtml(JSON.stringify(getHomeProjectUrl(project)))
           wrapper.className = 'project-card'
           wrapper.innerHTML =
             '<div class="project-icon">' + icon + '</div>' +
@@ -176,7 +188,7 @@ function loadHomeDiscoverScripts() {
         }
         results.appendChild(frag)
         if (idx < projects.length) {
-          // yield to event loop so renderer can breathe
+
           setTimeout(renderChunk, 0)
         } else {
           renderHomeDiscoverPagination()
@@ -198,7 +210,7 @@ function loadHomeDiscoverScripts() {
       updateHomeDiscoverContext()
       renderHomeDiscoverMessage(t('home.loadingContent'))
 
-      const result = await window.zotlinAPI.modrinth.search({
+      const result = await window.kindyrAPI.modrinth.search({
         query,
         version: meta.version || selectedVersion,
         sort,
@@ -246,7 +258,7 @@ function loadHomeDiscoverScripts() {
       button.textContent = t('home.installing')
       setStatus(t('home.installingRelease', { title: project.title }))
 
-      const result = await window.zotlinAPI.modrinth.installLatestRelease({
+      const result = await window.kindyrAPI.modrinth.installLatestRelease({
         project,
         instanceId: selectedInstance
       })
@@ -269,7 +281,6 @@ function loadHomeDiscoverScripts() {
   document.head.appendChild(script)
 }
 
-// Install modal functions
 let installProject = null
 let installVersions = []
 let installVersionId = ''
@@ -302,6 +313,17 @@ function setInstallModalMode(isModpack) {
   const modpack = document.getElementById('install-modpack-view')
   if (standard) standard.style.display = isModpack ? 'none' : 'block'
   if (modpack) modpack.style.display = isModpack ? 'block' : 'none'
+}
+
+function setInstallNote(message) {
+  const note = document.getElementById('install-note')
+  if (!note) return
+  const icon = document.createElement('i')
+  icon.className = 'fa-solid fa-circle-info'
+  icon.setAttribute('aria-hidden', 'true')
+  const text = document.createElement('span')
+  text.textContent = String(message || '')
+  note.replaceChildren(icon, text)
 }
 
 function getCompatibleLoadersForVersion(version) {
@@ -361,8 +383,7 @@ function renderModpackVersions() {
   if (!list) return
   if (!installVersions.length) {
     list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.noModpackVersions')) + '</div>'
-    const note = document.getElementById('install-note')
-    if (note) note.textContent = t('install.noVersions')
+    setInstallNote(t('install.noVersions'))
     return
   }
 
@@ -374,8 +395,7 @@ function renderModpackVersions() {
       '<span>' + escapeHtml(version.version_type + ' · ' + loaders + ' · ' + gameVersions) + '</span>' +
     '</div>'
   }).join('')
-  const note = document.getElementById('install-note')
-  if (note) note.textContent = t('install.availableVersions', { count: installVersions.length })
+  setInstallNote(t('install.availableVersions', { count: installVersions.length }))
 }
 
 function selectModpackVersion(versionId) {
@@ -386,12 +406,11 @@ function selectModpackVersion(versionId) {
 
 async function loadModpackInstallVersions() {
   if (!installProject) return
-  const note = document.getElementById('install-note')
-  if (note) note.textContent = t('install.loadingModpackVersions')
+  setInstallNote(t('install.loadingModpackVersions'))
   const list = document.getElementById('install-modpack-version-list')
   if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.loadingVersions')) + '</div>'
 
-  const result = await window.zotlinAPI.modrinth.versions({
+  const result = await window.kindyrAPI.modrinth.versions({
     projectId: installProject.project_id || installProject.slug,
     loader: 'any'
   })
@@ -399,7 +418,7 @@ async function loadModpackInstallVersions() {
   if (!result.ok) {
     installVersions = []
     installVersionId = ''
-    if (note) note.textContent = result.error
+    setInstallNote(result.error)
     if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(result.error) + '</div>'
     return
   }
@@ -420,8 +439,24 @@ async function openInstallModal(project) {
   setInstallModalMode(isModpack)
   const title = document.getElementById('install-title')
   if (title) title.textContent = t('install.titleProject', { title: project.title })
-  const note = document.getElementById('install-note')
-  if (note) note.textContent = isModpack ? t('install.loadingModpackVersions') : t('install.searchingCompatible')
+  const projectIcon = document.getElementById('install-project-icon')
+  if (projectIcon) {
+    projectIcon.innerHTML = project.icon_url
+      ? '<img src="' + escapeHtml(project.icon_url) + '" alt="">'
+      : '<i class="fa-solid fa-box-open" aria-hidden="true"></i>'
+  }
+  const projectMeta = document.getElementById('install-project-meta')
+  if (projectMeta) {
+    const typeLabels = {
+      mod: t('discover.type.modSingle'),
+      modpack: t('discover.type.modpackSingle'),
+      resourcepack: t('discover.type.resourcepackSingle'),
+      shader: t('discover.type.shaderSingle')
+    }
+    const typeLabel = typeLabels[project.project_type] || t('discover.project')
+    projectMeta.textContent = typeLabel + (project.author ? ' · ' + project.author : '')
+  }
+  setInstallNote(isModpack ? t('install.loadingModpackVersions') : t('install.searchingCompatible'))
   await refreshLauncherInstances()
 
   if (isModpack) {
@@ -467,12 +502,11 @@ async function loadInstallVersions() {
   if (!installProject) return
   const gameVersion = document.getElementById('install-game-version').value.trim()
   const loader = document.getElementById('install-loader').value
-  const note = document.getElementById('install-note')
-  if (note) note.textContent = t('install.checkingCompatibility')
+  setInstallNote(t('install.checkingCompatibility'))
   const list = document.getElementById('install-version-list')
   if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.searchingCompatible')) + '</div>'
 
-  const result = await window.zotlinAPI.modrinth.versions({
+  const result = await window.kindyrAPI.modrinth.versions({
     projectId: installProject.project_id || installProject.slug,
     gameVersion,
     loader
@@ -481,7 +515,7 @@ async function loadInstallVersions() {
   if (!result.ok) {
     installVersions = []
     installVersionId = ''
-    if (note) note.textContent = result.error
+    setInstallNote(result.error)
     if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(result.error) + '</div>'
     return
   }
@@ -496,8 +530,7 @@ function renderInstallVersions() {
   if (!list) return
   if (!installVersions.length) {
     list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.noCompatible')) + '</div>'
-    const note = document.getElementById('install-note')
-    if (note) note.textContent = t('install.noCompatibleNote')
+    setInstallNote(t('install.noCompatibleNote'))
     return
   }
 
@@ -509,8 +542,7 @@ function renderInstallVersions() {
       '<span>' + escapeHtml(version.version_type + ' · ' + loaders + ' · ' + gameVersions) + '</span>' +
     '</div>'
   }).join('')
-  const note = document.getElementById('install-note')
-  if (note) note.textContent = t('install.compatibleFound', { count: installVersions.length })
+  setInstallNote(t('install.compatibleFound', { count: installVersions.length }))
 }
 
 function selectInstallVersion(versionId) {
@@ -532,10 +564,9 @@ async function installSelectedProject() {
   const btn = document.getElementById('install-confirm')
   btn.disabled = true
   btn.textContent = destination === 'downloads' ? t('install.downloading') : t('install.installing')
-  const note = document.getElementById('install-note')
-  if (note) note.textContent = t('install.working')
+  setInstallNote(t('install.working'))
 
-  const result = await window.zotlinAPI.modrinth.install({
+  const result = await window.kindyrAPI.modrinth.install({
     project: installProject,
     installKind: getInstallKind(installProject),
     versionId: installVersionId,
@@ -554,12 +585,12 @@ async function installSelectedProject() {
     updateInstallDestination()
   }
   if (!result.ok) {
-    if (note) note.textContent = result.error
+    setInstallNote(result.error)
     setStatus(result.error)
     return
   }
 
   await refreshLauncherInstances()
-  if (note) note.textContent = t('install.done', { path: result.path })
+  setInstallNote(t('install.done', { path: result.path }))
   setStatus(destination === 'downloads' ? t('install.downloaded') : t('install.installedLauncher'))
 }

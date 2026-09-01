@@ -1,28 +1,11 @@
-// Game launch and event handling
+
 
 let launchInProgress = false
 
-// Validate settings for launch
-function getValidatedSettings() {
+function getValidatedLaunchSettings() {
   try {
-    let minRam, maxRam
-    try {
-      minRam = parseRam(settings.minRam)
-    } catch (e) {
-      throw e
-    }
-
-    try {
-      maxRam = parseRam(settings.maxRam)
-    } catch (e) {
-      throw e
-    }
-
-    try {
-      const usernameValid = isValidUsername(settings.username)
-    } catch (e) {
-      throw e
-    }
+    const minRam = parseRam(settings.minRam)
+    const maxRam = parseRam(settings.maxRam)
 
     if (!isValidUsername(settings.username)) {
       return { ok: false, error: 'Nombre offline invalido: usa 3-16 letras, numeros o _' }
@@ -46,7 +29,7 @@ function getValidatedSettings() {
         theme: settings.theme,
         backgroundImage: settings.backgroundImage,
         javaArgs: settings.javaArgs || '',
-        maxConcurrentDownloads: settings.maxConcurrentDownloads || 6
+        maxConcurrentDownloads: Math.max(1, Math.min(Number(settings.maxConcurrentDownloads) || 6, 20))
       }
     }
   } catch (error) {
@@ -54,7 +37,6 @@ function getValidatedSettings() {
   }
 }
 
-// Game launch
 async function launchGame() {
   if (launchInProgress) {
     return
@@ -66,14 +48,16 @@ async function launchGame() {
     const btn = document.getElementById('play-btn')
     const status = document.getElementById('status')
     const log = document.getElementById('log')
-    const validated = getValidatedSettings()
+    if (!btn || !status || !log) throw new Error('La vista de lanzamiento no esta disponible.')
+
+    const validated = getValidatedLaunchSettings()
     if (!validated.ok) {
       setStatus(validated.error)
       log.textContent = validated.error
       return
     }
     settings = validated.settings
-    localStorage.setItem('zotlin-settings', JSON.stringify(settings))
+    localStorage.setItem('kindyr-settings', JSON.stringify(settings))
     recordRecentInstance(selectedInstance)
     btn.disabled = true
     btn.innerHTML = '<i class="fa-solid fa-stop"></i> Cancelar'
@@ -85,7 +69,7 @@ async function launchGame() {
     log.textContent = ''
     clearConsole()
     appendConsole('info', 'Iniciando ' + selectedInstance)
-    const result = await window.zotlinAPI.launcher.launch({
+    const result = await window.kindyrAPI.launcher.launch({
       instanceId: selectedInstance,
       username: settings.username,
       minRam: settings.minRam,
@@ -93,20 +77,39 @@ async function launchGame() {
       customArgs: settings.javaArgs
     })
     if (!result.ok) {
+      if (result.cancelled) {
+        status.textContent = t('app.ready')
+        log.textContent = result.error
+        appendConsole('info', result.error)
+        resetPlayBtn()
+        return
+      }
       status.textContent = t('app.launchError')
       log.textContent = result.error.slice(0, 90)
       appendConsole('error', result.error)
       resetPlayBtn()
     }
+  } catch (error) {
+    const message = error?.message || 'No se pudo iniciar Minecraft.'
+    const log = document.getElementById('log')
+    if (log) log.textContent = message.slice(0, 90)
+    setStatus(t('app.launchError'))
+    appendConsole('error', message)
+    resetPlayBtn()
   } finally {
     launchInProgress = false
   }
 }
 
 async function cancelGame() {
-  await window.zotlinAPI.launcher.kill()
-  resetPlayBtn()
-  setStatus(t('app.ready'))
+  try {
+    await window.kindyrAPI.launcher.kill()
+    setStatus(t('app.ready'))
+  } catch (error) {
+    setStatus(error?.message || t('app.launchError'))
+  } finally {
+    resetPlayBtn()
+  }
 }
 
 function resetPlayBtn() {
@@ -120,8 +123,7 @@ function resetPlayBtn() {
   }
 }
 
-// Launcher event handlers
-window.zotlinAPI.launcher.onStatus((event) => {
+window.kindyrAPI.launcher.onStatus((event) => {
   const btn = document.getElementById('play-btn')
   const status = document.getElementById('status')
   const log = document.getElementById('log')
@@ -164,8 +166,8 @@ window.zotlinAPI.launcher.onStatus((event) => {
   }
 })
 
-if (window.zotlinAPI?.settings?.onStatus) {
-  window.zotlinAPI.settings.onStatus((event) => {
+if (window.kindyrAPI?.settings?.onStatus) {
+  window.kindyrAPI.settings.onStatus((event) => {
     if (event.message) setStatus(event.message)
   })
 }

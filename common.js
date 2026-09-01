@@ -1,47 +1,12 @@
-// Common JavaScript functions shared across all sections
+
 
 let selectedVersion = '1.21.4'
 let selectedInstance = 'vanilla-1.21.4'
 const JAVA_MAJORS_UI = [25, 21, 17, 8]
 
-// Deduplicate global resize listeners to avoid accumulating handlers
-// when sections/scripts register window resize handlers repeatedly.
-;(function dedupeResizeListeners() {
-  if (typeof window === 'undefined') return
-  const origAdd = window.addEventListener.bind(window)
-  const origRemove = window.removeEventListener.bind(window)
-  const resizeSet = new WeakMap()
-
-  window.addEventListener = function (type, listener, options) {
-    try {
-      if (type === 'resize' && typeof listener === 'function') {
-        // Use a simple identity map to avoid adding the same function twice
-        if (!resizeSet.has(listener)) {
-          resizeSet.set(listener, true)
-        } else {
-          return
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-    return origAdd(type, listener, options)
-  }
-
-  window.removeEventListener = function (type, listener, options) {
-    try {
-      if (type === 'resize' && typeof listener === 'function' && resizeSet.has(listener)) {
-        resizeSet.delete(listener)
-      }
-    } catch (e) {
-      // ignore
-    }
-    return origRemove(type, listener, options)
-  }
-})()
-
 const I18N = {
   es: {
+    'settings.kicker': 'CENTRO DE CONTROL',
     'settings.title': 'Ajustes',
     'settings.subtitle': 'Personalizá el launcher y los valores predeterminados.',
     'settings.reset': 'Restaurar',
@@ -53,7 +18,11 @@ const I18N = {
     'settings.theme': 'Tema',
     'settings.theme.dark': 'Oscuro',
     'settings.theme.light': 'Claro',
-    'settings.theme.loryq': 'Loryq',
+    'settings.theme.kindyr': 'Kindyr',
+    'settings.theme.midnight': 'Midnight',
+    'settings.theme.navy': 'Navy',
+    'settings.theme.azure': 'Azure',
+    'settings.theme.steel': 'Steel',
     'settings.background': 'Fondo personalizado',
     'settings.background.desc': 'Imagen de fondo del área principal del launcher.',
     'settings.background.pick': 'Elegir imagen',
@@ -90,6 +59,23 @@ const I18N = {
     'nav.settings': 'Ajustes',
     'home.recent': 'Instancias recientes',
     'home.allInstances': 'Ver todas las instancias',
+    'home.recommended': 'Recomendado',
+    'home.status': 'Estado',
+    'home.ready': 'Listo',
+    'home.quickActions': 'Acciones rápidas',
+    'home.recentLabel': 'Recientes',
+    'home.instanceUnit': 'instancia',
+    'home.instancesUnit': 'instancias',
+    'home.accountStatus': 'Cuenta: {name}',
+    'home.action.new': 'Nueva instancia',
+    'home.action.new.desc': 'Crea un perfil desde cero',
+    'home.action.discover': 'Explorar contenido',
+    'home.action.discover.desc': 'Busca mods y modpacks',
+    'home.action.skins': 'Cambiar skin',
+    'home.action.skins.desc': 'Gestiona tu apariencia',
+    'home.action.settings': 'Ajustar launcher',
+    'home.action.settings.desc': 'Java, memoria y apariencia',
+    'home.action.import.desc': 'Desde un archivo .mrpack',
     'instance.exportMrpack': 'Exportar como .mrpack',
 'instance.exporting': 'Exportando modpack...',
 'instance.exportSuccess': 'Exportado: {name}',
@@ -103,7 +89,27 @@ const I18N = {
     'java.browse': 'Examinar',
     'java.location': 'Java {major} location',
     'discover.title': 'Descubrir',
-    'discover.subtitle': 'Explora el universo de Modrinth.',
+    'discover.subtitle': 'Explorá proyectos reales publicados en Modrinth.',
+    'discover.api.live': 'API EN VIVO',
+    'discover.filters': 'Filtros',
+    'discover.reset': 'Restablecer',
+    'discover.projectType': 'Tipo de proyecto',
+    'discover.minecraftVersion': 'Versión de Minecraft',
+    'discover.anyVersion': 'Todas las versiones',
+    'discover.loader': 'Loader',
+    'discover.anyLoader': 'Cualquier loader',
+    'discover.autoLoader': 'Automático compatible',
+    'discover.sortBy': 'Ordenar por',
+    'discover.pageSize': 'Resultados por página',
+    'discover.source.live': 'Datos en vivo',
+    'discover.context.label': 'Instalación directa',
+    'discover.context.note': 'Cada instalación irá directamente a esta instancia, sin menús intermedios.',
+    'discover.context.back': 'Volver a la instancia',
+    'discover.installDirect': 'Instalar aquí',
+    'discover.installingDirect': 'Instalando...',
+    'discover.installDirectError': 'No se pudo instalar el proyecto en esta instancia.',
+    'discover.installedDirect': 'Instalación completada',
+    'discover.installedDirectMessage': '{project} ({version}) se instaló en {instance}.',
     'discover.search': 'Buscar en Modrinth...',
     'discover.version': 'Versión, ej: 1.21.4',
     'discover.relevance': 'Relevancia',
@@ -124,10 +130,22 @@ const I18N = {
     'discover.type.shader': 'Shaderpacks',
     'discover.type.datapack': 'Datapacks',
     'discover.type.plugin': 'Plugins',
+    'discover.type.modSingle': 'Mod',
+    'discover.type.modpackSingle': 'Modpack',
+    'discover.type.resourcepackSingle': 'Resource pack',
+    'discover.type.shaderSingle': 'Shader',
+    'discover.project': 'Proyecto',
+    'discover.by': 'por {author}',
     'discover.install': 'Instalar',
     'discover.view': 'Ver',
     'instances.title': 'Instancias',
     'instances.subtitle': 'Elegí un perfil de juego para usar.',
+    'instances.summary.total': 'Total',
+    'instances.summary.modded': 'Con loader',
+    'instances.summary.visible': 'Visibles',
+    'instances.library.label': 'Biblioteca',
+    'instances.library.title': 'Tus instalaciones',
+    'instances.empty': 'Todavía no hay instalaciones. Creá una para empezar.',
     'instances.search': 'Buscar instancia...',
     'instances.add': 'Agregar instalación',
 'instances.import': 'Importar modpack',
@@ -139,6 +157,7 @@ const I18N = {
     'instances.current': 'Actual',
     'account.title': 'Gestor de cuentas',
     'account.offline': 'Cuenta offline actual',
+    'account.none': 'Sin cuenta',
     'account.ms.section': 'Cuentas Microsoft',
     'account.offline.section': 'Cuentas offline',
     'account.add': 'Agregar',
@@ -189,6 +208,13 @@ const I18N = {
     'instance.label': 'Instalación',
     'instance.title.fallback': 'Instancia',
     'instance.isolatedFolder': 'carpeta aislada',
+    'instance.controlCenter': 'Centro de control',
+    'instance.managerHint': 'Gestioná contenido, archivos, mundos y registros.',
+    'instance.loaderLabel': 'Loader',
+    'instance.versionLabel': 'Versión',
+    'instance.modsCount': 'Mods',
+    'instance.worldsCount': 'Mundos',
+    'instance.quickFolders': 'Accesos rápidos',
     'instance.play': 'Jugar',
     'instance.refresh': 'Refrescar',
     'instance.discover': 'Descubrir',
@@ -230,6 +256,7 @@ const I18N = {
     'discover.openingProject': 'Abriendo proyecto en Modrinth',
     'discover.noDescription': 'Sin descripción.',
     'discover.resultsSummary': '{start}-{end} de {total} resultados',
+    'discover.pageSummary': 'Página {page} de {pages}',
     'home.title': 'Inicio',
     'home.optimized.title': 'Crear instalación optimizada',
     'home.optimized.loading': 'Keo Optimized · cargando desde Modrinth...',
@@ -330,6 +357,9 @@ const I18N = {
     'settings.saveError': 'Error al guardar ajustes',
     'settings.resetError': 'Error al restaurar ajustes',
     'skins.apply': 'Aplicar skin',
+    'skins.kicker': 'IDENTIDAD DEL JUGADOR',
+    'skins.title': 'Skins',
+    'skins.subtitle': 'Buscá, previsualizá y guardá tu próxima apariencia.',
     'skins.upload': 'Subir skin',
     'skins.saveFavorite': 'Guardar favorita',
     'skins.popular': 'Populares',
@@ -369,6 +399,7 @@ const I18N = {
     'skins.skinview3dLoadError': '❌ Error: No se pudo cargar el visor 3D. Revisá tu conexión.'
   },
   en: {
+    'settings.kicker': 'CONTROL CENTER',
     'settings.title': 'Settings',
     'settings.subtitle': 'Customize the launcher and default values.',
     'settings.reset': 'Reset',
@@ -380,7 +411,11 @@ const I18N = {
     'settings.theme': 'Theme',
     'settings.theme.dark': 'Dark',
     'settings.theme.light': 'Light',
-    'settings.theme.loryq': 'Loryq',
+    'settings.theme.kindyr': 'Kindyr',
+    'settings.theme.midnight': 'Midnight',
+    'settings.theme.navy': 'Navy',
+    'settings.theme.azure': 'Azure',
+    'settings.theme.steel': 'Steel',
     'settings.background': 'Custom background',
     'settings.background.desc': 'Background image for the main launcher area.',
     'settings.background.pick': 'Choose image/Video',
@@ -423,6 +458,23 @@ const I18N = {
     'nav.settings': 'Settings',
     'home.recent': 'Recent instances',
     'home.allInstances': 'View all instances',
+    'home.recommended': 'Recommended',
+    'home.status': 'Status',
+    'home.ready': 'Ready',
+    'home.quickActions': 'Quick actions',
+    'home.recentLabel': 'Recent',
+    'home.instanceUnit': 'instance',
+    'home.instancesUnit': 'instances',
+    'home.accountStatus': 'Account: {name}',
+    'home.action.new': 'New instance',
+    'home.action.new.desc': 'Create a profile from scratch',
+    'home.action.discover': 'Explore content',
+    'home.action.discover.desc': 'Find mods and modpacks',
+    'home.action.skins': 'Change skin',
+    'home.action.skins.desc': 'Manage your appearance',
+    'home.action.settings': 'Launcher settings',
+    'home.action.settings.desc': 'Java, memory and appearance',
+    'home.action.import.desc': 'From an .mrpack file',
     'home.subtitle': 'Choose a recent installation to manage, install mods and play.',
     'home.empty': 'No recent instances yet. Choose one in Instances or press Play.',
     'java.installRecommended': 'Install recommended',
@@ -430,7 +482,27 @@ const I18N = {
     'java.browse': 'Browse',
     'java.location': 'Java {major} location',
     'discover.title': 'Discover',
-    'discover.subtitle': 'Explore the universe of Modrinth.',
+    'discover.subtitle': 'Explore real projects published on Modrinth.',
+    'discover.api.live': 'LIVE API',
+    'discover.filters': 'Filters',
+    'discover.reset': 'Reset',
+    'discover.projectType': 'Project type',
+    'discover.minecraftVersion': 'Minecraft version',
+    'discover.anyVersion': 'All versions',
+    'discover.loader': 'Loader',
+    'discover.anyLoader': 'Any loader',
+    'discover.autoLoader': 'Automatic compatible loader',
+    'discover.sortBy': 'Sort by',
+    'discover.pageSize': 'Results per page',
+    'discover.source.live': 'Live data',
+    'discover.context.label': 'Direct installation',
+    'discover.context.note': 'Every installation goes straight to this instance, without intermediate menus.',
+    'discover.context.back': 'Back to instance',
+    'discover.installDirect': 'Install here',
+    'discover.installingDirect': 'Installing...',
+    'discover.installDirectError': 'Could not install the project into this instance.',
+    'discover.installedDirect': 'Installation complete',
+    'discover.installedDirectMessage': '{project} ({version}) was installed in {instance}.',
     'discover.search': 'Search on Modrinth...',
     'discover.version': 'Version, e.g: 1.21.4',
     'discover.relevance': 'Relevance',
@@ -451,10 +523,22 @@ const I18N = {
     'discover.type.shader': 'Shaderpacks',
     'discover.type.datapack': 'Datapacks',
     'discover.type.plugin': 'Plugins',
+    'discover.type.modSingle': 'Mod',
+    'discover.type.modpackSingle': 'Modpack',
+    'discover.type.resourcepackSingle': 'Resource pack',
+    'discover.type.shaderSingle': 'Shader',
+    'discover.project': 'Project',
+    'discover.by': 'by {author}',
     'discover.install': 'Install',
     'discover.view': 'View',
     'instances.title': 'Instances',
     'instances.subtitle': 'Choose a game profile to use.',
+    'instances.summary.total': 'Total',
+    'instances.summary.modded': 'Modded',
+    'instances.summary.visible': 'Visible',
+    'instances.library.label': 'Library',
+    'instances.library.title': 'Your installations',
+    'instances.empty': 'No installations yet. Create one to get started.',
     'instances.search': 'Search instance...',
     'instances.add': 'Add installation',
 'instances.import': 'Import modpack',
@@ -466,6 +550,7 @@ const I18N = {
     'instances.current': 'Current',
     'account.title': 'Account manager',
     'account.offline': 'Offline account',
+    'account.none': 'No account',
     'account.ms.section': 'Microsoft accounts',
     'account.offline.section': 'Offline accounts',
     'account.add': 'Add',
@@ -516,6 +601,13 @@ const I18N = {
     'instance.label': 'Installation',
     'instance.title.fallback': 'Instance',
     'instance.isolatedFolder': 'isolated folder',
+    'instance.controlCenter': 'Control center',
+    'instance.managerHint': 'Manage content, files, worlds and logs.',
+    'instance.loaderLabel': 'Loader',
+    'instance.versionLabel': 'Version',
+    'instance.modsCount': 'Mods',
+    'instance.worldsCount': 'Worlds',
+    'instance.quickFolders': 'Quick access',
     'instance.play': 'Play',
     'instance.refresh': 'Refresh',
     'instance.discover': 'Discover',
@@ -557,6 +649,7 @@ const I18N = {
     'discover.openingProject': 'Opening project on Modrinth',
     'discover.noDescription': 'No description.',
     'discover.resultsSummary': '{start}-{end} of {total} results',
+    'discover.pageSummary': 'Page {page} of {pages}',
     'home.title': 'Home',
     'home.optimized.title': 'Create optimized installation',
     'home.optimized.loading': 'Keo Optimized · loading from Modrinth...',
@@ -657,6 +750,9 @@ const I18N = {
     'settings.saveError': 'Error saving settings',
     'settings.resetError': 'Error resetting settings',
     'skins.apply': 'Apply skin',
+    'skins.kicker': 'PLAYER IDENTITY',
+    'skins.title': 'Skins',
+    'skins.subtitle': 'Find, preview and save your next look.',
     'skins.upload': 'Upload skin',
     'skins.saveFavorite': 'Save favorite',
     'skins.popular': 'Popular',
@@ -698,26 +794,38 @@ const I18N = {
 }
 
 let settings = {
-  username: 'ZotlinUser',
+  username: '',
   minRam: '2G',
   maxRam: '4G',
   minRamMb: 2048,
   maxRamMb: 4096,
   language: 'es',
-  theme: 'loryq',
+  theme: 'kindyr',
   backgroundImage: '',
   javaArgs: '',
   maxConcurrentDownloads: 6
 }
-let accounts = [{ name: 'ZotlinUser', type: 'offline' }]
+let accounts = []
 const consoleLines = []
 let pendingConsoleLines = []
+let pendingConsoleBytes = 0
+let consoleBytes = 0
+let droppedConsoleLines = 0
 let consoleFlushTimer = null
 let consolePanelVisible = false
 const maxConsoleLines = 120
+const maxConsoleBytes = 32 * 1024
+const maxPendingConsoleLines = 40
+const maxPendingConsoleBytes = 8 * 1024
+const consoleDropPrefix = '[UI] '
+const consoleTextEncoder = new TextEncoder()
+
+function getConsoleLineBytes(line) {
+  return consoleTextEncoder.encode(line).length
+}
 let activeInstanceTab = 'content'
 let launcherInstances = []
-const RECENT_INSTANCES_KEY = 'zotlin-recent-instances'
+const RECENT_INSTANCES_KEY = 'kindyr-recent-instances'
 const MAX_RECENT_INSTANCES = 6
 
 function t(key, vars = {}) {
@@ -731,76 +839,44 @@ function t(key, vars = {}) {
 
 function applyLanguage() {
   document.documentElement.lang = settings.language === 'en' ? 'en' : 'es'
-  
-  // 1. Traducir todo lo que está visible actualmente en la pantalla
+
   translateElement(document)
 
-  // 2. ¡LA MAGIA! Traducir también todo lo que está guardado en el caché de Claude
-  if (typeof sectionNodeCache !== 'undefined' && sectionNodeCache.size > 0) {
-    sectionNodeCache.forEach((nodes) => {
-      nodes.forEach(node => {
-        // Solo traducimos si es un elemento HTML real
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          translateElement(node)
-          // Si el nodo mismo tiene el atributo, lo traducimos
-          if (node.hasAttribute('data-i18n')) {
-            const key = node.getAttribute('data-i18n')
-            if (key) node.textContent = t(key)
-          }
-          if (node.hasAttribute('data-i18n-placeholder')) {
-            const key = node.getAttribute('data-i18n-placeholder')
-            if (key) node.placeholder = t(key)
-          }
-        }
-      })
-    })
+  const navTranslations = {
+    'nav-home': 'nav.home',
+    'nav-instances': 'nav.instances',
+    'nav-discover': 'nav.discover',
+    'nav-skins': 'nav.skins',
+    'nav-settings': 'nav.settings'
   }
-
-  // 3. Traducir el menú lateral
-  const navLabels = document.querySelectorAll('.nav-item .nav-label')
-  navLabels.forEach(el => {
-    const nav = el.closest('.nav-item')
+  Object.entries(navTranslations).forEach(([id, key]) => {
+    const nav = document.getElementById(id)
     if (!nav) return
-    if (nav.id === 'nav-home') {
-      el.textContent = t('nav.home')
-      nav.dataset.viewTitle = t('nav.home')
-    }
-    if (nav.id === 'nav-instances') {
-      el.textContent = t('nav.instances')
-      nav.dataset.viewTitle = t('nav.instances')
-    }
-    if (nav.id === 'nav-discover') {
-      el.textContent = t('nav.discover')
-      nav.dataset.viewTitle = t('nav.discover')
-    }
-    if (nav.id === 'nav-skins') {
-      el.textContent = t('nav.skins')
-      nav.dataset.viewTitle = t('nav.skins')
-    }
-    if (nav.id === 'nav-settings') {
-      el.textContent = t('nav.settings')
-      nav.dataset.viewTitle = t('nav.settings')
-    }
+    const label = nav.querySelector('.nav-label')
+    const translated = t(key)
+    if (label) label.textContent = translated
+    nav.dataset.viewTitle = translated
   })
 
   const topbarTitle = document.getElementById('topbar-title')
   if (topbarTitle && topbarTitle.dataset.i18nKey) topbarTitle.textContent = t(topbarTitle.dataset.i18nKey)
 
-  // 4. Forzar el renderizado de las secciones por si cambió algo dinámico
   if (typeof renderDiscoverTypes === 'function') renderDiscoverTypes()
+  if (typeof syncDiscoverContextView === 'function') syncDiscoverContextView(false)
   if (typeof renderLauncherInstancesList === 'function') renderLauncherInstancesList()
   if (typeof renderRecentInstances === 'function') renderRecentInstances()
   if (typeof renderKeoOptimizedCard === 'function') renderKeoOptimizedCard(typeof keoOptimizedProject !== 'undefined' ? keoOptimizedProject : null)
   if (typeof renderAccounts === 'function') renderAccounts()
   if (typeof applyActiveAccount === 'function') applyActiveAccount(settings.username, settings.accountType || 'offline')
-  if (typeof renderJavaInstalls === 'function') renderJavaInstalls()
+  if (typeof renderJavaInstalls === 'function') renderJavaInstalls(true)
   if (typeof updateHomeView === 'function') updateHomeView()
   if (typeof loadInstanceDetailContent === 'function' && document.getElementById('instance-detail-view')?.classList.contains('active')) {
     loadInstanceDetailContent()
   }
+
+  if (typeof syncKindyrSelects === 'function') syncKindyrSelects()
 }
 
-// Función auxiliar para no repetir código de traducción
 function translateElement(root) {
   root.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n')
@@ -833,16 +909,193 @@ function translateElement(root) {
   })
 }
 
+const kindyrSelectIcons = {
+  'install-loader': 'fa-gears',
+  'install-destination': 'fa-folder-open',
+  'install-instance': 'fa-layer-group',
+  'discover-version': 'fa-cube',
+  'discover-loader': 'fa-gears',
+  'discover-sort': 'fa-arrow-down-wide-short',
+  'discover-limit': 'fa-list-ol'
+}
+
+let kindyrSelectsInitialized = false
+let openKindyrSelect = null
+
+function closeKindyrSelects(except = null) {
+  const wrapper = openKindyrSelect
+  if (!wrapper || wrapper === except) return
+  wrapper.classList.remove('open')
+  const trigger = wrapper.querySelector('.kindyr-select-trigger')
+  const menu = wrapper.querySelector('.kindyr-select-menu')
+  const chevron = wrapper.querySelector('.kindyr-select-chevron')
+  if (trigger) trigger.setAttribute('aria-expanded', 'false')
+  if (menu) menu.hidden = true
+  if (chevron) chevron.className = 'fa-solid fa-chevron-down kindyr-select-chevron'
+  openKindyrSelect = null
+}
+
+function syncKindyrSelect(select) {
+  const state = select?.__kindyrSelect
+  if (!state) return
+
+  const { trigger, label, menu } = state
+  const options = Array.from(select.options)
+  const selectedOption = select.options[select.selectedIndex]
+  label.textContent = selectedOption?.textContent?.trim() || select.getAttribute('placeholder') || ''
+  trigger.disabled = select.disabled
+  trigger.setAttribute('aria-label', select.getAttribute('aria-label') || label.textContent)
+  const optionsSignature = JSON.stringify(options.map(option => [option.value, option.textContent, option.disabled]))
+
+  if (state.optionsSignature !== optionsSignature) {
+    menu.replaceChildren()
+    state.optionButtons = options.map(option => {
+      const item = document.createElement('button')
+      item.type = 'button'
+      item.className = 'type-chip kindyr-select-option'
+      item.setAttribute('role', 'option')
+
+      const marker = document.createElement('i')
+      marker.setAttribute('aria-hidden', 'true')
+      const text = document.createElement('span')
+      text.textContent = option.textContent.trim()
+      item.append(marker, text)
+
+      item.addEventListener('click', () => {
+        if (option.disabled) return
+        option.selected = true
+        select.dispatchEvent(new Event('change', { bubbles: true }))
+        closeKindyrSelects()
+        trigger.focus()
+      })
+      menu.appendChild(item)
+      return { item, marker }
+    })
+    state.optionsSignature = optionsSignature
+  }
+
+  state.optionButtons.forEach(({ item, marker }, index) => {
+    const option = options[index]
+    const isSelected = index === select.selectedIndex
+    item.classList.toggle('active', isSelected)
+    item.disabled = option.disabled
+    item.setAttribute('aria-selected', String(isSelected))
+    marker.className = 'fa-solid ' + (isSelected ? 'fa-square-check' : 'fa-square')
+  })
+}
+
+function enhanceKindyrSelect(select) {
+  if (!(select instanceof HTMLSelectElement) || select.__kindyrSelect) return
+
+  const wrapper = document.createElement('div')
+  wrapper.className = 'kindyr-select'
+  const trigger = document.createElement('button')
+  trigger.type = 'button'
+  trigger.className = 'type-chip kindyr-select-trigger'
+  trigger.setAttribute('aria-haspopup', 'listbox')
+  trigger.setAttribute('aria-expanded', 'false')
+
+  const triggerContent = document.createElement('span')
+  const icon = document.createElement('i')
+  icon.className = 'fa-solid ' + (kindyrSelectIcons[select.id] || 'fa-list')
+  icon.setAttribute('aria-hidden', 'true')
+  const label = document.createElement('span')
+  label.className = 'kindyr-select-label'
+  const chevron = document.createElement('i')
+  chevron.className = 'fa-solid fa-chevron-down kindyr-select-chevron'
+  chevron.setAttribute('aria-hidden', 'true')
+  triggerContent.append(icon, label)
+  trigger.append(triggerContent, chevron)
+
+  const menu = document.createElement('div')
+  menu.className = 'kindyr-select-menu'
+  menu.setAttribute('role', 'listbox')
+  menu.hidden = true
+
+  select.parentNode.insertBefore(wrapper, select)
+  wrapper.append(select, trigger, menu)
+  select.classList.add('kindyr-native-select')
+  select.__kindyrSelect = { wrapper, trigger, label, menu }
+  select.__kindyrSync = () => syncKindyrSelect(select)
+
+  trigger.addEventListener('click', event => {
+    event.stopPropagation()
+    if (select.disabled) return
+    const shouldOpen = !wrapper.classList.contains('open')
+    closeKindyrSelects(wrapper)
+    wrapper.classList.toggle('open', shouldOpen)
+    menu.hidden = !shouldOpen
+    trigger.setAttribute('aria-expanded', String(shouldOpen))
+    chevron.className = 'fa-solid fa-chevron-' + (shouldOpen ? 'up' : 'down') + ' kindyr-select-chevron'
+    openKindyrSelect = shouldOpen ? wrapper : null
+    if (shouldOpen) {
+      const rect = wrapper.getBoundingClientRect()
+      const width = Math.max(rect.width, 220)
+      const menuHeight = Math.min(menu.scrollHeight, 270)
+      wrapper.classList.toggle('align-right', rect.left + width > window.innerWidth - 12)
+      wrapper.classList.toggle('align-up', rect.bottom + menuHeight + 8 > window.innerHeight - 12 && rect.top > menuHeight + 8)
+    }
+  })
+  select.addEventListener('change', () => syncKindyrSelect(select))
+  syncKindyrSelect(select)
+}
+
+function syncKindyrSelects(root = document) {
+  const selects = root instanceof HTMLSelectElement
+    ? [root]
+    : Array.from(root.querySelectorAll?.('select') || [])
+  selects.forEach(select => {
+    if (select.__kindyrSync) select.__kindyrSync()
+    else enhanceKindyrSelect(select)
+  })
+}
+
+function patchKindyrSelectProperty(property) {
+  const descriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, property)
+  if (!descriptor?.get || !descriptor?.set || descriptor.set.__kindyrPatched) return
+  const nativeSetter = descriptor.set
+  const patchedSetter = function(value) {
+    nativeSetter.call(this, value)
+    queueMicrotask(() => this.__kindyrSync?.())
+  }
+  patchedSetter.__kindyrPatched = true
+  Object.defineProperty(HTMLSelectElement.prototype, property, {
+    ...descriptor,
+    set: patchedSetter
+  })
+}
+
+function initKindyrSelects() {
+  if (kindyrSelectsInitialized) return
+  kindyrSelectsInitialized = true
+  patchKindyrSelectProperty('value')
+  syncKindyrSelects()
+
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => mutation.addedNodes.forEach(node => {
+      if (!(node instanceof Element)) return
+      if (node.matches('select')) enhanceKindyrSelect(node)
+      node.querySelectorAll?.('select').forEach(enhanceKindyrSelect)
+    }))
+  })
+  observer.observe(document.body, { childList: true, subtree: true })
+
+  document.addEventListener('click', () => closeKindyrSelects())
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeKindyrSelects()
+  })
+}
+
 function applyTheme() {
-  document.documentElement.dataset.theme = settings.theme || 'dark'
-  document.documentElement.style.colorScheme = settings.theme === 'light' ? 'light' : 'dark'
+  document.documentElement.dataset.theme = settings.theme || 'midnight'
+  document.documentElement.style.colorScheme = settings.theme === 'steel' ? 'light' : 'dark'
   const themeChips = document.querySelectorAll('.theme-chip')
   themeChips.forEach(chip => {
     chip.classList.toggle('active', chip.dataset.theme === settings.theme)
   })
   const logoEl = document.querySelector('.logo-area img')
   if (logoEl) {
-    const logoSrc = settings.theme === 'light' ? 'assets/logo-light.png' : 'assets/logo-dark.png'
+    const logoSrc = settings.theme === 'steel' ? 'assets/logo-light.png' : 'assets/logo-dark.png'
     logoEl.style.display = ''
     if (!logoEl.src.endsWith(logoSrc)) logoEl.src = logoSrc
   }
@@ -859,7 +1112,6 @@ function applyBackground() {
   const preview = document.getElementById('settings-bg-preview')
   if (!content) return
 
-  // Limpiar video anterior si existe
   const existingVideo = document.getElementById('custom-bg-video')
   if (existingVideo) existingVideo.remove()
   content.classList.remove('has-custom-bg', 'has-video-bg')
@@ -879,30 +1131,33 @@ function applyBackground() {
     const video = document.createElement('video')
     video.id = 'custom-bg-video'
     video.src = url
+    video.preload = 'metadata'
     video.autoplay = true
     video.loop = true
     video.muted = true
     video.playsInline = true
     video.addEventListener('error', (e) => {
-      window.zotlinAPI?.log?.error('Video error code: ' + (e.target?.error?.code) + ' msg: ' + (e.target?.error?.message))
+      window.kindyrAPI?.log?.error('Video error code: ' + (e.target?.error?.code) + ' msg: ' + (e.target?.error?.message))
     })
     video.addEventListener('loadeddata', () => {
-      window.zotlinAPI?.log?.info('Video cargado ok: ' + url)
+      window.kindyrAPI?.log?.info('Video cargado ok: ' + url)
     })
     content.classList.add('has-video-bg')
     requestAnimationFrame(() => {
       content.insertBefore(video, content.firstChild)
+      syncRendererActivity()
     })
 
     if (preview) {
       const previewVideo = document.createElement('video')
       previewVideo.src = url
-      previewVideo.autoplay = true
+      previewVideo.preload = 'metadata'
       previewVideo.loop = true
       previewVideo.muted = true
       previewVideo.playsInline = true
       previewVideo.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit;'
       preview.appendChild(previewVideo)
+      syncRendererActivity()
     }
   } else {
     content.classList.add('has-custom-bg')
@@ -910,6 +1165,25 @@ function applyBackground() {
     if (preview) preview.style.backgroundImage = 'url("' + url + '")'
   }
 }
+
+function syncRendererActivity() {
+  const appIsActive = !document.hidden && document.hasFocus()
+  const activeSection = typeof currentSection === 'string' ? currentSection : ''
+  document.querySelectorAll('#custom-bg-video, #settings-bg-preview video').forEach(video => {
+    const isSettingsPreview = Boolean(video.closest('#settings-bg-preview'))
+    const shouldPlay = appIsActive && (!isSettingsPreview || activeSection === 'settings')
+    if (shouldPlay) video.play().catch(() => {})
+    else video.pause()
+  })
+
+  if (typeof setSkinsPerformanceMode === 'function') {
+    setSkinsPerformanceMode(appIsActive && activeSection === 'skins')
+  }
+}
+
+document.addEventListener('visibilitychange', syncRendererActivity)
+window.addEventListener('focus', syncRendererActivity)
+window.addEventListener('blur', syncRendererActivity)
 
 function mbToRamString(mb) {
   if (mb % 1024 === 0) return (mb / 1024) + 'G'
@@ -1010,13 +1284,16 @@ function parseRam(value) {
 
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar')
+  if (!sidebar) return
   const collapsed = sidebar.classList.toggle('collapsed')
-  localStorage.setItem('zotlin-sidebar-collapsed', collapsed ? '1' : '0')
+  localStorage.setItem('kindyr-sidebar-collapsed', collapsed ? '1' : '0')
 }
 
 function loadSidebarState() {
-  const collapsed = localStorage.getItem('zotlin-sidebar-collapsed') === '1'
-  document.getElementById('sidebar').classList.toggle('collapsed', collapsed)
+  const sidebar = document.getElementById('sidebar')
+  if (!sidebar) return
+  const collapsed = localStorage.getItem('kindyr-sidebar-collapsed') === '1'
+  sidebar.classList.toggle('collapsed', collapsed)
 }
 
 function appendConsole(type, message) {
@@ -1028,10 +1305,15 @@ function appendConsole(type, message) {
 
   const prefix = type.toUpperCase().padEnd(8, ' ')
   const cleanMessage = String(message).replace(/\s+/g, ' ').slice(0, 180)
-  pendingConsoleLines.push(`[${new Date().toLocaleTimeString()}] ${prefix} ${cleanMessage}`)
+  const line = `[${new Date().toLocaleTimeString()}] ${prefix} ${cleanMessage}`
+  const lineBytes = getConsoleLineBytes(line)
+  pendingConsoleLines.push(line)
+  pendingConsoleBytes += lineBytes
 
-  if (pendingConsoleLines.length > 40) {
-    pendingConsoleLines.splice(0, pendingConsoleLines.length - 40)
+  while (pendingConsoleLines.length > maxPendingConsoleLines || pendingConsoleBytes > maxPendingConsoleBytes) {
+    const dropped = pendingConsoleLines.shift()
+    pendingConsoleBytes -= getConsoleLineBytes(dropped)
+    droppedConsoleLines++
   }
 
   if (consoleFlushTimer) return
@@ -1040,11 +1322,37 @@ function appendConsole(type, message) {
 
 function flushConsole() {
   const output = document.getElementById('console-output')
-  if (!output) return
+  if (!output) {
+    pendingConsoleLines = []
+    pendingConsoleBytes = 0
+    consoleFlushTimer = null
+    return
+  }
   consoleLines.push(...pendingConsoleLines)
+  consoleBytes += pendingConsoleBytes
   pendingConsoleLines = []
-  if (consoleLines.length > maxConsoleLines) {
-    consoleLines.splice(0, consoleLines.length - maxConsoleLines)
+  pendingConsoleBytes = 0
+  while (consoleLines.length > maxConsoleLines || consoleBytes > maxConsoleBytes) {
+    const dropped = consoleLines.shift()
+    consoleBytes -= getConsoleLineBytes(dropped)
+    droppedConsoleLines++
+  }
+  if (droppedConsoleLines > 0) {
+    const summary = `${consoleDropPrefix}Se descartaron ${droppedConsoleLines} líneas de consola para mantener el límite de memoria.`
+    const previous = consoleLines.findIndex(line => line.startsWith(consoleDropPrefix))
+    if (previous >= 0) {
+      consoleBytes -= getConsoleLineBytes(consoleLines[previous])
+      consoleLines[previous] = summary
+      consoleBytes += getConsoleLineBytes(summary)
+    } else {
+      consoleLines.push(summary)
+      consoleBytes += getConsoleLineBytes(summary)
+    }
+    droppedConsoleLines = 0
+    while (consoleLines.length > maxConsoleLines || consoleBytes > maxConsoleBytes) {
+      const dropped = consoleLines.shift()
+      consoleBytes -= getConsoleLineBytes(dropped)
+    }
   }
   output.textContent = consoleLines.join('\n')
   output.scrollTop = output.scrollHeight
@@ -1054,13 +1362,16 @@ function flushConsole() {
 function clearConsole() {
   consoleLines.length = 0
   pendingConsoleLines = []
+  pendingConsoleBytes = 0
+  consoleBytes = 0
+  droppedConsoleLines = 0
   const output = document.getElementById('console-output')
   if (output) output.textContent = ''
 }
 
-function closeWindow() { window.zotlinAPI.window.close() }
-function minimizeWindow() { window.zotlinAPI.window.minimize() }
-function maximizeWindow() { window.zotlinAPI.window.maximize() }
+function closeWindow() { window.kindyrAPI.window.close() }
+function minimizeWindow() { window.kindyrAPI.window.minimize() }
+function maximizeWindow() { window.kindyrAPI.window.maximize() }
 
 function loadRecentInstanceIds() {
   try {
@@ -1089,17 +1400,18 @@ function recordRecentInstance(instanceId) {
 }
 
 function loadAccounts() {
-  const saved = JSON.parse(localStorage.getItem('zotlin-accounts') || '[]')
-  accounts = saved.length ? saved : accounts
-  ensureAccount(settings.username)
+  const saved = JSON.parse(localStorage.getItem('kindyr-accounts') || '[]')
+  accounts = Array.isArray(saved) ? saved : []
+  if (isValidUsername(settings.username)) ensureAccount(settings.username)
   if (typeof renderAccounts === 'function') renderAccounts()
 }
 
 function saveAccounts() {
-  localStorage.setItem('zotlin-accounts', JSON.stringify(accounts))
+  localStorage.setItem('kindyr-accounts', JSON.stringify(accounts))
 }
 
 function ensureAccount(name) {
+  if (!isValidUsername(name)) return
   if (!accounts.some(account => account.name.toLowerCase() === name.toLowerCase())) {
     accounts.push({ name, type: 'offline' })
     saveAccounts()
@@ -1115,12 +1427,12 @@ function renderAccounts() {
       const isActive = a.name === settings.username && settings.accountType !== 'microsoft'
       return `
         <div class="account-item ${isActive ? 'active' : ''}" onclick="selectOfflineAccount(this.dataset.name)" data-name="${escapeHtml(a.name)}">
-          <div class="avatar" style="background:#1a3d30;color:#1D9E75;">
+          <div class="avatar offline">
             ${getInitials(a.name)}
           </div>
           <div class="account-meta">
             <strong>${escapeHtml(a.name)}</strong>
-            <span>Offline${isActive ? ' ' + t('account.offline.active') : ''}</span>
+            <span>${escapeHtml(t('account.mode.offline'))}${isActive ? ' ' + t('account.offline.active') : ''}</span>
           </div>
           <button type="button" class="icon-action" onclick="deleteOfflineAccount(event, '${escapeHtml(a.name)}')" title="${escapeHtml(t('account.delete'))}">
             <i class="fa-solid fa-trash"></i>
@@ -1130,28 +1442,29 @@ function renderAccounts() {
     }).join('') || '<div style="color:#666;font-size:13px;">' + escapeHtml(t('account.none.offline')) + '</div>'
 }
 function getInitials(name) {
-  return name.slice(0, 2).toUpperCase()
+  return isValidUsername(name) ? name.slice(0, 2).toUpperCase() : '--'
 }
 
 function applyActiveAccount(name, type = 'offline') {
-  settings.username = name
+  const hasAccount = isValidUsername(name)
+  settings.username = hasAccount ? name : ''
   settings.accountType = type
-  localStorage.setItem('zotlin-settings', JSON.stringify(settings))
+  localStorage.setItem('kindyr-settings', JSON.stringify(settings))
   const usernameEl = document.getElementById('username')
-  const avatarEl = document.querySelector('.profile-area .avatar')
-  const modeEl = document.querySelector('.profile-mode')
+  const avatarEl = document.querySelector('.topnav-account .avatar, .profile-area .avatar')
+  const modeEl = document.querySelector('.topnav-account-mode, .profile-mode')
   const modalNameEl = document.getElementById('modal-current-name')
   const modalAvatarEl = document.getElementById('modal-avatar')
   const modalModeEl = document.querySelector('.account-current span')
-  if (usernameEl) usernameEl.textContent = name
+  if (usernameEl) usernameEl.textContent = hasAccount ? name : t('account.none')
   if (avatarEl) {
     avatarEl.textContent = getInitials(name)
     avatarEl.className = 'avatar ' + (type === 'microsoft' ? 'premium' : 'offline')
   }
-  if (modeEl) modeEl.textContent = type === 'microsoft' ? t('account.mode.microsoft') : t('account.mode.offline')
-  if (modalNameEl) modalNameEl.textContent = name
+  if (modeEl) modeEl.textContent = hasAccount ? (type === 'microsoft' ? t('account.mode.microsoft') : t('account.mode.offline')) : t('account.none')
+  if (modalNameEl) modalNameEl.textContent = hasAccount ? name : t('account.none')
   if (modalAvatarEl) modalAvatarEl.textContent = getInitials(name)
-  if (modalModeEl) modalModeEl.textContent = type === 'microsoft' ? t('account.ms.premiumStatus') : t('account.offline')
+  if (modalModeEl) modalModeEl.textContent = hasAccount ? (type === 'microsoft' ? t('account.ms.premiumStatus') : t('account.offline')) : t('account.none.offline')
   if (typeof renderAccounts === 'function') renderAccounts()
 }
 
@@ -1163,9 +1476,11 @@ function openAccountManager() {
   const modalNameEl = document.getElementById('modal-current-name')
   const modalAvatarEl = document.getElementById('modal-avatar')
   const modalModeEl = document.querySelector('.account-current span')
-  if (modalNameEl) modalNameEl.textContent = settings.username
+  if (modalNameEl) modalNameEl.textContent = isValidUsername(settings.username) ? settings.username : t('account.none')
   if (modalAvatarEl) modalAvatarEl.textContent = getInitials(settings.username)
-  if (modalModeEl) modalModeEl.textContent = settings.accountType === 'microsoft' ? t('account.ms.premiumStatus') : t('account.offline')
+  if (modalModeEl) modalModeEl.textContent = isValidUsername(settings.username)
+    ? (settings.accountType === 'microsoft' ? t('account.ms.premiumStatus') : t('account.offline'))
+    : t('account.none')
   
   renderAccounts()
 }
@@ -1219,22 +1534,25 @@ function addOfflineAccount() {
 async function loadSettings() {
   let saved = {}
 
-  if (window.zotlinAPI?.onboarding?.getSettings) {
+  if (window.kindyrAPI?.onboarding?.getSettings) {
     try {
-      const result = await window.zotlinAPI.onboarding.getSettings()
+      const result = await window.kindyrAPI.onboarding.getSettings()
       if (result?.ok && result.settings) {
         saved = result.settings
       }
     } catch(e) {
-      // Error loading onboarding settings
     }
   }
 
 try {
-  const raw = localStorage.getItem('zotlin-settings')
+  const raw = localStorage.getItem('kindyr-settings')
   if (raw) {
     const local = JSON.parse(raw)
-    if (local.username && local.username !== 'ZotlinUser') {
+    const localSavedAt = Number(local.settingsSavedAt || 0)
+    const diskSavedAt = Number(saved.settingsSavedAt || 0)
+    if (diskSavedAt && localSavedAt && diskSavedAt >= localSavedAt) {
+      saved = { ...local, ...saved }
+    } else if (local.username) {
       saved = { ...saved, ...local }
     } else {
       saved = { ...local, ...saved }
@@ -1243,19 +1561,20 @@ try {
 } catch {}
 
   settings = {
-    username: 'ZotlinUser',
+    username: '',
     minRam: '2G',
     maxRam: '4G',
     minRamMb: 2048,
     maxRamMb: 4096,
     language: 'es',
-    theme: 'dark',
+    theme: 'midnight',
     backgroundImage: '',
     javaArgs: '',
     maxConcurrentDownloads: 6,
     ...saved
   }
-  localStorage.setItem('zotlin-settings', JSON.stringify(settings))
+  const legacyThemes = { dark: 'midnight', kindyr: 'midnight', light: 'steel', green: 'azure', neobrutal: 'navy' }
+  settings.theme = legacyThemes[settings.theme] || settings.theme
 
   if (saved.minRam && !saved.minRamMb) {
     const parsedMin = parseRam(saved.minRam)
@@ -1265,6 +1584,11 @@ try {
     const parsedMax = parseRam(saved.maxRam)
     if (parsedMax) settings.maxRamMb = parsedMax.mb
   }
+  settings.maxConcurrentDownloads = Math.max(1, Math.min(Number(settings.maxConcurrentDownloads) || 6, 20))
+  settings.settingsSavedAt = Number(settings.settingsSavedAt || 0)
+  try {
+    localStorage.setItem('kindyr-settings', JSON.stringify(settings))
+  } catch {}
   if (typeof loadBackgroundFromDisk === 'function') await loadBackgroundFromDisk()
 
   applyActiveAccount(settings.username, settings.accountType || 'offline')
@@ -1273,14 +1597,14 @@ try {
 }
 
 async function loadBackgroundFromDisk() {
-  if (!window.zotlinAPI?.settings?.getBackground) return
-  const result = await window.zotlinAPI.settings.getBackground()
+  if (!window.kindyrAPI?.settings?.getBackground) return
+  const result = await window.kindyrAPI.settings.getBackground()
   if (result.ok && result.path) settings.backgroundImage = result.path
   applyBackground()
 }
 
-// Initialize common functions
 document.addEventListener('DOMContentLoaded', async () => {
+  initKindyrSelects()
   await loadSettings()
   loadAccounts()
   loadSidebarState()

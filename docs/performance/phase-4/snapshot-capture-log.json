@@ -1,0 +1,16 @@
+{
+  "status": "complete",
+  "captured_at_utc": "2026-07-26T23:46:39Z",
+  "transport": "CDP on 127.0.0.1 only",
+  "method": "HeapProfiler.takeHeapSnapshot with HeapProfiler.addHeapSnapshotChunk streamed directly to a temporary file",
+  "command": "KINDYR_CDP_PORT=9234 KINDYR_DIAGNOSTIC_DIR=/tmp/kindyr-phase-4-1-final KINDYR_CDP_TIMEOUT_MS=180000 node docs/performance/phase-4/tools/cdp-renderer-diagnostic.js",
+  "snapshot_validation": ["non-empty", "valid JSON", "nodes", "edges", "strings", "snapshot metadata"],
+  "records": [
+    { "point": "A_idle_60s", "at": "2026-07-26T23:46:39.241Z", "path": "/tmp/kindyr-phase-4-1-final/A_idle_60s.heapsnapshot", "bytes": 4009183, "duration_ms": 301, "sha256": "1c23a42778f79e3f5f936607f140996a0b7060c4d7d3e380aef25c6947ee80db", "validated": true },
+    { "point": "B_cycle_1", "at": "2026-07-26T23:47:14.777Z", "path": "/tmp/kindyr-phase-4-1-final/B_cycle_1.heapsnapshot", "bytes": 5991849, "duration_ms": 431, "sha256": "869822281c698712b9c365ae654ea76b2037e12388c81d7c19b2cdda96d97d26", "validated": true },
+    { "point": "C_cycle_4", "at": "2026-07-26T23:49:00.826Z", "path": "/tmp/kindyr-phase-4-1-final/C_cycle_4.heapsnapshot", "bytes": 5889736, "duration_ms": 470, "sha256": "266365781b05dfa4273cb2c924cde3c0c22feb487c461acc39509d385ec48fb6", "validated": true },
+    { "point": "D_recovery_60s", "at": "2026-07-26T23:50:01.405Z", "path": "/tmp/kindyr-phase-4-1-final/D_recovery_60s.heapsnapshot", "bytes": 5889596, "duration_ms": 471, "sha256": "b96719e816078a133276a891f7431d179408c3c223b6e5574780f0ed47d8a33e", "validated": true },
+    { "point": "E_diagnostic_gc", "at": "2026-07-26T23:50:04.000Z", "path": "/tmp/kindyr-phase-4-1-final/E_diagnostic_gc.heapsnapshot", "bytes": 5889596, "duration_ms": 453, "sha256": "54b1978390529f4d00857862c1149ea7cfca9b470e51e6fbe088db72c7dc2dfc", "validated": true }
+  ],
+  "closure": "Raw snapshots and temporary CDP tools were removed after extracting these summaries; no snapshot was added to Git."
+}

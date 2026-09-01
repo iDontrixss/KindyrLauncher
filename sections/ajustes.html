@@ -1,5 +1,6 @@
-<div class="page-head">
+<div class="page-head settings-page-head">
   <div>
+    <div class="page-kicker"><i class="fa-solid fa-sliders"></i> <span data-i18n="settings.kicker">CENTRO DE CONTROL</span></div>
     <div class="page-title" data-i18n="settings.title">Ajustes</div>
     <div class="page-subtitle" data-i18n="settings.subtitle">Personalizá el launcher y los valores predeterminados.</div>
   </div>
@@ -11,9 +12,9 @@
 
 <div class="settings-layout">
   <div class="settings-nav">
-    <button type="button" class="settings-nav-btn active" data-settings-tab="personalization" onclick="showSettingsTab('personalization', this)" data-i18n="settings.tab.personalization">Personalización</button>
-    <button type="button" class="settings-nav-btn" data-settings-tab="general" onclick="showSettingsTab('general', this)" data-i18n="settings.tab.general">General</button>
-    <button type="button" class="settings-nav-btn" data-settings-tab="resources" onclick="showSettingsTab('resources', this)" data-i18n="settings.tab.resources">Recursos</button>
+    <button type="button" class="settings-nav-btn active" data-settings-tab="personalization" onclick="showSettingsTab('personalization', this)"><i class="fa-solid fa-palette"></i><span data-i18n="settings.tab.personalization">Personalización</span></button>
+    <button type="button" class="settings-nav-btn" data-settings-tab="general" onclick="showSettingsTab('general', this)"><i class="fa-solid fa-gauge-high"></i><span data-i18n="settings.tab.general">General</span></button>
+    <button type="button" class="settings-nav-btn" data-settings-tab="resources" onclick="showSettingsTab('resources', this)"><i class="fa-solid fa-hard-drive"></i><span data-i18n="settings.tab.resources">Recursos</span></button>
   </div>
 
   <div class="settings-panel">
@@ -28,9 +29,10 @@
       <div class="settings-group">
         <div class="settings-group-title" data-i18n="settings.theme">Tema</div>
         <div class="theme-row">
-          <button type="button" class="theme-chip" data-theme="dark" onclick="selectTheme('dark', this)" data-i18n="settings.theme.dark">Oscuro</button>
-          <button type="button" class="theme-chip" data-theme="light" onclick="selectTheme('light', this)" data-i18n="settings.theme.light">Claro</button>
-          <button type="button" class="theme-chip active" data-theme="loryq" onclick="selectTheme('loryq', this)" data-i18n="settings.theme.loryq">Loryq</button>
+          <button type="button" class="theme-chip" data-theme="midnight" onclick="selectTheme('midnight', this)" data-i18n="settings.theme.midnight">Midnight</button>
+          <button type="button" class="theme-chip" data-theme="navy" onclick="selectTheme('navy', this)" data-i18n="settings.theme.navy">Navy</button>
+          <button type="button" class="theme-chip" data-theme="azure" onclick="selectTheme('azure', this)" data-i18n="settings.theme.azure">Azure</button>
+          <button type="button" class="theme-chip" data-theme="steel" onclick="selectTheme('steel', this)" data-i18n="settings.theme.steel">Steel</button>
         </div>
       </div>
       <div class="settings-group">
@@ -100,7 +102,7 @@
           <div class="storage-card"><span data-i18n="settings.storage.runtime">Java (runtime)</span><strong id="storage-runtime">—</strong></div>
           <div class="storage-card"><span data-i18n="settings.storage.cache">Caché</span><strong id="storage-cache">—</strong></div>
         </div>
-        <button type="button" class="secondary-btn" onclick="refreshStorageInfo()"><i class="fa-solid fa-rotate"></i> <span data-i18n="settings.storage.refresh">Actualizar</span></button>
+        <button type="button" class="secondary-btn" onclick="refreshStorageInfo(true)"><i class="fa-solid fa-rotate"></i> <span data-i18n="settings.storage.refresh">Actualizar</span></button>
       </div>
       <div class="settings-group">
         <div class="settings-group-title" data-i18n="settings.downloads">Descargas</div>
@@ -127,8 +129,11 @@
 </div>
 
 <script>
-// Optimized settings JavaScript with lazy loading and error handling
 let settingsInitialized = false
+let javaInstallsRequest = null
+let javaInstallsLoadedAt = 0
+let storageInfoRequest = null
+let storageInfoLoadedAt = 0
 
 function showSettingsTab(tabName, button) {
   document.querySelectorAll('.settings-nav-btn').forEach(btn => btn.classList.remove('active'))
@@ -136,12 +141,11 @@ function showSettingsTab(tabName, button) {
   if (button) button.classList.add('active')
   document.getElementById('settings-' + tabName).classList.add('active')
   
-  // Lazy load resources only when needed
   if (tabName === 'resources') {
-    setTimeout(() => refreshStorageInfo(), 100)
+    refreshStorageInfo()
   }
   if (tabName === 'general') {
-    setTimeout(() => renderJavaInstalls(), 100)
+    renderJavaInstalls()
   }
 }
 
@@ -150,10 +154,6 @@ function selectLanguage(lang, button) {
   document.querySelectorAll('.lang-chip').forEach(chip => chip.classList.remove('active'))
   if (button) button.classList.add('active')
   applyLanguage()
-  console.log('idioma cambiado a', lang)
-  console.log('loadedSections antes:', [...loadedSections])
-  if (typeof reloadSectionsForLanguage === 'function') reloadSectionsForLanguage()
-  console.log('loadedSections despues:', [...loadedSections])
 }
 
 function selectTheme(theme, button) {
@@ -171,14 +171,15 @@ function updateDownloadsLabel() {
   settings.maxConcurrentDownloads = Number(slider.value)
 }
 
-function renderJavaInstalls() {
+async function renderJavaInstalls(force = false) {
   const list = document.getElementById('java-installs-list')
-  if (!list || !window.zotlinAPI?.settings?.getJavaInstalls) {
-    return
-  }
-  
-  // Add error handling
-  window.zotlinAPI.settings.getJavaInstalls().then(result => {
+  if (!list || !window.kindyrAPI?.settings?.getJavaInstalls) return
+  if (!force && list.childElementCount && Date.now() - javaInstallsLoadedAt < 30_000) return
+  if (javaInstallsRequest) return javaInstallsRequest
+
+  javaInstallsRequest = window.kindyrAPI.settings.getJavaInstalls()
+  try {
+    const result = await javaInstallsRequest
     if (!result.ok) {
       list.innerHTML = '<div class="install-note">Error al cargar instalaciones de Java: ' + escapeHtml(result.error || 'Desconocido') + '</div>'
       return
@@ -209,26 +210,29 @@ function renderJavaInstalls() {
         if (downloadsValue) downloadsValue.value = String(result.maxConcurrentDownloads)
         settings.maxConcurrentDownloads = result.maxConcurrentDownloads
       }
+      javaInstallsLoadedAt = Date.now()
     } catch (error) {
       console.error('Error rendering Java installs:', error)
       list.innerHTML = '<div class="install-note">Error al renderizar instalaciones de Java</div>'
     }
-  }).catch(error => {
+  } catch (error) {
     console.error('Error getting Java installs:', error)
     list.innerHTML = '<div class="install-note">Error al cargar instalaciones de Java</div>'
-  })
+  } finally {
+    javaInstallsRequest = null
+  }
 }
 
 async function saveJavaPath(major) {
   const input = document.getElementById('java-path-' + major)
-  if (!input || !window.zotlinAPI?.settings?.setJavaPath) return
+  if (!input || !window.kindyrAPI?.settings?.setJavaPath) return
   try {
-    const result = await window.zotlinAPI.settings.setJavaPath({ major, path: input.value.trim() })
+    const result = await window.kindyrAPI.settings.setJavaPath({ major, path: input.value.trim() })
     if (!result.ok) {
       setStatus(result.error)
       return
     }
-    renderJavaInstalls()
+    renderJavaInstalls(true)
   } catch (error) {
     console.error('Error saving Java path:', error)
     setStatus('Error al guardar ruta de Java')
@@ -237,7 +241,7 @@ async function saveJavaPath(major) {
 
 async function browseJavaPath(major) {
   try {
-    const result = await window.zotlinAPI.settings.browseJava()
+    const result = await window.kindyrAPI.settings.browseJava()
     if (result.cancelled) return
     if (!result.ok) {
       setStatus(result.error)
@@ -253,7 +257,7 @@ async function browseJavaPath(major) {
 
 async function detectJavaPath(major) {
   try {
-    const result = await window.zotlinAPI.settings.detectJava(major)
+    const result = await window.kindyrAPI.settings.detectJava(major)
     if (!result.ok) {
       setStatus(result.error)
       return
@@ -270,14 +274,14 @@ async function detectJavaPath(major) {
 async function installRecommendedJava(major) {
   setStatus('Descargando Java ' + major + '...')
   try {
-    const result = await window.zotlinAPI.settings.installJava(major)
+    const result = await window.kindyrAPI.settings.installJava(major)
     if (!result.ok) {
       setStatus(result.error)
       return
     }
     document.getElementById('java-path-' + major).value = result.path
-    renderJavaInstalls()
-    refreshStorageInfo()
+    renderJavaInstalls(true)
+    refreshStorageInfo(true)
     setStatus('Java ' + major + ' instalado')
   } catch (error) {
     console.error('Error installing Java:', error)
@@ -285,24 +289,31 @@ async function installRecommendedJava(major) {
   }
 }
 
-async function refreshStorageInfo() {
-  if (!window.zotlinAPI?.settings?.getStorage) return
+async function refreshStorageInfo(force = false) {
+  if (!window.kindyrAPI?.settings?.getStorage) return
+  if (!force && storageInfoLoadedAt && Date.now() - storageInfoLoadedAt < 10_000) return
+  if (storageInfoRequest) return storageInfoRequest
+
+  storageInfoRequest = window.kindyrAPI.settings.getStorage()
   try {
-    const result = await window.zotlinAPI.settings.getStorage()
+    const result = await storageInfoRequest
     if (!result.ok) return
     document.getElementById('settings-data-root').value = result.dataRoot
     document.getElementById('storage-total').textContent = result.formatted.total
     document.getElementById('storage-instances').textContent = result.formatted.instances
     document.getElementById('storage-runtime').textContent = result.formatted.runtime
     document.getElementById('storage-cache').textContent = result.formatted.cache
+    storageInfoLoadedAt = Date.now()
   } catch (error) {
     console.error('Error refreshing storage info:', error)
+  } finally {
+    storageInfoRequest = null
   }
 }
 
 async function openDataRoot() {
   try {
-    await window.zotlinAPI.settings.openDataRoot()
+    await window.kindyrAPI.settings.openDataRoot()
   } catch (error) {
     console.error('Error opening data root:', error)
     setStatus('Error al abrir carpeta de datos')
@@ -311,13 +322,13 @@ async function openDataRoot() {
 
 async function purgeLauncherCache() {
   try {
-    const result = await window.zotlinAPI.settings.purgeCache()
+    const result = await window.kindyrAPI.settings.purgeCache()
     if (result && result.ok) {
-      refreshStorageInfo()
+      refreshStorageInfo(true)
       setStatus(t('settings.cache.purge') + ' ✓')
       return
     }
-    // show error when purge failed
+
     setStatus(result?.error || 'No se pudo vaciar la caché')
   } catch (error) {
     console.error('Error purging cache:', error)
@@ -328,7 +339,7 @@ async function purgeLauncherCache() {
 async function pickBackgroundImage() {
   try {
     setStatus(t('settings.background.processing'))
-    const result = await window.zotlinAPI.settings.pickBackground()
+    const result = await window.kindyrAPI.settings.pickBackground()
     if (result.cancelled) {
       setStatus(t('app.ready'))
       return
@@ -348,7 +359,7 @@ async function pickBackgroundImage() {
 
 async function clearBackgroundImage() {
   try {
-    await window.zotlinAPI.settings.clearBackground()
+    await window.kindyrAPI.settings.clearBackground()
     settings.backgroundImage = ''
     applyBackground()
   } catch (error) {
@@ -375,7 +386,6 @@ function applySettingsToForm() {
       chip.classList.toggle('active', chip.dataset.lang === settings.language)
     })
     applyTheme()
-    applyLanguage()
   } catch (error) {
     console.error('Error applying settings to form:', error)
   }
@@ -383,38 +393,11 @@ function applySettingsToForm() {
 
 function getValidatedSettings() {
   try {
-    console.log('[VALIDACION AJUSTES] settings:', settings)
-    console.log('[VALIDACION AJUSTES] settings.minRam:', settings?.minRam)
-    console.log('[VALIDACION AJUSTES] settings.maxRam:', settings?.maxRam)
-    console.log('[VALIDACION AJUSTES] settings.username:', settings?.username)
-
     syncRamFromSlider('min')
     syncRamFromSlider('max')
 
-    let minRam, maxRam
-    try {
-      minRam = parseRam(settings.minRam)
-      console.log('[VALIDACION AJUSTES] parseRam(minRam) OK:', minRam)
-    } catch (e) {
-      console.error('[VALIDACION AJUSTES] parseRam(minRam) ERROR:', e, e.stack)
-      throw e
-    }
-
-    try {
-      maxRam = parseRam(settings.maxRam)
-      console.log('[VALIDACION AJUSTES] parseRam(maxRam) OK:', maxRam)
-    } catch (e) {
-      console.error('[VALIDACION AJUSTES] parseRam(maxRam) ERROR:', e, e.stack)
-      throw e
-    }
-
-    try {
-      const usernameValid = isValidUsername(settings.username)
-      console.log('[VALIDACION AJUSTES] isValidUsername OK:', usernameValid)
-    } catch (e) {
-      console.error('[VALIDACION AJUSTES] isValidUsername ERROR:', e, e.stack)
-      throw e
-    }
+    const minRam = parseRam(settings.minRam)
+    const maxRam = parseRam(settings.maxRam)
 
     if (!isValidUsername(settings.username)) {
       return { ok: false, error: 'Nombre offline invalido: usa 3-16 letras, numeros o _' }
@@ -458,16 +441,16 @@ async function saveSettings() {
       return
     }
 
-    settings = validated.settings
-    localStorage.setItem('zotlin-settings', JSON.stringify(settings))
-    if (window.zotlinAPI?.settings?.saveResources) {
-      await window.zotlinAPI.settings.saveResources({
+    settings = { ...validated.settings, settingsSavedAt: Date.now() }
+    localStorage.setItem('kindyr-settings', JSON.stringify(settings))
+    if (window.kindyrAPI?.settings?.saveResources) {
+      await window.kindyrAPI.settings.saveResources({
         maxConcurrentDownloads: settings.maxConcurrentDownloads
       })
     }
     for (const major of JAVA_MAJORS_UI) {
       const input = document.getElementById('java-path-' + major)
-      if (input) await window.zotlinAPI.settings.setJavaPath({ major, path: input.value.trim() })
+      if (input) await window.kindyrAPI.settings.setJavaPath({ major, path: input.value.trim() })
     }
     ensureAccount(settings.username)
     applyActiveAccount(settings.username)
@@ -480,7 +463,7 @@ async function saveSettings() {
 
 async function resetSettings() {
   try {
-    localStorage.removeItem('zotlin-settings')
+    localStorage.removeItem('kindyr-settings')
     settings = {
       username: settings.username,
       minRam: '2G',
@@ -488,12 +471,13 @@ async function resetSettings() {
       minRamMb: 2048,
       maxRamMb: 4096,
       language: 'es',
-      theme: 'dark',
+      theme: 'midnight',
       backgroundImage: '',
       javaArgs: '',
-      maxConcurrentDownloads: 6
+      maxConcurrentDownloads: 6,
+      settingsSavedAt: Date.now()
     }
-    await window.zotlinAPI.settings.clearBackground()
+    await window.kindyrAPI.settings.clearBackground()
     applySettingsToForm()
     applyBackground()
     setStatus(t('settings.reset') + ' ✓')
@@ -503,7 +487,7 @@ async function resetSettings() {
   }
 }
 
-// Initialize settings with lazy loading
+
 function initializeSettings() {
   if (settingsInitialized) return
   settingsInitialized = true
@@ -511,16 +495,11 @@ function initializeSettings() {
   try {
     applySettingsToForm()
     applyBackground()
-    // Only load heavy resources when needed
-    setTimeout(() => {
-      renderJavaInstalls()
-      refreshStorageInfo()
-    }, 200)
   } catch (error) {
     console.error('Error initializing settings:', error)
   }
 }
 
-// Initialize when section is loaded
+
 initializeSettings()
 </script>

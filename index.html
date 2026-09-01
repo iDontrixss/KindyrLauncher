@@ -1,43 +1,52 @@
 <!DOCTYPE html>
-<html lang="es" style="background:#100d07;color-scheme:dark" data-theme="loryq">
+<html lang="es" style="background:#030f2b;color-scheme:dark" data-theme="midnight">
 <head>
   <meta charset="UTF-8">
-  <title>Zotlin Launcher</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <title>Kindyr Launcher</title>
+  <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<div class="sidebar" id="sidebar">
-  <div class="logo-area">
-    <img src="assets/logo-dark.png" alt="Zotlin Logo">
-    <div class="logo-text">
-      <div class="logo-name">Zotlin Launcher</div>
-      <div class="logo-sub">v1.2.0</div>
+<header class="topnav" id="topnav">
+  <div class="topnav-brand">
+    <img src="assets/logo-dark.png" alt="Kindyr Logo" class="topnav-logo">
+    <div class="topnav-brand-text">
+      <span class="topnav-brand-name">KINDYR</span>
+      <span class="topnav-brand-ver">v1.2.0</span>
     </div>
-    <button type="button" class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()" aria-label="Contraer barra lateral" title="Contraer barra lateral" data-i18n-aria-label="sidebar.collapse" data-i18n-title="sidebar.collapse">
-      <i class="fa-solid fa-angles-left" id="sidebar-toggle-icon" aria-hidden="true"></i>
-    </button>
   </div>
-  <div class="sidebar-collapse-slot">
-    <button type="button" class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Expandir barra lateral" title="Expandir barra lateral" data-i18n-aria-label="sidebar.expand" data-i18n-title="sidebar.expand">
-      <i class="fa-solid fa-angles-right" aria-hidden="true"></i>
-    </button>
-  </div>
-  <nav aria-label="Navegación principal" data-i18n-aria-label="nav.main">
-    <button type="button" class="nav-item active" id="nav-home" data-view-title="Inicio" data-i18n-view-title="nav.home" onclick="loadSection('home', this)"><i class="fa-solid fa-house" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.home">Inicio</span></button>
-    <button type="button" class="nav-item" id="nav-instances" data-view-title="Instancias" data-i18n-view-title="nav.instances" onclick="loadSection('instances', this)"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.instances">Instancias</span></button>
-    <button type="button" class="nav-item" id="nav-discover" data-view-title="Descubrir" data-i18n-view-title="nav.discover" onclick="loadSection('discover', this)"><i class="fa-solid fa-compass" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.discover">Descubrir</span></button>
-    <button type="button" class="nav-item" id="nav-skins" data-view-title="Skins" data-i18n-view-title="nav.skins" onclick="loadSection('skins', this)"><i class="fa-solid fa-shirt" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.skins">Skins</span></button>
-    <button type="button" class="nav-item" id="nav-settings" data-view-title="Ajustes" data-i18n-view-title="nav.settings" onclick="loadSection('settings', this)"><i class="fa-solid fa-gear" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.settings">Ajustes</span></button>
+
+  <nav class="topnav-pills" aria-label="Navegación principal" data-i18n-aria-label="nav.main">
+    <button type="button" class="pill-nav active" id="nav-home" data-view-title="Inicio" data-i18n-view-title="nav.home" onclick="loadSection('home', this)"><i class="fa-solid fa-house" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.home">Inicio</span></button>
+    <button type="button" class="pill-nav" id="nav-instances" data-view-title="Instancias" data-i18n-view-title="nav.instances" onclick="loadSection('instances', this)"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.instances">Instancias</span></button>
+    <button type="button" class="pill-nav" id="nav-discover" data-view-title="Descubrir" data-i18n-view-title="nav.discover" onclick="openDiscoverSection(this)"><i class="fa-solid fa-compass" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.discover">Descubrir</span></button>
+    <button type="button" class="pill-nav" id="nav-skins" data-view-title="Skins" data-i18n-view-title="nav.skins" onclick="loadSection('skins', this)"><i class="fa-solid fa-shirt" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.skins">Skins</span></button>
+    <button type="button" class="pill-nav" id="nav-settings" data-view-title="Ajustes" data-i18n-view-title="nav.settings" onclick="loadSection('settings', this)"><i class="fa-solid fa-gear" aria-hidden="true"></i><span class="nav-label" data-i18n="nav.settings">Ajustes</span></button>
   </nav>
-  <button type="button" class="profile-area" onclick="openAccountManager()" aria-label="Abrir gestor de cuentas" data-i18n-aria-label="account.open">
-    <div class="avatar">ZT</div>
-    <div class="profile-text">
-      <div class="profile-name" id="username">ZotlinUser</div>
-      <div class="profile-mode" data-i18n="account.mode.offline">Modo offline</div>
+
+  <div class="topnav-right">
+    <button type="button" class="topnav-account" onclick="openAccountManager()" aria-label="Abrir gestor de cuentas" data-i18n-aria-label="account.open">
+      <div class="avatar" id="nav-avatar">--</div>
+      <div class="topnav-account-text">
+        <span class="topnav-account-name" id="username">Sin cuenta</span>
+        <span class="topnav-account-mode">Sin cuenta</span>
+      </div>
+    </button>
+    <div class="window-controls">
+      <button type="button" class="win-btn win-minimize" onclick="minimizeWindow()" aria-label="Minimizar ventana" data-i18n-aria-label="app.window.minimize"></button>
+      <button type="button" class="win-btn win-maximize" onclick="maximizeWindow()" aria-label="Maximizar ventana" data-i18n-aria-label="app.window.maximize"></button>
+      <button type="button" class="win-btn win-close" onclick="closeWindow()" aria-label="Cerrar ventana" data-i18n-aria-label="app.window.close"></button>
     </div>
+  </div>
+</header>
+
+<div class="subheader" id="subheader">
+  <button type="button" class="topbar-back" id="topbar-back-btn" onclick="goHomeFromInstance()" aria-label="Volver a Inicio" title="Volver a Inicio" data-i18n-aria-label="nav.home" data-i18n-title="nav.home">
+    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+    <span data-i18n="nav.home">Inicio</span>
   </button>
+  <span class="subheader-title" id="topbar-title" data-i18n-key="nav.home" data-i18n="nav.home">Inicio</span>
 </div>
 
 <div class="modal-backdrop" id="account-modal" onclick="closeAccountManager(event)">
@@ -48,22 +57,22 @@
     </div>
     <div class="modal-body">
       <div class="account-current">
-        <div class="avatar" id="modal-avatar">ZT</div>
+        <div class="avatar" id="modal-avatar">--</div>
         <div class="account-meta">
-          <strong id="modal-current-name">ZotlinUser</strong>
+          <strong id="modal-current-name">Sin cuenta</strong>
           <span data-i18n="account.offline">Cuenta offline actual</span>
         </div>
       </div>
 
       <button type="button" class="microsoft-btn" id="ms-login-btn" onclick="loginMicrosoft()">
-  <i class="fa-brands fa-microsoft" aria-hidden="true"></i> <span data-i18n="account.ms.login">Iniciar sesión con Microsoft</span>
-</button>
-<div id="ms-login-status" style="font-size:12px;color:#888;margin-top:6px;"></div>
+        <i class="fa-brands fa-microsoft" aria-hidden="true"></i> <span data-i18n="account.ms.login">Iniciar sesión con Microsoft</span>
+      </button>
+      <div id="ms-login-status" class="account-login-status"></div>
 
-<div class="section-label" data-i18n="account.ms.section">Cuentas Microsoft</div>
-<div class="account-list" id="ms-account-list"></div>
-<div class="section-label" data-i18n="account.offline.section">Cuentas offline</div>
-<div class="account-list" id="account-list"></div>
+      <div class="section-label" data-i18n="account.ms.section">Cuentas Microsoft</div>
+      <div class="account-list" id="ms-account-list"></div>
+      <div class="section-label" data-i18n="account.offline.section">Cuentas offline</div>
+      <div class="account-list" id="account-list"></div>
 
       <div class="account-form">
         <label for="new-account-name" class="sr-only" data-i18n="account.placeholder">Nuevo nombre offline</label>
@@ -92,8 +101,15 @@
 
 <div class="modal-backdrop" id="install-modal" onclick="closeInstallModal(event)">
   <div class="install-modal" role="dialog" aria-modal="true" aria-labelledby="install-title" onclick="event.stopPropagation()">
-    <div class="modal-head">
-      <div class="modal-title" id="install-title" data-i18n="install.title">Instalar contenido</div>
+    <div class="modal-head install-modal-head">
+      <div class="install-project-identity">
+        <div class="install-project-icon" id="install-project-icon"><i class="fa-solid fa-box-open" aria-hidden="true"></i></div>
+        <div>
+          <div class="install-modal-kicker"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> MODRINTH · INSTALADOR</div>
+          <div class="modal-title" id="install-title" data-i18n="install.title">Instalar contenido</div>
+          <div class="install-project-meta" id="install-project-meta">Preparando instalación</div>
+        </div>
+      </div>
       <button type="button" class="modal-close" onclick="closeInstallModal()" aria-label="Cerrar" data-i18n-aria-label="app.close">×</button>
     </div>
     <div class="modal-body">
@@ -151,11 +167,11 @@
           <div class="loader-row" id="install-modpack-loaders"></div>
         </div>
       </div>
-      <div class="install-note" id="install-note" data-i18n="install.note">Elegí versión, loader y destino.</div>
-      <div class="install-actions">
-        <button type="button" class="secondary-btn" onclick="closeInstallModal()" data-i18n="install.cancel">Cancelar</button>
-        <button type="button" class="primary-btn" id="install-confirm" onclick="installSelectedProject()" data-i18n="install.install">Instalar</button>
-      </div>
+      <div class="install-note" id="install-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span data-i18n="install.note">Elegí versión, loader y destino.</span></div>
+    </div>
+    <div class="install-actions">
+      <button type="button" class="secondary-btn" onclick="closeInstallModal()" data-i18n="install.cancel">Cancelar</button>
+      <button type="button" class="primary-btn" id="install-confirm" onclick="installSelectedProject()" data-i18n="install.install">Instalar</button>
     </div>
   </div>
 </div>
@@ -190,20 +206,6 @@
 </div>
 
 <main class="main">
-  <div class="topbar" id="topbar">
-    <div class="topbar-left">
-      <button type="button" class="topbar-back" id="topbar-back-btn" onclick="goHomeFromInstance()" aria-label="Volver a Inicio" title="Volver a Inicio" data-i18n-aria-label="nav.home" data-i18n-title="nav.home">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-      </button>
-      <span class="topbar-title" id="topbar-title" data-i18n-key="nav.home" data-i18n="nav.home">Inicio</span>
-    </div>
-    <div class="window-controls">
-      <button type="button" class="win-btn win-minimize" onclick="minimizeWindow()" aria-label="Minimizar ventana" data-i18n-aria-label="app.window.minimize"></button>
-      <button type="button" class="win-btn win-maximize" onclick="maximizeWindow()" aria-label="Maximizar ventana" data-i18n-aria-label="app.window.maximize"></button>
-      <button type="button" class="win-btn win-close" onclick="closeWindow()" aria-label="Cerrar ventana" data-i18n-aria-label="app.window.close"></button>
-    </div>
-  </div>
-
   <div class="content">
     <div class="view active" id="home-view"></div>
     <div class="view" id="instances-view"></div>
@@ -227,10 +229,9 @@
 <script src="modrinth.js"></script>
 <script src="launcher.js"></script>
 <script>
-// Initialize
+
 document.addEventListener('DOMContentLoaded', () => {
   loadSection('home', document.getElementById('nav-home'))
-  refreshLauncherInstances()
 })
 </script>
 

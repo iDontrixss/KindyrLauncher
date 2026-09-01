@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-07-23",
+  "scope": "Fase 1: baseline reproducible; sin cambios funcionales ni build",
+  "repository": {
+    "commit": "becee684ed1f249dea5073cc4394067290dbf2b9",
+    "branch": "main",
+    "preexisting_dirty_worktree": true
+  },
+  "environment": {
+    "node": "v26.4.0",
+    "npm": "12.0.1",
+    "electron": "42.3.0",
+    "kernel": "7.1.3-2-cachyos",
+    "session": "wayland",
+    "gpu": "NVIDIA GeForce GT 440",
+    "driver": "nouveau",
+    "graphics_mode": "safe; unchanged"
+  },
+  "appimage": {
+    "relative_path": "dist/Kindyr Launcher-1.2.0.AppImage",
+    "size_bytes": 124991191,
+    "sha256": "43b3d1806885197bb3d13b6f3af8a350a2cdc192ab5d90f213f31ba1ec9e13e6",
+    "executable": true,
+    "asar": {
+      "index_scripts_present": ["common.js", "navigation.js", "accounts.js", "instances.js", "modrinth.js", "launcher.js"],
+      "diagnostic_paths_found": []
+    }
+  },
+  "tools": {
+    "codebase_memory_mcp": "available; project kindyr-launcher-current",
+    "chrome_devtools_mcp": "installed but Chrome stable missing at /opt/google/chrome/chrome",
+    "memlab": { "version": "2.0.4", "status": "installed; help timed out at 20s" },
+    "clinic": { "version": "13.0.0", "status": "verified with temporary XDG_CONFIG_HOME" },
+    "knip": { "version": "6.29.0", "status": "verified" }
+  },
+  "metric": "PSS KiB from /proc/<pid>/smaps_rollup; totals are summed PSS, never summed RSS",
+  "cold_start": {
+    "t10": { "samples_kib": [283876, 287111, 287574], "min": 283876, "median": 287111, "max": 287574 },
+    "t30": { "samples_kib": [281519, 282526, 283790], "min": 281519, "median": 282526, "max": 283790 },
+    "t60_idle": { "samples_kib": [278943, 279940, 282793], "min": 278943, "median": 279940, "max": 282793 },
+    "processes_at_t60": [
+      { "main": 107253, "zygote": [11278, 10927, 4218], "gpu": 32648, "network": 27802, "broker": 8238, "renderer": [76579] },
+      { "main": 106347, "zygote": [11177, 10908, 4215], "gpu": 32184, "network": 28015, "broker": 8184, "renderer": [78910] },
+      { "main": 99437, "zygote": [10851, 9811, 3354], "gpu": 27349, "network": 26605, "broker": 8159, "renderer": [47087, 50140] }
+    ]
+  },
+  "navigation": {
+    "action": "Inicio, Instancias, Descubrir, Skins y Ajustes; 10 cycles; wait 30s",
+    "samples_kib": [314857, 295529, 296013],
+    "min": 295529,
+    "median": 296013,
+    "max": 314857,
+    "process_count": [8, 9, 9],
+    "renderer_count": [1, 2, 2],
+    "window_count": [1, 2, 2]
+  },
+  "light_network": {
+    "action": "Descubrir and Skins only; no install/download",
+    "total_samples_kib": [321633, 298624, 298118],
+    "network_service_samples_kib": [31296, 26634, 26579],
+    "total": { "min": 298118, "median": 298624, "max": 321633 },
+    "network_service": { "min": 26579, "median": 26634, "max": 31296 }
+  },
+  "devtools": {
+    "transport": "temporary localhost CDP",
+    "dom_nodes": 1761,
+    "long_tasks_ms": [61, 57, 51],
+    "light_network_fetch_count": 16,
+    "console": "Repeated skinview3d WebGL context errors, then 2D fallback; safe graphics unchanged",
+    "timers_and_listeners": "not enumerable with standard Runtime CDP; no permanent instrumentation installed"
+  },
+  "limitations": [
+    "No full download, install, or Minecraft launch.",
+    "MemLab was not run because compatible Chrome was unavailable.",
+    "CPU startup values from ps are lifetime averages; use a 1-second delta in the next capture."
+  ]
+}

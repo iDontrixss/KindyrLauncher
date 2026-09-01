@@ -1,36 +1,65 @@
 {
-  "name": "zotlinlauncher",
+  "name": "kindyrlauncher",
   "version": "1.2.0",
-  "description": "Zotlin Launcher - Tu launcher de Minecraft",
+  "private": true,
+  "description": "Kindyr Launcher - Tu launcher de Minecraft",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win",
-    "build:dir": "electron-builder --win --dir"
+    "build:dir": "electron-builder --win --dir",
+    "build:linux": "electron-builder --linux AppImage",
+    "build:linux:dir": "electron-builder --linux --dir",
+    "build:win": "electron-builder --win",
+    "build:win:dir": "electron-builder --win --dir",
+    "postinstall": "node scripts/install-electron.js",
+    "perf:pss": "bash tools/performance/pss.sh",
+    "perf:processes": "bash tools/performance/processes.sh",
+    "perf:imports": "node tools/performance/imports.js",
+    "perf:knip": "knip",
+    "perf:memlab": "node tools/performance/memlab-runner.js",
+    "perf:clinic": "node tools/performance/clinic-runner.js",
+    "test": "node --test",
+    "check:syntax": "node scripts/check-syntax.js"
   },
   "keywords": [],
   "author": "iDontrixss",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iDontrixss/KindyrLauncher.git"
+  },
+  "homepage": "https://github.com/iDontrixss/KindyrLauncher",
+  "bugs": {
+    "url": "https://github.com/iDontrixss/KindyrLauncher/issues"
+  },
+  "engines": {
+    "node": ">=22.12 <26"
+  },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.7.2",
     "@xmcl/core": "^2.15.1",
+    "@xmcl/file-transfer": "^2.0.3",
     "@xmcl/installer": "^6.1.2",
-    "adm-zip": "^0.4.16",
+    "@xmcl/unzip": "2.1.2",
     "electron-updater": "^6.8.9",
     "ffmpeg-static": "^5.3.0",
-    "form-data": "^4.0.6",
-    "minecraft-launcher-core": "^3.18.2",
     "msmc": "^5.0.5",
-    "semver": "^7.8.4"
+    "semver": "^7.8.4",
+    "tar": "^7.5.22",
+    "yazl": "^2.5.1"
   },
   "devDependencies": {
+    "clinic": "^13.0.0",
     "electron": "^42.3.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "knip": "^6.29.0",
+    "memlab": "^2.0.4"
   },
   "build": {
-    "appId": "com.zotlin.launcher",
-    "productName": "Zotlin Launcher",
+    "appId": "com.kindyr.launcher",
+    "productName": "Kindyr Launcher",
     "afterPack": "scripts/after-pack.js",
-    "icon": "icon.ico",
     "directories": {
       "output": "dist",
       "buildResources": "assets"
@@ -38,7 +67,7 @@
     "publish": {
       "provider": "github",
       "owner": "iDontrixss",
-      "repo": "ZotlinLauncher"
+      "repo": "KindyrLauncher"
     },
     "extraResources": [
       {
@@ -48,10 +77,19 @@
     ],
     "files": [
       "main.js",
+      "account-storage.js",
+      "archive-utils.js",
+      "mrpack-utils.js",
+      "skin-security.js",
       "preload.js",
       "preload-onboarding.js",
       "preload-splash.js",
       "common.js",
+      "navigation.js",
+      "accounts.js",
+      "instances.js",
+      "modrinth.js",
+      "launcher.js",
       "index.html",
       "onboarding.html",
       "splash.html",
@@ -75,14 +113,26 @@
       "icon": "icon.ico",
       "artifactName": "${productName} Setup ${version}.${ext}"
     },
+    "linux": {
+      "icon": "logo-dark.png",
+      "category": "Game"
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "Zotlin Launcher",
+      "shortcutName": "Kindyr Launcher",
       "installerIcon": "icon.ico",
       "uninstallerIcon": "icon.ico",
       "deleteAppDataOnUninstall": false
     }
+  },
+  "allowScripts": {
+    "electron@42.3.0": true,
+    "ffmpeg-static@5.3.0": true
+  },
+  "overrides": {
+    "js-yaml": "^4.3.0",
+    "undici": "^7.28.0"
   }
 }

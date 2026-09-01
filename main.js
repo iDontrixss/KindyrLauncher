@@ -1,59 +1,130 @@
-// Set environment variable BEFORE requiring Electron
-if (process.platform === 'linux' && process.env.LORYQ_ENABLE_GPU !== '1') {
+
+if (process.platform === 'linux' && process.env.KINDYR_ENABLE_GPU !== '1') {
   process.env.ELECTRON_OZONE_PLATFORM_HINT = 'x11'
 }
 
-const { app, BrowserWindow, ipcMain, shell, nativeImage } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, nativeImage, safeStorage } = require('electron')
 const fs = require('fs')
-const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const crypto = require('crypto')
-const semver = require('semver')
-const { launch: xmclLaunch, Version: XmclVersion } = require('@xmcl/core')
-const { getVersionList, install, installVersion, installVersionTask } = require('@xmcl/installer')
+const { Readable } = require('stream')
+const { pipeline } = require('stream/promises')
+const { createMicrosoftAccountStore, sanitizeMicrosoftAccount } = require('./account-storage')
+const { MAX_SKIN_BYTES, sanitizeSkinName, validateSkinPng, validateSkinSourceUrl } = require('./skin-security')
+const { extractZipEntries, readZipEntryBuffer, writeZip } = require('./archive-utils')
+const { getClientMrpackFiles, verifyMrpackFile } = require('./mrpack-utils')
+const PROFILE_ENABLED = process.env.KINDYR_PROFILE === '1'
 process.on('uncaughtException', (error) => {
   console.error('Error:', error)
 })
 
-// Linux safe graphics configuration
-if (process.platform === 'linux' && process.env.LORYQ_ENABLE_GPU !== '1') {
+if (process.platform === 'linux' && process.env.KINDYR_ENABLE_GPU !== '1') {
   app.commandLine.appendSwitch('disable-gpu')
   app.commandLine.appendSwitch('disable-gpu-compositing')
-  console.log('[Loryq] Linux safe graphics enabled')
+  console.log('[Kindyr] Linux safe graphics enabled')
 }
 
-let launcherClientClass = null
-let mclcAssetsFastPathPatched = false
+function getLinuxPssKiB(pid) {
+  if (!PROFILE_ENABLED || process.platform !== 'linux') return null
+  try {
+    const rollup = fs.readFileSync(`/proc/${pid}/smaps_rollup`, 'utf8')
+    const match = rollup.match(/^Pss:\s+(\d+)\s+kB$/m)
+    return match ? Number(match[1]) : null
+  } catch {
+    return null
+  }
+}
+
+async function profileCheckpoint(label, renderer = null) {
+  if (!PROFILE_ENABLED || !app.isReady()) return
+
+  const mainMemory = await process.getProcessMemoryInfo()
+  const processes = app.getAppMetrics().map(metric => ({
+    pid: metric.pid,
+    type: metric.type,
+    name: metric.name,
+    cpu: metric.cpu,
+    memory: metric.memory,
+    pssKiB: getLinuxPssKiB(metric.pid)
+  }))
+  const snapshot = {
+    label: String(label || 'checkpoint').slice(0, 80),
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.round(process.uptime() * 10) / 10,
+    mainMemory,
+    mainPssKiB: getLinuxPssKiB(process.pid),
+    renderer,
+    processes
+  }
+  console.log('[Kindyr profile]', JSON.stringify(snapshot))
+}
+
+function scheduleProfileCheckpoint(label, delayMs = 0, renderer = null) {
+  if (!PROFILE_ENABLED) return
+  const timer = setTimeout(() => {
+    profileCheckpoint(label, renderer).catch(error => {
+      console.error('[Kindyr profile] Failed to collect metrics:', error.message || error)
+    })
+  }, delayMs)
+  timer.unref?.()
+}
+
+if (PROFILE_ENABLED) {
+  ipcMain.on('profile-checkpoint', (_event, payload = {}) => {
+    const label = typeof payload === 'string' ? payload : payload.label
+    const renderer = payload && typeof payload === 'object' ? payload.renderer : null
+    scheduleProfileCheckpoint(label, 50, renderer)
+  })
+}
+
 let msmcAuth = null
+let autoUpdaterInstance = null
+let autoUpdaterConfigured = false
+let semverModule = null
+let xmclCorePromise = null
+let xmclFileTransferPromise = null
+let xmclInstallerPromise = null
 let xmclLaunchTask = null
+let xmclCancellationRequested = false
 
 let microsoftAccounts = []
+let microsoftAccountStore = null
+const microsoftAccountRefreshRequests = new Map()
 
 function getMicrosoftAccountsFile() {
-  return path.join(getZotlinDataRoot(), 'ms-accounts.json')
+  return path.join(getKindyrDataRoot(), 'ms-accounts.json')
+}
+
+function getMicrosoftAccountStore() {
+  if (!microsoftAccountStore) {
+    microsoftAccountStore = createMicrosoftAccountStore({
+      fs,
+      path,
+      safeStorage,
+      filePath: getMicrosoftAccountsFile()
+    })
+  }
+  return microsoftAccountStore
 }
 
 function loadMicrosoftAccounts() {
-  const file = getMicrosoftAccountsFile()
-  if (!fs.existsSync(file)) return []
-  try {
-    const data = JSON.parse(fs.readFileSync(file, 'utf8'))
-    return Array.isArray(data) ? data : []
-  } catch { return [] }
+  return getMicrosoftAccountStore().load()
 }
 
 function saveMicrosoftAccounts(accounts) {
-  fs.mkdirSync(getZotlinDataRoot(), { recursive: true })
-  fs.writeFileSync(getMicrosoftAccountsFile(), JSON.stringify(accounts, null, 2))
+  getMicrosoftAccountStore().save(accounts)
 }
-
 
 let mainWindow
 let minecraftProcess = null
 let runningInstanceId = null
+let activeLaunchInstanceId = null
+let launchRequestInProgress = false
 let inicioCancelado = false
+let minecraftStopRequested = false
 let splashWindow
-let launcher
+let splashCloseTimer = null
+let mainWindowLoadFallbackTimer = null
 let launchStartedAt = 0
 let currentLogFile = null
 let lastProgressMessage = ''
@@ -61,7 +132,23 @@ let lastProgressSentAt = 0
 let lastDataMessage = ''
 let lastDataSentAt = 0
 let pendingLogLines = []
+let pendingLogBytes = 0
 let logFlushTimer = null
+const MAX_PENDING_LOG_LINES = 500
+const MAX_PENDING_LOG_BYTES = 512 * 1024
+const MAX_PENDING_LOG_LINE_BYTES = 64 * 1024
+
+function clearSplashCloseTimer() {
+  if (!splashCloseTimer) return
+  clearTimeout(splashCloseTimer)
+  splashCloseTimer = null
+}
+
+function clearMainWindowLoadFallbackTimer() {
+  if (!mainWindowLoadFallbackTimer) return
+  clearTimeout(mainWindowLoadFallbackTimer)
+  mainWindowLoadFallbackTimer = null
+}
 
 const defaultInstances = [
   { id: 'vanilla-1.21.4', name: 'Minecraft 1.21.4', version: '1.21.4', loader: 'vanilla' },
@@ -71,14 +158,77 @@ const defaultInstances = [
 ]
 
 const MODRINTH_API = 'https://api.modrinth.com/v2'
-const MODRINTH_USER_AGENT = 'ZotlinLauncher/1.2.0 (Minecraft launcher)'
+const MODRINTH_USER_AGENT = 'KindyrLauncher/1.2.0 (Minecraft launcher)'
 const MOJANG_VERSION_MANIFEST = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'
 const FABRIC_META = 'https://meta.fabricmc.net/v2'
 const QUILT_META = 'https://meta.quiltmc.org/v3'
 const FORGE_MAVEN_METADATA = 'https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml'
 const NEOFORGE_MAVEN_METADATA = 'https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml'
 let minecraftVersionCache = null
+let minecraftVersionRequest = null
 let loaderVersionCache = {}
+const loaderVersionRequests = new Map()
+let versionCacheCleanupTimer = null
+const VERSION_CACHE_TTL_MS = 10 * 60 * 1000
+const MAX_LOADER_VERSION_CACHE_ENTRIES = 5
+
+function scheduleVersionCacheCleanup() {
+  if (versionCacheCleanupTimer) {
+    clearTimeout(versionCacheCleanupTimer)
+    versionCacheCleanupTimer = null
+  }
+
+  const cachedAtValues = [
+    minecraftVersionCache?.cachedAt,
+    ...Object.values(loaderVersionCache).map(entry => entry?.cachedAt)
+  ].filter(Number.isFinite)
+
+  if (cachedAtValues.length === 0) return
+
+  const nextExpiry = Math.min(...cachedAtValues) + VERSION_CACHE_TTL_MS
+  versionCacheCleanupTimer = setTimeout(() => {
+    versionCacheCleanupTimer = null
+    pruneVersionCaches()
+  }, Math.max(1, nextExpiry - Date.now()))
+  versionCacheCleanupTimer.unref?.()
+}
+
+function pruneVersionCaches(now = Date.now()) {
+  if (minecraftVersionCache && now - minecraftVersionCache.cachedAt >= VERSION_CACHE_TTL_MS) {
+    minecraftVersionCache = null
+  }
+
+  for (const [key, entry] of Object.entries(loaderVersionCache)) {
+    if (!entry || !Number.isFinite(entry.cachedAt) || now - entry.cachedAt >= VERSION_CACHE_TTL_MS) {
+      delete loaderVersionCache[key]
+    }
+  }
+
+  const loaderEntries = Object.entries(loaderVersionCache)
+    .sort(([, left], [, right]) => right.cachedAt - left.cachedAt)
+  for (const [key] of loaderEntries.slice(MAX_LOADER_VERSION_CACHE_ENTRIES)) {
+    delete loaderVersionCache[key]
+  }
+
+  scheduleVersionCacheCleanup()
+}
+
+async function runWithConcurrency(items, limit, worker) {
+  const list = Array.from(items || [])
+  if (!list.length) return
+
+  let nextIndex = 0
+  const workerCount = Math.min(Math.max(1, Number(limit) || 1), list.length)
+
+  async function runWorker() {
+    while (nextIndex < list.length) {
+      const index = nextIndex++
+      await worker(list[index], index)
+    }
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, runWorker))
+}
 const modrinthTypeFilters = {
   all: [],
   mod: [['project_type:mod']],
@@ -90,8 +240,53 @@ const modrinthTypeFilters = {
 }
 const modrinthSorts = new Set(['relevance', 'downloads', 'follows', 'newest', 'updated'])
 
-function getAdmZip() {
-  return require('adm-zip')
+function getSemver() {
+  if (!semverModule) semverModule = require('semver')
+  return semverModule
+}
+
+function getAutoUpdater() {
+  if (!autoUpdaterInstance) {
+    autoUpdaterInstance = require('electron-updater').autoUpdater
+  }
+  configureAutoUpdater(autoUpdaterInstance)
+  return autoUpdaterInstance
+}
+
+function getXmclCore() {
+  if (!xmclCorePromise) {
+    xmclCorePromise = Promise.resolve()
+      .then(() => require('@xmcl/core'))
+      .catch(error => {
+        xmclCorePromise = null
+        throw error
+      })
+  }
+  return xmclCorePromise
+}
+
+function getXmclFileTransfer() {
+  if (!xmclFileTransferPromise) {
+    xmclFileTransferPromise = Promise.resolve()
+      .then(() => require('@xmcl/file-transfer'))
+      .catch(error => {
+        xmclFileTransferPromise = null
+        throw error
+      })
+  }
+  return xmclFileTransferPromise
+}
+
+function getXmclInstaller() {
+  if (!xmclInstallerPromise) {
+    xmclInstallerPromise = Promise.resolve()
+      .then(() => require('@xmcl/installer'))
+      .catch(error => {
+        xmclInstallerPromise = null
+        throw error
+      })
+  }
+  return xmclInstallerPromise
 }
 
 function getMicrosoftAuth() {
@@ -102,81 +297,130 @@ function getMicrosoftAuth() {
   return msmcAuth
 }
 
-function patchMCLCAssetFastPath() {
-  if (mclcAssetsFastPathPatched) return
-  const MCLCHandler = require('minecraft-launcher-core/components/handler')
-  const originalMCLCGetAssets = MCLCHandler.prototype.getAssets
+function getMinecraftCredentials(token) {
+  const fullToken = token.getToken(true)
+  const profile = fullToken.profile || token.profile
+  if (!fullToken.mcToken || !profile?.id || !profile?.name) {
+    throw new Error('Microsoft no devolvió credenciales completas de Minecraft.')
+  }
+  return {
+    access_token: fullToken.mcToken,
+    uuid: profile.id,
+    name: profile.name,
+    xuid: fullToken.xuid || token.xuid || '',
+    expires_at: normalizeMicrosoftTokenExpiry(fullToken.exp || token.exp),
+    user_properties: {}
+  }
+}
 
-  MCLCHandler.prototype.getAssets = async function getAssetsFastPath() {
+function normalizeMicrosoftTokenExpiry(expiry) {
+  const value = Number(expiry)
+  if (!Number.isFinite(value) || value <= 0) return 0
+  return value < 1_000_000_000_000 ? value * 1000 : value
+}
+
+function getMicrosoftAccessTokenExpiry(accessToken) {
+  try {
+    const payload = String(accessToken || '').split('.')[1]
+    if (!payload) return 0
+    return normalizeMicrosoftTokenExpiry(JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')).exp)
+  } catch {
+    return 0
+  }
+}
+
+function getMicrosoftAccountExpiry(account) {
+  return normalizeMicrosoftTokenExpiry(account?.expires_at) || getMicrosoftAccessTokenExpiry(account?.access_token)
+}
+
+function persistMicrosoftCredentials(account, xboxManager, token) {
+  const credentials = getMinecraftCredentials(token)
+  const refreshToken = xboxManager.save()
+  if (!refreshToken) throw new Error('Microsoft no devolvió un token de renovación válido.')
+
+  const accounts = loadMicrosoftAccounts()
+  const index = accounts.findIndex(item => item.id === account.id)
+  if (index < 0) throw new Error('La cuenta de Microsoft ya no existe en Kindyr.')
+
+  const updatedAccount = {
+    ...accounts[index],
+    id: credentials.uuid,
+    name: credentials.name,
+    uuid: credentials.uuid,
+    access_token: credentials.access_token,
+    refresh_token: refreshToken,
+    client_id: getMicrosoftAuth().token?.client_id || accounts[index].client_id || '',
+    xuid: credentials.xuid,
+    expires_at: credentials.expires_at,
+    user_properties: credentials.user_properties || {},
+    type: 'microsoft'
+  }
+  accounts[index] = updatedAccount
+  saveMicrosoftAccounts(accounts)
+  microsoftAccounts = accounts
+  return updatedAccount
+}
+
+async function refreshMicrosoftAccount(account, { force = false } = {}) {
+  if (!account) return null
+
+  const expiresAt = getMicrosoftAccountExpiry(account)
+  const hasUsableAccessToken = Boolean(account.access_token) && (!expiresAt || expiresAt > Date.now() + 5 * 60 * 1000)
+  if (!force && hasUsableAccessToken) return account
+
+  if (!account.refresh_token) {
+    if (!force && account.access_token && (!expiresAt || expiresAt > Date.now())) return account
+    throw new Error('La sesión de Microsoft venció. Iniciá sesión nuevamente para continuar.')
+  }
+
+  const accountKey = String(account.id || account.uuid || 'active')
+  if (microsoftAccountRefreshRequests.has(accountKey)) {
+    return microsoftAccountRefreshRequests.get(accountKey)
+  }
+
+  const request = (async () => {
     try {
-      const assetDirectory = path.resolve(this.options.overrides.assetRoot || path.join(this.options.root, 'assets'))
-      const assetId = this.options.version.custom || this.options.version.number
-      const indexPath = path.join(assetDirectory, 'indexes', `${assetId}.json`)
-
-      if (!fs.existsSync(indexPath)) {
-        await this.downloadAsync(this.version.assetIndex.url, path.join(assetDirectory, 'indexes'), `${assetId}.json`, true, 'asset-json')
-      }
-
-      const index = JSON.parse(fs.readFileSync(indexPath, { encoding: 'utf8' }))
-      const entries = Object.entries(index.objects || {})
-      let done = 0
-
-      this.client.emit('progress', { type: 'assets', task: 0, total: entries.length })
-
-      await Promise.all(entries.map(async ([asset, info]) => {
-        const hash = info.hash
-        const subhash = hash.substring(0, 2)
-        const subAsset = path.join(assetDirectory, 'objects', subhash)
-        const filePath = path.join(subAsset, hash)
-        let valid = fs.existsSync(filePath)
-
-        if (valid && Number.isFinite(info.size)) {
-          try {
-            valid = fs.statSync(filePath).size === info.size
-          } catch {
-            valid = false
-          }
-        }
-
-        if (!valid) {
-          await this.downloadAsync(`${this.options.overrides.url.resource}/${subhash}/${hash}`, subAsset, hash, true, 'assets')
-          if (!await this.checkSum(hash, filePath)) {
-            await this.downloadAsync(`${this.options.overrides.url.resource}/${subhash}/${hash}`, subAsset, hash, true, 'assets')
-          }
-        }
-
-        done++
-        this.client.emit('progress', { type: 'assets', task: done, total: entries.length })
-      }))
-
-      if (this.isLegacy()) {
-        return originalMCLCGetAssets.call(this)
-      }
-
-      this.client.emit('debug', '[Zotlin]: Assets verificados con fast path')
+      const xboxManager = await getMicrosoftAuth().refresh(account.refresh_token)
+      const token = await xboxManager.getMinecraft()
+      return persistMicrosoftCredentials(account, xboxManager, token)
     } catch (error) {
-      this.client.emit('debug', `[Zotlin]: Fast path de assets fallo, usando MCLC normal: ${error.message || error}`)
-      return originalMCLCGetAssets.call(this)
+      console.error('[Kindyr] No se pudo renovar la sesión de Microsoft:', error?.code || error?.statusCode || error?.name || 'authentication_error')
+      throw new Error('No se pudo renovar la sesión de Microsoft. Iniciá sesión nuevamente.', { cause: error })
+    }
+  })()
+
+  microsoftAccountRefreshRequests.set(accountKey, request)
+  try {
+    return await request
+  } finally {
+    if (microsoftAccountRefreshRequests.get(accountKey) === request) {
+      microsoftAccountRefreshRequests.delete(accountKey)
     }
   }
-
-  mclcAssetsFastPathPatched = true
 }
 
-function getLauncherClientClass() {
-  if (!launcherClientClass) {
-    patchMCLCAssetFastPath()
-    launcherClientClass = require('minecraft-launcher-core').Client
+async function getActiveMicrosoftAccount(options) {
+  microsoftAccounts = loadMicrosoftAccounts()
+  const activeAccount = microsoftAccounts.find(account => account.active)
+  return refreshMicrosoftAccount(activeAccount, options)
+}
+
+function getXuidFromMinecraftToken(accessToken) {
+  try {
+    const payload = String(accessToken || '').split('.')[1]
+    if (!payload) return ''
+    return String(JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')).xuid || '')
+  } catch {
+    return ''
   }
-  return launcherClientClass
 }
 
-function getZotlinDataRoot() {
-  return path.join(app.getPath('appData'), 'ZotlinLauncher')
+function getKindyrDataRoot() {
+  return path.join(app.getPath('appData'), 'KindyrLauncher')
 }
 
 function getInstanceDir(instanceId) {
-  return path.join(getZotlinDataRoot(), 'instances', instanceId)
+  return path.join(getKindyrDataRoot(), 'instances', instanceId)
 }
 
 function getMinecraftRoot(instanceId) {
@@ -186,7 +430,6 @@ function getMinecraftRoot(instanceId) {
 function getLauncherLogsDir(instanceId) {
   return path.join(getInstanceDir(instanceId), 'launcher-logs')
 }
-
 
 const instanceFolders = {
   root: getInstanceDir,
@@ -202,31 +445,45 @@ const instanceFolders = {
 }
 
 function getInstance(instanceId) {
-  return getAllInstances().find(item => item.id === instanceId)
+  const customInstance = loadCustomInstances().find(item => item.id === instanceId)
+  return customInstance || defaultInstances.find(item => item.id === instanceId)
 }
 
 function getCustomInstancesFile() {
-  return path.join(getZotlinDataRoot(), 'instances.json')
+  return path.join(getKindyrDataRoot(), 'instances.json')
 }
 
+let customInstancesCache = null
+
 function loadCustomInstances() {
+  if (customInstancesCache) return customInstancesCache.map(instance => ({ ...instance }))
   const file = getCustomInstancesFile()
-  if (!fs.existsSync(file)) return []
+  if (!fs.existsSync(file)) {
+    customInstancesCache = []
+    return []
+  }
   try {
     const data = JSON.parse(fs.readFileSync(file, 'utf8'))
-    return Array.isArray(data) ? data : []
+    customInstancesCache = Array.isArray(data) ? data : []
+    return customInstancesCache.map(instance => ({ ...instance }))
   } catch {
+    customInstancesCache = []
     return []
   }
 }
 
 function saveCustomInstances(instances) {
-  fs.mkdirSync(getZotlinDataRoot(), { recursive: true })
-  fs.writeFileSync(getCustomInstancesFile(), JSON.stringify(instances, null, 2))
+  customInstancesCache = Array.isArray(instances)
+    ? instances.map(instance => ({ ...instance }))
+    : []
+  fs.mkdirSync(getKindyrDataRoot(), { recursive: true })
+  fs.writeFileSync(getCustomInstancesFile(), JSON.stringify(customInstancesCache, null, 2))
 }
 
 function getAllInstances() {
-  return [...defaultInstances, ...loadCustomInstances()]
+  const merged = new Map(defaultInstances.map(instance => [instance.id, instance]))
+  loadCustomInstances().forEach(instance => merged.set(instance.id, instance))
+  return [...merged.values()]
 }
 
 function getInstanceTargetPath(instanceId, target) {
@@ -281,7 +538,7 @@ function ensureInstanceFolders(instance) {
 }
 
 function ensureDefaultInstances() {
-  fs.mkdirSync(path.join(getZotlinDataRoot(), 'instances'), { recursive: true })
+  fs.mkdirSync(path.join(getKindyrDataRoot(), 'instances'), { recursive: true })
   getAllInstances().forEach(ensureInstanceFolders)
 }
 
@@ -307,6 +564,10 @@ function buildModrinthFacets(payload) {
   const facets = [...(modrinthTypeFilters[type] || [])]
   const version = normalizeVersion(payload.version)
   if (version) facets.push(['versions:' + version])
+  const loader = String(payload.loader || '').toLowerCase()
+  if (['fabric', 'forge', 'neoforge', 'quilt'].includes(loader)) {
+    facets.push(['categories:' + loader])
+  }
   return facets
 }
 
@@ -359,6 +620,15 @@ function isSafeRelativePath(value) {
   return true
 }
 
+function safePath(root, relativePath) {
+  const resolvedRoot = path.resolve(root)
+  const destination = path.resolve(resolvedRoot, relativePath)
+  if (destination === resolvedRoot || !destination.startsWith(resolvedRoot + path.sep)) {
+    throw new Error(`Ruta fuera de la instancia: ${relativePath}`)
+  }
+  return destination
+}
+
 async function modrinthJson(pathName, params = {}) {
   const url = new URL(MODRINTH_API + pathName)
   Object.entries(params).forEach(([key, value]) => {
@@ -399,18 +669,30 @@ async function fetchText(url) {
 }
 
 async function getMojangVersions() {
-  if (minecraftVersionCache && Date.now() - minecraftVersionCache.cachedAt < 10 * 60 * 1000) {
+  pruneVersionCaches()
+  if (minecraftVersionCache) {
     return minecraftVersionCache.versions
   }
-  const manifest = await fetchJson(MOJANG_VERSION_MANIFEST)
-  const versions = (manifest.versions || []).map(item => ({
-    id: item.id,
-    type: item.type,
-    releaseTime: item.releaseTime,
-    url: item.url
-  }))
-  minecraftVersionCache = { cachedAt: Date.now(), versions }
-  return versions
+  if (minecraftVersionRequest) return minecraftVersionRequest
+
+  minecraftVersionRequest = (async () => {
+    const manifest = await fetchJson(MOJANG_VERSION_MANIFEST)
+    const versions = (manifest.versions || []).map(item => ({
+      id: item.id,
+      type: item.type,
+      releaseTime: item.releaseTime,
+      url: item.url
+    }))
+    minecraftVersionCache = { cachedAt: Date.now(), versions }
+    pruneVersionCaches()
+    return versions
+  })()
+
+  try {
+    return await minecraftVersionRequest
+  } finally {
+    minecraftVersionRequest = null
+  }
 }
 
 function parseMavenVersions(xml) {
@@ -424,59 +706,89 @@ function getNeoForgePrefix(minecraftVersion) {
 }
 
 async function getSupportedMinecraftVersions(loader) {
+  pruneVersionCaches()
   const key = loader || 'vanilla'
-  if (loaderVersionCache[key] && Date.now() - loaderVersionCache[key].cachedAt < 10 * 60 * 1000) {
-    return loaderVersionCache[key].versions
+  const cached = loaderVersionCache[key]
+  if (cached) {
+    return cached.versions
   }
+  if (loaderVersionRequests.has(key)) return loaderVersionRequests.get(key)
 
-  let versions = []
-  if (key === 'vanilla') {
-    versions = (await getMojangVersions()).map(item => ({ minecraft: item.id }))
-  } else if (key === 'fabric') {
-    const games = await fetchJson(FABRIC_META + '/versions/game')
-    const loaders = await fetchJson(FABRIC_META + '/versions/loader')
-    const latestLoader = (loaders || []).find(item => item.stable)?.version || loaders?.[0]?.version || ''
-    versions = (games || []).map(item => ({ minecraft: item.version, loaderVersion: latestLoader }))
-  } else if (key === 'quilt') {
-    const games = await fetchJson(QUILT_META + '/versions/game')
-    const loaders = await fetchJson(QUILT_META + '/versions/loader')
-    const latestLoader = (loaders || []).find(item => item.stable)?.version || loaders?.[0]?.version || ''
-    versions = (games || []).map(item => ({ minecraft: item.version, loaderVersion: latestLoader }))
-  } else if (key === 'forge') {
-    const forgeVersions = parseMavenVersions(await fetchText(FORGE_MAVEN_METADATA))
-    versions = forgeVersions
-      .map(version => ({ minecraft: version.split('-')[0], loaderVersion: version.split('-').slice(1).join('-'), raw: version }))
-      .filter(item => item.minecraft && item.loaderVersion)
-  } else if (key === 'neoforge') {
-    const neoVersions = parseMavenVersions(await fetchText(NEOFORGE_MAVEN_METADATA))
-    versions = neoVersions.map(version => ({ minecraftPrefix: version.split('.').slice(0, 2).join('.'), loaderVersion: version, raw: version }))
+  const request = (async () => {
+    let versions = []
+    if (key === 'vanilla') {
+      versions = (await getMojangVersions()).map(item => ({ minecraft: item.id }))
+    } else if (key === 'fabric' || key === 'quilt') {
+      const baseUrl = key === 'fabric' ? FABRIC_META : QUILT_META
+      const [games, loaders] = await Promise.all([
+        fetchJson(baseUrl + '/versions/game'),
+        fetchJson(baseUrl + '/versions/loader')
+      ])
+      const latestLoader = (loaders || []).find(item => item.stable)?.version || loaders?.[0]?.version || ''
+      versions = (games || []).map(item => ({ minecraft: item.version, loaderVersion: latestLoader }))
+    } else if (key === 'forge') {
+      const forgeVersions = parseMavenVersions(await fetchText(FORGE_MAVEN_METADATA))
+      versions = forgeVersions
+        .map(version => ({ minecraft: version.split('-')[0], loaderVersion: version.split('-').slice(1).join('-'), raw: version }))
+        .filter(item => item.minecraft && item.loaderVersion)
+    } else if (key === 'neoforge') {
+      const neoVersions = parseMavenVersions(await fetchText(NEOFORGE_MAVEN_METADATA))
+      versions = neoVersions.map(version => ({ minecraftPrefix: version.split('.').slice(0, 2).join('.'), loaderVersion: version, raw: version }))
+    }
+
+    loaderVersionCache[key] = { cachedAt: Date.now(), versions }
+    pruneVersionCaches()
+    return versions
+  })()
+
+  loaderVersionRequests.set(key, request)
+  try {
+    return await request
+  } finally {
+    loaderVersionRequests.delete(key)
   }
-
-  loaderVersionCache[key] = { cachedAt: Date.now(), versions }
-  return versions
 }
 
 function pickLatestLoaderVersion(loader, minecraftVersion, supported) {
   if (loader === 'vanilla') return ''
+  const list = Array.isArray(supported) ? supported : []
   if (loader === 'neoforge') {
     const prefix = getNeoForgePrefix(minecraftVersion)
-    return [...supported].reverse().find(item => item.minecraftPrefix === prefix)?.loaderVersion || ''
+    for (let index = list.length - 1; index >= 0; index--) {
+      if (list[index].minecraftPrefix === prefix) return list[index].loaderVersion || ''
+    }
+    return ''
   }
-  return [...supported].reverse().find(item => item.minecraft === minecraftVersion)?.loaderVersion || ''
+  for (let index = list.length - 1; index >= 0; index--) {
+    if (list[index].minecraft === minecraftVersion) return list[index].loaderVersion || ''
+  }
+  return ''
 }
 
 async function listCreatableInstances(payload = {}) {
   const loader = String(payload.loader || 'vanilla')
   const includeSnapshots = Boolean(payload.includeSnapshots)
   const query = String(payload.query || '').trim().toLowerCase()
-  const mojangVersions = await getMojangVersions()
-  const supported = await getSupportedMinecraftVersions(loader)
+  const mojangPromise = getMojangVersions()
+  const supportedPromise = loader === 'vanilla'
+    ? mojangPromise.then(versions => versions.map(item => ({ minecraft: item.id })))
+    : getSupportedMinecraftVersions(loader)
+  const [mojangVersions, supported] = await Promise.all([mojangPromise, supportedPromise])
+  const loaderVersions = new Map()
+  if (loader !== 'vanilla') {
+    for (let index = supported.length - 1; index >= 0; index--) {
+      const item = supported[index]
+      const key = loader === 'neoforge' ? item.minecraftPrefix : item.minecraft
+      if (key && !loaderVersions.has(key)) loaderVersions.set(key, item.loaderVersion || '')
+    }
+  }
 
   const result = mojangVersions
     .filter(item => includeSnapshots || item.type === 'release')
     .filter(item => !query || item.id.toLowerCase().includes(query))
     .map(item => {
-      const loaderVersion = pickLatestLoaderVersion(loader, item.id, supported)
+      const lookupKey = loader === 'neoforge' ? getNeoForgePrefix(item.id) : item.id
+      const loaderVersion = loader === 'vanilla' ? '' : (loaderVersions.get(lookupKey) || '')
       return {
         id: item.id,
         type: item.type,
@@ -521,15 +833,6 @@ function createLauncherInstance(payload = {}) {
   ensureInstanceFolders(instance)
   fs.writeFileSync(path.join(getInstanceDir(instance.id), 'instance.json'), JSON.stringify(instance, null, 2))
   return instance
-}
-
-async function writeLoaderProfile(instance, minecraftRoot, profileUrl) {
-  const profile = await fetchJson(profileUrl)
-  if (!profile.id) throw new Error('El perfil del loader no tiene ID.')
-  const versionDir = path.join(minecraftRoot, 'versions', profile.id)
-  fs.mkdirSync(versionDir, { recursive: true })
-  fs.writeFileSync(path.join(versionDir, profile.id + '.json'), JSON.stringify(profile, null, 2))
-  return profile.id
 }
 
 function normalizeForgeLoaderVersion(minecraftVersion, forgeValue) {
@@ -578,51 +881,6 @@ async function ensureInstanceLoaderVersion(instance) {
   return instance
 }
 
-async function prepareLoaderLaunch(instance, minecraftRoot, opts) {
-  if (!instance.loader || instance.loader === 'vanilla') return
-  await ensureInstanceLoaderVersion(instance)
-
-  if (instance.loader === 'fabric') {
-    const custom = await writeLoaderProfile(
-      instance,
-      minecraftRoot,
-      FABRIC_META + '/versions/loader/' + encodeURIComponent(instance.version) + '/' + encodeURIComponent(instance.loaderVersion) + '/profile/json'
-    )
-    opts.version.custom = custom
-    return
-  }
-
-  if (instance.loader === 'quilt') {
-    const custom = await writeLoaderProfile(
-      instance,
-      minecraftRoot,
-      QUILT_META + '/versions/loader/' + encodeURIComponent(instance.version) + '/' + encodeURIComponent(instance.loaderVersion) + '/profile/json'
-    )
-    opts.version.custom = custom
-    return
-  }
-
-  if (instance.loader === 'forge') {
-    const raw = instance.version + '-' + instance.loaderVersion
-    const forgeDir = path.join(getInstanceDir(instance.id), 'loaders')
-    const installer = path.join(forgeDir, 'forge-' + raw + '-installer.jar')
-    if (!fs.existsSync(installer)) {
-      await downloadToFile('https://maven.minecraftforge.net/net/minecraftforge/forge/' + raw + '/forge-' + raw + '-installer.jar', installer)
-    }
-    opts.forge = installer
-    return
-  }
-
-  if (instance.loader === 'neoforge') {
-    const neoDir = path.join(getInstanceDir(instance.id), 'loaders')
-    const installer = path.join(neoDir, 'neoforge-' + instance.loaderVersion + '-installer.jar')
-    if (!fs.existsSync(installer)) {
-      await downloadToFile('https://maven.neoforged.net/releases/net/neoforged/neoforge/' + instance.loaderVersion + '/neoforge-' + instance.loaderVersion + '-installer.jar', installer)
-    }
-    opts.forge = installer
-  }
-}
-
 async function getModrinthVersions(payload = {}) {
   const projectId = String(payload.projectId || payload.slug || '').trim()
   if (!projectId) throw new Error('Proyecto invalido.')
@@ -641,6 +899,7 @@ async function downloadToFile(url, destination) {
   const parsed = new URL(String(url || ''))
   if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error('URL de descarga invalida.')
   fs.mkdirSync(path.dirname(destination), { recursive: true })
+  const temporaryPath = `${destination}.part-${process.pid}-${Date.now()}`
   const response = await fetch(parsed, {
     headers: {
       'User-Agent': MODRINTH_USER_AGENT,
@@ -648,9 +907,23 @@ async function downloadToFile(url, destination) {
     }
   })
   if (!response.ok) throw new Error('No se pudo descargar el archivo: HTTP ' + response.status)
-  const buffer = Buffer.from(await response.arrayBuffer())
-  fs.writeFileSync(destination, buffer)
-  return { path: destination, bytes: buffer.length }
+  if (!response.body) throw new Error('La descarga no devolvio contenido.')
+
+  try {
+    await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(temporaryPath))
+    try {
+      await fs.promises.rename(temporaryPath, destination)
+    } catch (error) {
+      if (!['EEXIST', 'EPERM'].includes(error.code)) throw error
+      await fs.promises.rm(destination, { force: true })
+      await fs.promises.rename(temporaryPath, destination)
+    }
+    const stat = await fs.promises.stat(destination)
+    return { path: destination, bytes: stat.size }
+  } catch (error) {
+    await fs.promises.rm(temporaryPath, { force: true }).catch(() => {})
+    throw error
+  }
 }
 
 function pickPrimaryFile(version) {
@@ -661,10 +934,18 @@ function pickPrimaryFile(version) {
 }
 
 function pickLatestVersion(versions, versionType) {
-  let list = Array.isArray(versions) ? versions : []
-  if (versionType) list = list.filter(version => version.version_type === versionType)
-  if (!list.length) return null
-  return list.sort((a, b) => new Date(b.date_published || 0) - new Date(a.date_published || 0))[0]
+  const list = Array.isArray(versions) ? versions : []
+  let latest = null
+  let latestTimestamp = -Infinity
+  for (const version of list) {
+    if (versionType && version.version_type !== versionType) continue
+    const timestamp = Date.parse(version.date_published || '') || 0
+    if (!latest || timestamp > latestTimestamp) {
+      latest = version
+      latestTimestamp = timestamp
+    }
+  }
+  return latest
 }
 
 function getInstallFolder(projectType, installKind, instanceId) {
@@ -683,48 +964,71 @@ function registerCustomInstance(instance) {
   saveCustomInstances(custom)
 }
 
-function extractMrpackOverrides(zip, minecraftRoot) {
-  zip.getEntries().forEach(entry => {
-    const normalized = entry.entryName.replace(/\\/g, '/')
-    const prefixes = ['overrides/', 'client-overrides/']
-    const prefix = prefixes.find(item => normalized.startsWith(item))
-    if (!prefix || entry.isDirectory) return
-    const relative = normalized.slice(prefix.length)
-    if (!isSafeRelativePath(relative)) return
-    const destination = path.join(minecraftRoot, relative)
-    fs.mkdirSync(path.dirname(destination), { recursive: true })
-    fs.writeFileSync(destination, entry.getData())
+async function extractMrpackOverrides(archivePath, minecraftRoot) {
+  await extractZipEntries(archivePath, minecraftRoot, {
+    maxEntryBytes: 512 * 1024 * 1024,
+    maxTotalBytes: 2 * 1024 * 1024 * 1024,
+    mapEntry(normalized) {
+      const prefixes = ['overrides/', 'client-overrides/']
+      const prefix = prefixes.find(item => normalized.startsWith(item))
+      if (!prefix) return null
+      const relative = normalized.slice(prefix.length)
+      return isSafeRelativePath(relative) ? relative : null
+    }
   })
+}
+
+async function downloadMrpackFile(packFile, minecraftRoot) {
+  const destination = safePath(minecraftRoot, packFile.path)
+  await fs.promises.mkdir(path.dirname(destination), { recursive: true })
+  for (const url of packFile.downloads) {
+    try {
+      await downloadToFile(url, destination)
+      if (await verifyMrpackFile(destination, packFile.hashes)) return true
+      await fs.promises.rm(destination, { force: true })
+    } catch {
+      await fs.promises.rm(destination, { force: true }).catch(() => {})
+    }
+  }
+  return false
 }
 
 async function installMrpackInstance(version, project, options = {}) {
   const file = pickPrimaryFile(version)
   const baseName = sanitizeInstanceId(project.slug || project.title || version.name)
-  const instanceId = baseName + '-' + sanitizeInstanceId(version.version_number || version.id).slice(0, 20)
+  const instanceId = baseName + '-' + sanitizeInstanceId(version.version_number || version.id).slice(0, 20) + '-' + Date.now().toString(36)
   const instanceDir = getInstanceDir(instanceId)
   const minecraftRoot = getMinecraftRoot(instanceId)
   fs.mkdirSync(instanceDir, { recursive: true })
   fs.mkdirSync(minecraftRoot, { recursive: true })
 
+  try {
   const mrpackPath = path.join(instanceDir, sanitizeFileName(file.filename || project.slug || 'modpack') + '.mrpack')
   await downloadToFile(file.url, mrpackPath)
-  const AdmZip = getAdmZip()
-  const zip = new AdmZip(mrpackPath)
-  const indexEntry = zip.getEntry('modrinth.index.json')
-  if (!indexEntry) throw new Error('El .mrpack no trae modrinth.index.json.')
-  const index = JSON.parse(indexEntry.getData().toString('utf8'))
+  const indexBytes = await readZipEntryBuffer(mrpackPath, 'modrinth.index.json')
+  if (!indexBytes) throw new Error('El .mrpack no trae modrinth.index.json.')
+  const index = JSON.parse(indexBytes.toString('utf8'))
   const dependencies = index.dependencies || {}
   const minecraftVersion = String(dependencies.minecraft || version.game_versions?.[0] || '').trim() || 'unknown'
 
   ensureMinecraftSubfolders(instanceId)
-  for (const packFile of index.files || []) {
-    if (packFile.env && packFile.env.client === 'unsupported') continue
-    if (!isSafeRelativePath(packFile.path)) continue
-    const download = Array.isArray(packFile.downloads) ? packFile.downloads[0] : ''
-    if (!download) continue
-    await downloadToFile(download, path.join(minecraftRoot, packFile.path))
+  const preparedFiles = getClientMrpackFiles(index)
+  if (preparedFiles.rejected.length) {
+    throw new Error(`El modpack contiene ${preparedFiles.rejected.length} archivo(s) sin una descarga segura.`)
   }
-  extractMrpackOverrides(zip, minecraftRoot)
+  const packFiles = preparedFiles.accepted
+  const maxDownloads = Math.max(
+    1,
+    Math.min(Number(loadLauncherSettings().maxConcurrentDownloads) || 6, 20)
+  )
+  const failedDownloads = []
+  await runWithConcurrency(packFiles, maxDownloads, async packFile => {
+    if (!await downloadMrpackFile(packFile, minecraftRoot)) failedDownloads.push(packFile.path)
+  })
+  if (failedDownloads.length) {
+    throw new Error(`No se pudieron importar ${failedDownloads.length} archivo(s) del modpack.`)
+  }
+  await extractMrpackOverrides(mrpackPath, minecraftRoot)
 
   let { loader, loaderVersion } = resolveLoaderFromDependencies(dependencies, minecraftVersion)
   const selectedLoader = String(options.selectedLoader || '').trim()
@@ -762,6 +1066,10 @@ async function installMrpackInstance(version, project, options = {}) {
   registerCustomInstance(instance)
   fs.writeFileSync(path.join(instanceDir, 'instance.json'), JSON.stringify(instance, null, 2))
   return { instance, path: instanceDir }
+  } catch (error) {
+    await fs.promises.rm(instanceDir, { recursive: true, force: true }).catch(() => {})
+    throw error
+  }
 }
 
 async function installModrinthProject(payload = {}) {
@@ -793,7 +1101,7 @@ async function installModrinthProject(payload = {}) {
   const file = pickPrimaryFile(version)
 
   if (destination === 'downloads') {
-    const downloadsDir = path.join(app.getPath('downloads'), 'ZotlinLauncher')
+    const downloadsDir = path.join(app.getPath('downloads'), 'KindyrLauncher')
     const target = path.join(downloadsDir, sanitizeFileName(file.filename || project.slug || project.title || 'modrinth-file'))
     const downloaded = await downloadToFile(file.url, target)
     return { type: 'download', path: downloaded.path, version }
@@ -816,7 +1124,7 @@ async function installModrinthProject(payload = {}) {
 }
 
 async function installLatestReleaseProject(payload = {}) {
-  const instance = getInstance(payload.instanceId)
+  let instance = getInstance(payload.instanceId)
   if (!instance) throw new Error('No existe la instancia seleccionada.')
   if (!instance.version || instance.version === 'unknown') throw new Error('La instancia no tiene version de Minecraft valida.')
 
@@ -824,23 +1132,82 @@ async function installLatestReleaseProject(payload = {}) {
   const projectType = String(project.project_type || 'mod')
   const installKind = getProjectInstallKindFromProject(project)
   const needsLoader = installKind === 'mod'
-  const loader = needsLoader && instance.loader && instance.loader !== 'vanilla'
+  let loader = needsLoader && instance.loader && instance.loader !== 'vanilla'
     ? instance.loader
     : 'minecraft'
+  let versionId = ''
+  let previousCustomInstances = null
+  let previousInstanceMetadata = null
+  let instanceMetadataFile = ''
 
   if (needsLoader && (!instance.loader || instance.loader === 'vanilla')) {
-    throw new Error('Esta instalacion es vanilla. Creá una con Fabric, Forge o similar para instalar mods.')
+    const projectId = project.project_id || project.id || project.slug
+    const versions = await getModrinthVersions({
+      projectId,
+      gameVersion: instance.version,
+      versionType: 'release'
+    })
+    const loaderPreference = ['fabric', 'neoforge', 'forge', 'quilt']
+    let automatic = null
+
+    for (const candidate of loaderPreference) {
+      const projectVersion = pickLatestVersion(
+        versions.filter(version => Array.isArray(version.loaders) && version.loaders.includes(candidate)),
+        'release'
+      )
+      if (!projectVersion) continue
+      const supported = await getSupportedMinecraftVersions(candidate)
+      const loaderVersion = pickLatestLoaderVersion(candidate, instance.version, supported)
+      if (!loaderVersion) continue
+      automatic = { loader: candidate, loaderVersion, projectVersion }
+      break
+    }
+
+    if (!automatic) {
+      throw new Error('No hay un loader compatible para instalar este mod en Minecraft ' + instance.version + '.')
+    }
+
+    loader = automatic.loader
+    versionId = automatic.projectVersion.id
+    instance = {
+      ...instance,
+      loader,
+      loaderVersion: automatic.loaderVersion,
+      type: 'loader',
+      updatedAt: new Date().toISOString()
+    }
+    previousCustomInstances = loadCustomInstances()
+    instanceMetadataFile = path.join(getInstanceDir(instance.id), 'instance.json')
+    previousInstanceMetadata = fs.existsSync(instanceMetadataFile)
+      ? fs.readFileSync(instanceMetadataFile)
+      : null
+    registerCustomInstance(instance)
+    ensureInstanceFolders(instance)
+    fs.writeFileSync(
+      instanceMetadataFile,
+      JSON.stringify(instance, null, 2)
+    )
   }
 
-  return installModrinthProject({
-    project,
-    installKind,
-    destination: 'instance',
-    instanceId: instance.id,
-    gameVersion: instance.version,
-    loader,
-    versionType: 'release'
-  })
+  try {
+    return await installModrinthProject({
+      project,
+      installKind,
+      destination: 'instance',
+      instanceId: instance.id,
+      gameVersion: instance.version,
+      loader,
+      versionId,
+      versionType: 'release'
+    })
+  } catch (error) {
+    if (previousCustomInstances) {
+      saveCustomInstances(previousCustomInstances)
+      if (previousInstanceMetadata) fs.writeFileSync(instanceMetadataFile, previousInstanceMetadata)
+      else if (fs.existsSync(instanceMetadataFile)) fs.unlinkSync(instanceMetadataFile)
+    }
+    throw error
+  }
 }
 
 function getProjectInstallKindFromProject(project) {
@@ -854,22 +1221,50 @@ function sendLauncherStatus(type, message) {
   mainWindow.webContents.send('launcher-status', { type, message: normalizeMessage(message) })
 }
 
-function flushLaunchLog() {
+function flushLaunchLog(afterFlush = null) {
   if (!currentLogFile || pendingLogLines.length === 0) {
+    if (!currentLogFile) {
+      pendingLogLines = []
+      pendingLogBytes = 0
+    }
     logFlushTimer = null
+    if (typeof afterFlush === 'function') afterFlush()
     return
   }
 
   const file = currentLogFile
   const chunk = pendingLogLines.join('')
   pendingLogLines = []
+  pendingLogBytes = 0
   logFlushTimer = null
-  fs.appendFile(file, chunk, () => { })
+  fs.appendFile(file, chunk, () => {
+    if (typeof afterFlush === 'function') afterFlush()
+  })
 }
 
 function writeLaunchLog(message) {
   if (!currentLogFile) return
-  pendingLogLines.push(`[${new Date().toLocaleTimeString()}] ${normalizeMessage(message, 3000)}` + '\n')
+  const text = String(message ?? '')
+  const line = `[${new Date().toLocaleTimeString()}] ${text}${text.endsWith('\n') ? '' : '\n'}`
+  const lineBytes = Buffer.byteLength(line, 'utf8')
+
+  if (lineBytes > MAX_PENDING_LOG_LINE_BYTES) {
+    if (logFlushTimer) {
+      clearTimeout(logFlushTimer)
+      logFlushTimer = null
+    }
+    const file = currentLogFile
+    flushLaunchLog(() => fs.appendFile(file, line, () => { }))
+    return
+  }
+
+  pendingLogLines.push(line)
+  pendingLogBytes += lineBytes
+  if (pendingLogLines.length >= MAX_PENDING_LOG_LINES || pendingLogBytes >= MAX_PENDING_LOG_BYTES) {
+    if (logFlushTimer) clearTimeout(logFlushTimer)
+    flushLaunchLog()
+    return
+  }
   if (!logFlushTimer) logFlushTimer = setTimeout(flushLaunchLog, 250)
 }
 
@@ -883,7 +1278,7 @@ function logOnly(type, message) {
 }
 
 function validateUsername(username) {
-  const name = String(username || 'ZotlinUser').trim()
+  const name = String(username || '').trim()
   if (!/^[A-Za-z0-9_]{3,16}$/.test(name)) {
     throw new Error('El nombre offline debe tener 3-16 caracteres y solo letras, numeros o guion bajo.')
   }
@@ -944,12 +1339,90 @@ function shouldSendProgress(message) {
   return true
 }
 
-function formatProgress(progress) {
-  if (!progress || typeof progress !== 'object') return 'Progreso de descarga...'
-  const type = progress.type || progress.task || 'archivos'
-  const total = progress.total || progress.totalTasks || '?'
-  const current = progress.task || progress.current || progress.currentTask || 0
-  return `Descargando ${type} ${current}/${total}`
+function getCurrentJavaPlatform() {
+  if (process.platform === 'win32') return 'windows'
+  if (process.platform === 'darwin') return 'mac'
+  if (process.platform === 'linux') return 'linux'
+  throw new Error(`Sistema operativo no soportado para el runtime Java: ${process.platform}`)
+}
+
+function getCurrentJavaArch() {
+  const architectures = { x64: 'x64', arm64: 'aarch64', ia32: 'x32', arm: 'arm' }
+  const arch = architectures[process.arch]
+  if (!arch) throw new Error(`Arquitectura no soportada para el runtime Java: ${process.arch}`)
+  return arch
+}
+
+function normalizeJavaPlatform(value) {
+  const clean = String(value || '').toLowerCase()
+  if (clean.includes('windows')) return 'win32'
+  if (clean.includes('linux')) return 'linux'
+  if (clean.includes('mac') || clean.includes('darwin') || clean.includes('os x')) return 'darwin'
+  return ''
+}
+
+function normalizeJavaArch(value) {
+  const clean = String(value || '').toLowerCase()
+  if (['x86_64', 'amd64', 'x64'].includes(clean)) return 'x64'
+  if (['aarch64', 'arm64'].includes(clean)) return 'arm64'
+  if (['x86', 'i386', 'i486', 'i586', 'i686'].includes(clean)) return 'ia32'
+  return ''
+}
+
+function readJavaReleaseMetadata(homeDir) {
+  const releaseFile = path.join(homeDir, 'release')
+  if (!fs.existsSync(releaseFile)) return {}
+  const metadata = {}
+  for (const line of fs.readFileSync(releaseFile, 'utf8').split(/\r?\n/)) {
+    const match = line.match(/^([A-Z0-9_]+)="?(.*?)"?$/)
+    if (match) metadata[match[1]] = match[2]
+  }
+  return metadata
+}
+
+function detectJavaBinaryPlatform(javaBinary) {
+  try {
+    const fd = fs.openSync(javaBinary, 'r')
+    const header = Buffer.alloc(4)
+    fs.readSync(fd, header, 0, header.length, 0)
+    fs.closeSync(fd)
+    if (header[0] === 0x7f && header.toString('ascii', 1, 4) === 'ELF') return 'linux'
+    const magic = header.readUInt32BE(0)
+    if ([0xfeedface, 0xfeedfacf, 0xcafebabe, 0xcefaedfe, 0xcffaedfe].includes(magic)) return 'darwin'
+    if (header[0] === 0x4d && header[1] === 0x5a) return 'win32'
+  } catch { }
+  return ''
+}
+
+function inspectJavaHome(homeDir) {
+  const metadata = readJavaReleaseMetadata(homeDir)
+  const unixJava = path.join(homeDir, 'bin', 'java')
+  const windowsJava = path.join(homeDir, 'bin', 'java.exe')
+  const windowsJavaw = path.join(homeDir, 'bin', 'javaw.exe')
+  let platform = normalizeJavaPlatform(metadata.OS_NAME)
+  if (!platform) {
+    if (fs.existsSync(windowsJava) || fs.existsSync(windowsJavaw)) platform = 'win32'
+    else if (fs.existsSync(unixJava)) platform = detectJavaBinaryPlatform(unixJava)
+  }
+  return {
+    metadata,
+    platform,
+    arch: normalizeJavaArch(metadata.OS_ARCH),
+    unixJava,
+    windowsJava,
+    windowsJavaw
+  }
+}
+
+function assertJavaHomeCompatible(homeDir) {
+  const info = inspectJavaHome(homeDir)
+  if (info.platform && info.platform !== process.platform) {
+    throw new Error(`El runtime Java de ${homeDir} es para ${info.platform}, no para ${process.platform}.`)
+  }
+  if (info.arch && info.arch !== process.arch) {
+    throw new Error(`El runtime Java de ${homeDir} es para ${info.arch}, no para ${process.arch}.`)
+  }
+  return info
 }
 
 function resolveJavaPath(javaPath) {
@@ -963,24 +1436,38 @@ function resolveJavaPath(javaPath) {
   }
 
   const stat = fs.statSync(cleanPath)
-  if (!stat.isDirectory()) return cleanPath
+  if (!stat.isDirectory()) {
+    const allowed = process.platform === 'win32' ? ['javaw.exe', 'java.exe'] : ['java']
+    if (!allowed.includes(path.basename(cleanPath).toLowerCase())) {
+      throw new Error(`El ejecutable de Java no es valido para ${process.platform}: ${cleanPath}`)
+    }
+    const homeDir = path.basename(path.dirname(cleanPath)).toLowerCase() === 'bin'
+      ? path.dirname(path.dirname(cleanPath))
+      : path.dirname(cleanPath)
+    assertJavaHomeCompatible(homeDir)
+    return cleanPath
+  }
 
-  const candidates = [
-    path.join(cleanPath, 'bin', 'javaw.exe'),
-    path.join(cleanPath, 'bin', 'java.exe'),
-    path.join(cleanPath, 'javaw.exe'),
-    path.join(cleanPath, 'java.exe')
-  ]
+  const homeDir = path.basename(cleanPath).toLowerCase() === 'bin' ? path.dirname(cleanPath) : cleanPath
+  const info = assertJavaHomeCompatible(homeDir)
+  const candidates = process.platform === 'win32'
+    ? [info.windowsJavaw, info.windowsJava]
+    : [info.unixJava]
   const found = candidates.find(candidate => fs.existsSync(candidate))
   if (!found) {
-    throw new Error(`La carpeta de Java no contiene java.exe/javaw.exe: ${cleanPath}`)
+    const expected = process.platform === 'win32' ? 'bin/javaw.exe o bin/java.exe' : 'bin/java'
+    throw new Error(`La carpeta de Java no contiene ${expected} para ${process.platform}: ${homeDir}`)
   }
 
   return found
 }
 
 function getManagedRuntimeDir(javaMajor) {
-  return path.join(getZotlinDataRoot(), 'runtime', `java-${javaMajor}`)
+  return path.join(getKindyrDataRoot(), 'runtime', `java-${javaMajor}-${process.platform}-${process.arch}`)
+}
+
+function getLegacyManagedRuntimeDir(javaMajor) {
+  return path.join(getKindyrDataRoot(), 'runtime', `java-${javaMajor}`)
 }
 
 function getManagedJavaMarker(javaMajor) {
@@ -988,28 +1475,51 @@ function getManagedJavaMarker(javaMajor) {
 }
 
 function readManagedJavaHome(javaMajor) {
-  const marker = getManagedJavaMarker(javaMajor)
-  if (!fs.existsSync(marker)) return ''
-  const home = fs.readFileSync(marker, 'utf8').trim()
-  if (!home || !fs.existsSync(path.join(home, 'bin', 'javaw.exe'))) return ''
-  return home
+  const runtimeDirs = [getManagedRuntimeDir(javaMajor), getLegacyManagedRuntimeDir(javaMajor)]
+  for (const runtimeDir of runtimeDirs) {
+    const marker = path.join(runtimeDir, '.java-home')
+    if (!fs.existsSync(marker)) continue
+    try {
+      const raw = fs.readFileSync(marker, 'utf8').trim()
+      let home = raw
+      try {
+        const data = JSON.parse(raw)
+        home = String(data.home || '')
+        if (data.platform && data.platform !== process.platform) continue
+        if (data.arch && data.arch !== process.arch) continue
+      } catch { }
+      const check = validateJavaHome(home)
+      if (check.valid) return check.home
+    } catch { }
+  }
+  return ''
 }
 
 function writeManagedJavaHome(javaMajor, homeDir) {
   const runtimeDir = getManagedRuntimeDir(javaMajor)
   fs.mkdirSync(runtimeDir, { recursive: true })
-  fs.writeFileSync(getManagedJavaMarker(javaMajor), homeDir)
+  fs.writeFileSync(getManagedJavaMarker(javaMajor), JSON.stringify({
+    home: homeDir,
+    platform: process.platform,
+    arch: process.arch
+  }, null, 2))
 }
 
 function findExtractedJdkRoot(extractDir) {
-  if (fs.existsSync(path.join(extractDir, 'bin', 'javaw.exe'))) return extractDir
-  const entries = fs.readdirSync(extractDir, { withFileTypes: true })
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue
-    const sub = path.join(extractDir, entry.name)
-    if (fs.existsSync(path.join(sub, 'bin', 'javaw.exe'))) return sub
+  const candidates = [extractDir]
+  for (const entry of fs.readdirSync(extractDir, { withFileTypes: true })) {
+    if (entry.isDirectory()) candidates.push(path.join(extractDir, entry.name))
   }
-  throw new Error('No se encontro javaw.exe despues de extraer Java.')
+  let lastError = null
+  for (const candidate of candidates) {
+    try {
+      const executable = resolveJavaPath(candidate)
+      return path.dirname(path.dirname(executable))
+    } catch (error) {
+      lastError = error
+    }
+  }
+  throw new Error(`No se encontro un runtime Java compatible despues de extraerlo: ${lastError?.message || 'estructura invalida'}`)
 }
 
 function getRequiredJavaMajor(mcVersion) {
@@ -1032,13 +1542,14 @@ function getRequiredJavaMajor(mcVersion) {
 }
 
 function getAdoptiumDownloadUrl(javaMajor) {
-  return `https://api.adoptium.net/v3/binary/latest/${javaMajor}/ga/windows/x64/jre/hotspot/normal/eclipse?project=jdk`
+  return `https://api.adoptium.net/v3/binary/latest/${javaMajor}/ga/${getCurrentJavaPlatform()}/${getCurrentJavaArch()}/jre/hotspot/normal/eclipse?project=jdk`
 }
 
 const JAVA_MAJORS = [25, 21, 17, 8]
+let launcherSettingsCache = null
 
 function getLauncherSettingsFile() {
-  return path.join(getZotlinDataRoot(), 'settings.json')
+  return path.join(getKindyrDataRoot(), 'settings.json')
 }
 
 function getDefaultLauncherSettings() {
@@ -1049,32 +1560,53 @@ function getDefaultLauncherSettings() {
 }
 
 function loadLauncherSettings() {
+  if (launcherSettingsCache) {
+    return {
+      ...launcherSettingsCache,
+      javaInstalls: { ...launcherSettingsCache.javaInstalls }
+    }
+  }
+
   const file = getLauncherSettingsFile()
   const defaults = getDefaultLauncherSettings()
-  if (!fs.existsSync(file)) return { ...defaults, javaInstalls: { ...defaults.javaInstalls } }
+  if (!fs.existsSync(file)) {
+    launcherSettingsCache = { ...defaults, javaInstalls: { ...defaults.javaInstalls } }
+    return { ...launcherSettingsCache, javaInstalls: { ...launcherSettingsCache.javaInstalls } }
+  }
   try {
     const data = JSON.parse(fs.readFileSync(file, 'utf8'))
-    return {
+    launcherSettingsCache = {
       ...defaults,
       ...data,
       javaInstalls: { ...defaults.javaInstalls, ...(data.javaInstalls || {}) }
     }
+    return { ...launcherSettingsCache, javaInstalls: { ...launcherSettingsCache.javaInstalls } }
   } catch {
-    return { ...defaults, javaInstalls: { ...defaults.javaInstalls } }
+    launcherSettingsCache = { ...defaults, javaInstalls: { ...defaults.javaInstalls } }
+    return { ...launcherSettingsCache, javaInstalls: { ...launcherSettingsCache.javaInstalls } }
   }
 }
 
 function saveLauncherSettings(data) {
-  fs.mkdirSync(getZotlinDataRoot(), { recursive: true })
-  fs.writeFileSync(getLauncherSettingsFile(), JSON.stringify(data, null, 2))
+  const defaults = getDefaultLauncherSettings()
+  launcherSettingsCache = {
+    ...defaults,
+    ...data,
+    javaInstalls: {
+      ...defaults.javaInstalls,
+      ...(data.javaInstalls || {})
+    }
+  }
+  fs.mkdirSync(getKindyrDataRoot(), { recursive: true })
+  fs.writeFileSync(getLauncherSettingsFile(), JSON.stringify(launcherSettingsCache, null, 2))
 }
 
 function getLauncherCacheDir() {
-  return path.join(getZotlinDataRoot(), 'cache')
+  return path.join(getKindyrDataRoot(), 'cache')
 }
 
 function getBackgroundImagePath() {
-  const target = path.join(getZotlinDataRoot(), 'background.png')
+  const target = path.join(getKindyrDataRoot(), 'background.png')
   return fs.existsSync(target) ? target : ''
 }
 
@@ -1096,8 +1628,8 @@ function javaHomeFromCandidate(candidate) {
 function validateJavaHome(homeDir) {
   if (!homeDir) return { valid: false, path: '', home: '' }
   try {
-    const javaw = resolveJavaPath(homeDir)
-    return { valid: true, path: javaw, home: path.dirname(path.dirname(javaw)) }
+    const javaExecutable = resolveJavaPath(homeDir)
+    return { valid: true, path: javaExecutable, home: path.dirname(path.dirname(javaExecutable)) }
   } catch {
     return { valid: false, path: '', home: homeDir }
   }
@@ -1124,29 +1656,32 @@ function detectJavaInstallation(javaMajor) {
     if (check.valid) return { ok: true, path: check.home, source: 'custom' }
   }
 
-  const bases = [
-    process.env.ProgramFiles,
-    process.env['ProgramFiles(x86)'],
-    path.join(process.env.LOCALAPPDATA || '', 'Programs')
-  ].filter(Boolean)
+  const candidates = [process.env.JAVA_HOME].filter(Boolean)
+  const parents = process.platform === 'win32'
+    ? [
+      ...[process.env.ProgramFiles, process.env['ProgramFiles(x86)']]
+        .filter(Boolean)
+        .flatMap(base => ['Eclipse Adoptium', 'Java', 'Microsoft', 'Zulu'].map(folder => path.join(base, folder))),
+      process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs') : ''
+    ].filter(Boolean)
+    : process.platform === 'darwin'
+      ? ['/Library/Java/JavaVirtualMachines', path.join(process.env.HOME || '', 'Library', 'Java', 'JavaVirtualMachines')]
+      : ['/usr/lib/jvm', '/usr/java', '/opt/java']
 
-  for (const base of bases) {
-    for (const folder of ['Eclipse Adoptium', 'Java', 'Microsoft', 'Zulu']) {
-      const parent = path.join(base, folder)
-      if (!fs.existsSync(parent)) continue
-      let entries = []
-      try {
-        entries = fs.readdirSync(parent, { withFileTypes: true })
-      } catch {
-        continue
+  for (const parent of parents) {
+    if (!fs.existsSync(parent)) continue
+    try {
+      for (const entry of fs.readdirSync(parent, { withFileTypes: true })) {
+        if (!entry.isDirectory() || !entry.name.includes(String(javaMajor))) continue
+        const base = path.join(parent, entry.name)
+        candidates.push(process.platform === 'darwin' ? path.join(base, 'Contents', 'Home') : base)
       }
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue
-        if (!entry.name.includes(String(javaMajor))) continue
-        const home = javaHomeFromCandidate(path.join(parent, entry.name))
-        if (home) return { ok: true, path: home, source: 'detected' }
-      }
-    }
+    } catch { }
+  }
+
+  for (const candidate of candidates) {
+    const home = javaHomeFromCandidate(candidate)
+    if (home) return { ok: true, path: home, source: 'detected' }
   }
 
   return { ok: false, error: `No se encontro Java ${javaMajor} en el sistema.` }
@@ -1163,13 +1698,12 @@ function getDirSizeBytes(targetPath) {
   return total
 }
 
-// Storage cache system - avoids 4.5s filesystem scan on every Ajustes open
 let storageCacheInMemory = null
 let storageCacheTimestamp = 0
 const CACHE_VALIDITY_MS = 5 * 60 * 1000 // 5 minutes
 
 function getStorageCachePath() {
-  return path.join(getZotlinDataRoot(), 'storage-cache.json')
+  return path.join(getKindyrDataRoot(), 'storage-cache.json')
 }
 
 function loadStorageCacheFromDisk() {
@@ -1180,7 +1714,7 @@ function loadStorageCacheFromDisk() {
       return JSON.parse(data)
     }
   } catch (e) {
-    // ignore corrupted cache
+
   }
   return null
 }
@@ -1190,18 +1724,17 @@ function saveStorageCacheToDisk(data) {
     const cachePath = getStorageCachePath()
     fs.writeFileSync(cachePath, JSON.stringify(data), 'utf-8')
   } catch (e) {
-    // ignore disk write errors
+
   }
 }
 
 function getStorageInfo() {
-  // Return cached value if available and fresh
+
   const now = Date.now()
   if (storageCacheInMemory && (now - storageCacheTimestamp) < CACHE_VALIDITY_MS) {
     return storageCacheInMemory
   }
 
-  // Try disk cache
   const diskCache = loadStorageCacheFromDisk()
   if (diskCache) {
     storageCacheInMemory = diskCache
@@ -1209,22 +1742,19 @@ function getStorageInfo() {
     return diskCache
   }
 
-  // Return minimal defaults while recalculating in background
   const defaultData = {
     ok: true,
     sizes: { total: 0, instances: 0, runtime: 0, cache: 0 },
     formatted: { total: '—', instances: '—', runtime: '—', cache: '—' }
   }
 
-  // Recalculate asynchronously without blocking main thread
   setImmediate(() => {
     try {
-      const dataRoot = getZotlinDataRoot()
+      const dataRoot = getKindyrDataRoot()
       const instancesDir = path.join(dataRoot, 'instances')
       const runtimeDir = path.join(dataRoot, 'runtime')
       const cacheDir = getLauncherCacheDir()
 
-      // Only scan the subdirectories, not the full dataRoot
       const instances = getDirSizeBytes(instancesDir)
       const runtime = getDirSizeBytes(runtimeDir)
       const cache = getDirSizeBytes(cacheDir)
@@ -1245,7 +1775,7 @@ function getStorageInfo() {
       storageCacheTimestamp = Date.now()
       saveStorageCacheToDisk(updated)
     } catch (e) {
-      // Background storage scan failed silently
+
     }
   })
 
@@ -1259,7 +1789,7 @@ function invalidateStorageCache() {
     const cachePath = getStorageCachePath()
     if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath)
   } catch (e) {
-    // ignore
+
   }
 }
 
@@ -1277,44 +1807,66 @@ function formatBytes(bytes) {
 
 async function downloadManagedJava(javaMajor, progressFn) {
   const runtimeDir = getManagedRuntimeDir(javaMajor)
-  const zipPath = path.join(runtimeDir, 'download.zip')
+  const archiveExtension = process.platform === 'win32' ? '.zip' : '.tar.gz'
+  const archivePath = path.join(runtimeDir, `download${archiveExtension}`)
   const extractDir = path.join(runtimeDir, '_extract')
+  const stagingDir = path.join(runtimeDir, `_extract.staging-${process.pid}-${Date.now()}`)
   const report = (type, message) => {
     if (progressFn) progressFn(type, message)
     else logAndSend(type, message)
   }
 
   fs.mkdirSync(runtimeDir, { recursive: true })
-  if (fs.existsSync(extractDir)) {
-    fs.rmSync(extractDir, { recursive: true, force: true })
-  }
-  fs.mkdirSync(extractDir, { recursive: true })
+  fs.mkdirSync(stagingDir, { recursive: true })
 
   const url = getAdoptiumDownloadUrl(javaMajor)
   report('progress', `Descargando Java ${javaMajor} (Eclipse Temurin)...`)
-  writeLaunchLog(`Descargando runtime Java ${javaMajor} desde Adoptium`)
+  writeLaunchLog(`Descargando runtime Java ${javaMajor} para ${process.platform}/${process.arch} desde Adoptium`)
 
+  let backupDir = ''
   try {
-    await downloadToFile(url, zipPath)
+    await downloadToFile(url, archivePath)
     report('progress', `Extrayendo Java ${javaMajor}...`)
-    const AdmZip = getAdmZip()
-    const zip = new AdmZip(zipPath)
-    zip.extractAllTo(extractDir, true)
-    const homeDir = findExtractedJdkRoot(extractDir)
+
+    if (archiveExtension === '.zip') {
+      await extractZipEntries(archivePath, stagingDir, {
+        maxEntries: 200000,
+        maxEntryBytes: 1024 * 1024 * 1024,
+        maxTotalBytes: 4 * 1024 * 1024 * 1024
+      })
+    } else {
+      const tar = require('tar')
+      await tar.x({ file: archivePath, cwd: stagingDir, strict: true })
+    }
+
+    const stagedHome = findExtractedJdkRoot(stagingDir)
+    const relativeHome = path.relative(stagingDir, stagedHome)
+    if (fs.existsSync(extractDir)) {
+      backupDir = path.join(runtimeDir, `_extract.previous-${Date.now()}`)
+      fs.renameSync(extractDir, backupDir)
+    }
+    fs.renameSync(stagingDir, extractDir)
+    const homeDir = path.join(extractDir, relativeHome)
+    const javaExecutable = resolveJavaPath(homeDir)
     writeManagedJavaHome(javaMajor, homeDir)
 
     const settings = loadLauncherSettings()
-    settings.javaInstalls[String(javaMajor)] = homeDir
-    saveLauncherSettings(settings)
+    const configured = String(settings.javaInstalls[String(javaMajor)] || '').trim()
+    const runtimeRoot = path.resolve(getKindyrDataRoot(), 'runtime') + path.sep
+    if (configured && path.resolve(configured).startsWith(runtimeRoot)) {
+      settings.javaInstalls[String(javaMajor)] = ''
+      saveLauncherSettings(settings)
+    }
 
-    return resolveJavaPath(homeDir)
+    return javaExecutable
   } catch (err) {
-    // Solo limpiar si falló
-    if (fs.existsSync(extractDir)) fs.rmSync(extractDir, { recursive: true, force: true })
+    if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true, force: true })
+    if (backupDir && !fs.existsSync(extractDir) && fs.existsSync(backupDir)) {
+      fs.renameSync(backupDir, extractDir)
+    }
     throw err
   } finally {
-    // Solo borrar el zip descargado, siempre
-    if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath)
+    if (fs.existsSync(archivePath)) fs.unlinkSync(archivePath)
   }
 }
 
@@ -1336,6 +1888,29 @@ async function ensureManagedJava(mcVersion) {
 
 async function resolveLaunchJavaPath(mcVersion) {
   return ensureManagedJava(mcVersion)
+}
+
+function ensureJavaExecutableForLaunch(javaPath) {
+  const executable = resolveJavaPath(javaPath)
+  if (!fs.existsSync(executable) || !fs.statSync(executable).isFile()) {
+    throw new Error(`El ejecutable de Java no existe o no es un archivo: ${executable}`)
+  }
+  if (process.platform === 'linux') {
+    if (/\.exe$/i.test(executable)) {
+      throw new Error(`No se puede ejecutar un binario .exe de Windows en Linux: ${executable}`)
+    }
+    try {
+      fs.accessSync(executable, fs.constants.X_OK)
+    } catch {
+      try {
+        fs.chmodSync(executable, 0o755)
+        fs.accessSync(executable, fs.constants.X_OK)
+      } catch (error) {
+        throw new Error(`Java no tiene permisos de ejecucion y no se pudieron corregir: ${executable}. ${error.message || String(error)}`)
+      }
+    }
+  }
+  return executable
 }
 
 const SPLASH_MIN_MS = 1600
@@ -1382,15 +1957,11 @@ function getRendererWebPreferences(preload) {
   }
 }
 
-autoUpdater.autoDownload = true
-autoUpdater.autoInstallOnAppQuit = true
-autoUpdater.allowPrerelease = true
-
 let pendingUpdateInfo = null
 let updateConfirmationWindow = null
 
 async function isPrerelease(version) {
-  const semverPrerelease = semver.prerelease(version)
+  const semverPrerelease = getSemver().prerelease(version)
   if (semverPrerelease !== null) {
     return true
   }
@@ -1398,7 +1969,7 @@ async function isPrerelease(version) {
   let lastError = null
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
-      const response = await fetch(`https://api.github.com/repos/iDontrixss/ZotlinLauncher/releases/tags/v${version}`)
+      const response = await fetch(`https://api.github.com/repos/iDontrixss/KindyrLauncher/releases/tags/v${version}`)
       if (response.ok) {
         const releaseData = await response.json()
         return releaseData.prerelease === true
@@ -1449,39 +2020,89 @@ function showUpdateConfirmation(updateInfo) {
   })
 }
 
-autoUpdater.on('update-available', async (updateInfo) => {
-  const isPrereleaseVersion = await isPrerelease(updateInfo.version)
+function configureAutoUpdater(updater) {
+  if (autoUpdaterConfigured) return
+  autoUpdaterConfigured = true
 
-  if (isPrereleaseVersion === null) {
-    console.error(`Could not verify release status for v${updateInfo.version}, skipping update`)
+  updater.autoDownload = true
+  updater.autoInstallOnAppQuit = true
+  updater.allowPrerelease = true
+
+  updater.on('update-available', async (updateInfo) => {
+    const isPrereleaseVersion = await isPrerelease(updateInfo.version)
+
+    if (isPrereleaseVersion === null) {
+      console.error(`Could not verify release status for v${updateInfo.version}, skipping update`)
+      return
+    }
+
+    if (isPrereleaseVersion) {
+      updater.autoDownload = false
+      showUpdateConfirmation(updateInfo)
+    } else {
+      updater.autoDownload = true
+      splashWindow?.webContents.send('update-status', 'Descargando actualización...')
+    }
+  })
+
+  updater.on('download-progress', (progress) => {
+    splashWindow?.webContents.send('update-status', `Descargando... ${Math.round(progress.percent)}%`)
+  })
+
+  updater.on('update-downloaded', () => {
+    splashWindow?.webContents.send('update-status', 'Instalando actualización...')
+    setTimeout(() => updater.quitAndInstall(), 1500)
+  })
+
+  updater.on('error', (err) => {
+    console.error('AutoUpdater error:', err.message)
+  })
+}
+
+async function hasNewerGitHubRelease() {
+  const response = await fetch('https://api.github.com/repos/iDontrixss/KindyrLauncher/releases?per_page=20', {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'KindyrLauncher/' + app.getVersion()
+    }
+  })
+  if (!response.ok) throw new Error(`GitHub releases preflight failed: HTTP ${response.status}`)
+
+  const releases = await response.json()
+  if (!Array.isArray(releases)) throw new Error('GitHub releases preflight returned invalid data')
+
+  const semver = getSemver()
+  const currentVersion = semver.valid(String(app.getVersion()).replace(/^[vV]/, ''), { loose: true })
+  if (!currentVersion) throw new Error(`Invalid current version: ${app.getVersion()}`)
+
+  return releases.some(release => {
+    if (!release || release.draft) return false
+    const releaseVersion = semver.valid(String(release.tag_name || '').replace(/^[vV]/, ''), { loose: true })
+    return Boolean(releaseVersion && semver.gt(releaseVersion, currentVersion))
+  })
+}
+
+async function checkForUpdatesOnStartup() {
+  if (!app.isPackaged) {
+    console.log('[Kindyr] Update check skipped outside packaged app')
     return
   }
 
-  if (isPrereleaseVersion) {
-    autoUpdater.autoDownload = false
-    showUpdateConfirmation(updateInfo)
-  } else {
-    autoUpdater.autoDownload = true
-    splashWindow?.webContents.send('update-status', 'Descargando actualización...')
+  try {
+    if (!await hasNewerGitHubRelease()) {
+      console.log('[Kindyr] No newer GitHub release; updater remains unloaded')
+      return
+    }
+  } catch (error) {
+    console.warn('[Kindyr] Update preflight failed; falling back to electron-updater:', error.message || error)
   }
-})
 
-autoUpdater.on('download-progress', (progress) => {
-  splashWindow?.webContents.send('update-status', `Descargando... ${Math.round(progress.percent)}%`)
-})
-
-autoUpdater.on('update-downloaded', () => {
-  splashWindow?.webContents.send('update-status', 'Instalando actualización...')
-  setTimeout(() => autoUpdater.quitAndInstall(), 1500)
-})
-
-autoUpdater.on('error', (err) => {
-  console.error('AutoUpdater error:', err.message)
-})
+  await getAutoUpdater().checkForUpdates()
+}
 
 ipcMain.on('update-confirm', (_event, accepted) => {
   if (accepted && pendingUpdateInfo) {
-    autoUpdater.downloadUpdate()
+    getAutoUpdater().downloadUpdate()
     splashWindow?.webContents.send('update-status', 'Descargando actualización...')
   }
   updateConfirmationWindow?.close()
@@ -1501,11 +2122,23 @@ function createSplashWindow() {
     icon: getAppIcon(),
     webPreferences: getRendererWebPreferences(path.join(__dirname, 'preload-splash.js'))
   })
+  scheduleProfileCheckpoint('splash-created')
+  const window = splashWindow
+  window.on('closed', () => {
+    if (splashWindow === window) {
+      splashWindow = null
+      clearSplashCloseTimer()
+    }
+  })
   splashWindow.loadFile('splash.html', { query: { v: version } })
-  autoUpdater.checkForUpdates().catch(() => { })
+  checkForUpdatesOnStartup().catch(error => {
+    console.error('AutoUpdater error:', error.message || error)
+  })
 }
 
 function closeSplashAndShowMain() {
+  clearSplashCloseTimer()
+  clearMainWindowLoadFallbackTimer()
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.show()
     mainWindow.focus()
@@ -1516,12 +2149,12 @@ function closeSplashAndShowMain() {
   splashWindow = null
 }
 function isOnboardingDone() {
-  const file = path.join(getZotlinDataRoot(), 'onboarding-done.json')
+  const file = path.join(getKindyrDataRoot(), 'onboarding-done.json')
   return fs.existsSync(file)
 }
 
 function markOnboardingDone() {
-  const dir = getZotlinDataRoot()
+  const dir = getKindyrDataRoot()
   fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, 'onboarding-done.json'), JSON.stringify({ done: true }))
 }
@@ -1541,16 +2174,57 @@ function createWindow() {
     webPreferences: getRendererWebPreferences(path.join(__dirname, 'preload.js')),
     icon: getAppIcon()
   })
+  scheduleProfileCheckpoint('main-window-created')
+  const window = mainWindow
+  let splashDismissScheduled = false
+  const dismissSplashWhenMainIsUsable = (reason) => {
+    if (splashDismissScheduled || mainWindow !== window || window.isDestroyed()) return
+    splashDismissScheduled = true
+    clearMainWindowLoadFallbackTimer()
+    const wait = Math.max(0, SPLASH_MIN_MS - (Date.now() - splashStartedAt))
+    clearSplashCloseTimer()
+    splashCloseTimer = setTimeout(() => {
+      splashCloseTimer = null
+      if (mainWindow !== window || window.isDestroyed()) return
+      if (reason !== 'ready-to-show') console.warn(`[Kindyr] Splash fallback activated: ${reason}`)
+      closeSplashAndShowMain()
+    }, wait)
+  }
+  window.on('closed', () => {
+    if (mainWindow !== window) return
+    mainWindow = null
+    clearSplashCloseTimer()
+    clearMainWindowLoadFallbackTimer()
+    if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close()
+    splashWindow = null
+  })
 
-  mainWindow.loadFile('index.html')
+  mainWindow.loadFile('index.html').catch(error => {
+    console.error('[Kindyr] Could not load main window:', error.message || error)
+    dismissSplashWhenMainIsUsable('load-error')
+  })
 
   mainWindow.once('ready-to-show', () => {
-    const wait = Math.max(0, SPLASH_MIN_MS - (Date.now() - splashStartedAt))
-    setTimeout(closeSplashAndShowMain, wait)
+    scheduleProfileCheckpoint('main-ready-to-show')
+    dismissSplashWhenMainIsUsable('ready-to-show')
   })
+  mainWindow.webContents.once('did-finish-load', () => {
+    setTimeout(() => dismissSplashWhenMainIsUsable('did-finish-load'), 750)
+  })
+  mainWindow.webContents.once('did-fail-load', (_event, _code, description) => {
+    console.error('[Kindyr] Main window load failed:', description)
+    dismissSplashWhenMainIsUsable('did-fail-load')
+  })
+  mainWindowLoadFallbackTimer = setTimeout(() => {
+    dismissSplashWhenMainIsUsable('12-second-timeout')
+  }, 12_000)
+  mainWindowLoadFallbackTimer.unref?.()
 }
 
 app.whenReady().then(() => {
+  scheduleProfileCheckpoint('app-ready')
+  scheduleProfileCheckpoint('idle-10s', 10_000)
+  scheduleProfileCheckpoint('idle-60s', 60_000)
   if (!isOnboardingDone()) {
     createOnboardingWindow()
   } else {
@@ -1568,6 +2242,9 @@ function createOnboardingWindow() {
   })
   win.loadFile('onboarding.html')
   global.onboardingWindow = win
+  win.on('closed', () => {
+    if (global.onboardingWindow === win) global.onboardingWindow = null
+  })
 }
 
 ipcMain.on('minimize', () => {
@@ -1577,19 +2254,19 @@ ipcMain.on('minimize', () => {
 ipcMain.handle('finish-onboarding', (_event, config) => {
   markOnboardingDone()
   const settings = {
-    username: config.username || 'ZotlinUser',
+    username: config.username || '',
     language: config.language || 'es',
-    theme: config.theme || 'dark',
+    theme: config.theme || 'midnight',
     accountType: config.accountType || 'offline',
     minRam: '2G',
     maxRam: '4G',
     minRamMb: 2048,
     maxRamMb: 4096,
     javaArgs: '',
-    maxConcurrentDownloads: 6
+    maxConcurrentDownloads: 6,
+    settingsSavedAt: Date.now()
   }
-  const settingsFile = path.join(getZotlinDataRoot(), 'settings.json')
-  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2))
+  saveLauncherSettings(settings)
 
   if (global.onboardingWindow) {
     global.onboardingWindow.close()
@@ -1623,7 +2300,7 @@ ipcMain.handle('get-instances', () => {
 
 ipcMain.handle('get-data-root', () => {
   ensureDefaultInstances()
-  return getZotlinDataRoot()
+  return getKindyrDataRoot()
 })
 
 ipcMain.handle('settings-get-java', () => {
@@ -1674,6 +2351,12 @@ ipcMain.handle('export-mrpack', async (_event, instanceId) => {
   const instance = instances.find(i => i.id === instanceId)
   if (!instance) return { ok: false, error: 'Instancia no encontrada' }
 
+  try {
+    await ensureInstanceLoaderVersion(instance)
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+
   const { dialog } = require('electron')
   const result = await dialog.showSaveDialog(mainWindow, {
     title: 'Exportar modpack',
@@ -1683,11 +2366,14 @@ ipcMain.handle('export-mrpack', async (_event, instanceId) => {
   if (result.canceled || !result.filePath) return { cancelled: true }
 
   try {
-    const AdmZip = require('adm-zip')
-    const zip = new AdmZip()
-    const instanceMinecraftDir = path.join(instance.dir, 'minecraft')
+    const instanceMinecraftDir = getMinecraftRoot(instance.id)
 
-    // Crear modrinth.index.json
+    const loaderDependencies = {}
+    if (instance.loader === 'fabric') loaderDependencies['fabric-loader'] = instance.loaderVersion
+    else if (instance.loader === 'quilt') loaderDependencies['quilt-loader'] = instance.loaderVersion
+    else if (instance.loader === 'forge') loaderDependencies.forge = instance.loaderVersion
+    else if (instance.loader === 'neoforge') loaderDependencies.neoforge = instance.loaderVersion
+
     const index = {
       formatVersion: 1,
       game: 'minecraft',
@@ -1695,32 +2381,32 @@ ipcMain.handle('export-mrpack', async (_event, instanceId) => {
       name: instance.name,
       dependencies: {
         minecraft: instance.version,
-        ...(instance.loader && instance.loader !== 'vanilla' ? { [instance.loader]: '' } : {})
+        ...loaderDependencies
       },
       files: []
     }
-    zip.addFile('modrinth.index.json', Buffer.from(JSON.stringify(index, null, 2)))
-
-    // Agregar archivos como overrides (excepto mods)
-    const overrideDirs = ['config', 'resourcepacks', 'shaderpacks', 'saves']
-    for (const dir of overrideDirs) {
-      const dirPath = path.join(instanceMinecraftDir, dir)
-      if (!fs.existsSync(dirPath)) continue
-      const addDir = (currentPath, zipPath) => {
-        fs.readdirSync(currentPath).forEach(file => {
-          const fullPath = path.join(currentPath, file)
-          const zipFilePath = path.join(zipPath, file)
-          if (fs.statSync(fullPath).isDirectory()) {
-            addDir(fullPath, zipFilePath)
-          } else {
-            zip.addFile('overrides/' + zipFilePath.replace(/\\/g, '/'), fs.readFileSync(fullPath))
-          }
-        })
+    await writeZip(result.filePath, async zip => {
+      zip.addBuffer(Buffer.from(JSON.stringify(index, null, 2)), 'modrinth.index.json')
+      const overrideDirs = ['mods', 'plugins', 'datapacks', 'config', 'resourcepacks', 'shaderpacks', 'saves']
+      for (const dir of overrideDirs) {
+        const dirPath = path.join(instanceMinecraftDir, dir)
+        if (!fs.existsSync(dirPath)) continue
+        const addDir = (currentPath, zipPath) => {
+          fs.readdirSync(currentPath).forEach(file => {
+            const fullPath = path.join(currentPath, file)
+            const zipFilePath = path.join(zipPath, file)
+            const stat = fs.lstatSync(fullPath)
+            if (stat.isSymbolicLink()) return
+            if (stat.isDirectory()) {
+              addDir(fullPath, zipFilePath)
+            } else if (stat.isFile()) {
+              zip.addFile(fullPath, 'overrides/' + zipFilePath.replace(/\\/g, '/'))
+            }
+          })
+        }
+        addDir(dirPath, dir)
       }
-      addDir(dirPath, dir)
-    }
-
-    zip.writeZip(result.filePath)
+    })
     return { ok: true, name: instance.name }
   } catch (err) {
     return { ok: false, error: err.message }
@@ -1734,7 +2420,7 @@ ipcMain.handle('settings-browse-java', async () => {
   })
   if (result.canceled || !result.filePaths.length) return { ok: false, cancelled: true }
   const home = javaHomeFromCandidate(result.filePaths[0])
-  if (!home) return { ok: false, error: 'No se encontro javaw.exe en esa carpeta.' }
+  if (!home) return { ok: false, error: `No se encontro un runtime Java compatible con ${process.platform} en esa carpeta.` }
   return { ok: true, path: home }
 })
 
@@ -1756,7 +2442,7 @@ ipcMain.handle('settings-install-java', async (_event, major) => {
 })
 
 ipcMain.handle('settings-get-storage', () => {
-  const dataRoot = getZotlinDataRoot()
+  const dataRoot = getKindyrDataRoot()
   const result = getStorageInfo()
   result.dataRoot = dataRoot
   return result
@@ -1764,19 +2450,22 @@ ipcMain.handle('settings-get-storage', () => {
 
 ipcMain.handle('settings-purge-cache', () => {
   minecraftVersionCache = null
+  minecraftVersionRequest = null
   loaderVersionCache = {}
-  
-  // Función helper para eliminar directorio tolerante a archivos bloqueados
+  loaderVersionRequests.clear()
+  if (versionCacheCleanupTimer) {
+    clearTimeout(versionCacheCleanupTimer)
+    versionCacheCleanupTimer = null
+  }
+
   const removeDirTolerant = (dirPath) => {
     try {
       if (!fs.existsSync(dirPath)) return
-      
-      // Intentar eliminación directa primero
+
       try {
         fs.rmSync(dirPath, { recursive: true, force: true })
         return
       } catch (directErr) {
-        // Si falla, intentar archivo por archivo ignorando errores
         const removeRecursive = (currentPath) => {
           try {
             if (fs.statSync(currentPath).isDirectory()) {
@@ -1788,30 +2477,26 @@ ipcMain.handle('settings-purge-cache', () => {
               try {
                 fs.rmdirSync(currentPath)
               } catch (rmdirErr) {
-                // Ignorar error al eliminar directorio
               }
             } else {
               try {
                 fs.unlinkSync(currentPath)
               } catch (unlinkErr) {
-                // Ignorar error al eliminar archivo (probablemente bloqueado)
               }
             }
           } catch (statErr) {
-            // Ignorar error de stat
           }
         }
         removeRecursive(dirPath)
       }
     } catch (err) {
-      // Ignorar todos los errores, no bloquear la operación
     }
   }
-  
+
   const cacheDir = getLauncherCacheDir()
   removeDirTolerant(cacheDir)
-  
-  const runtimeDir = path.join(getZotlinDataRoot(), 'runtime')
+
+  const runtimeDir = path.join(getKindyrDataRoot(), 'runtime')
   if (fs.existsSync(runtimeDir)) {
     for (const entry of fs.readdirSync(runtimeDir, { withFileTypes: true })) {
       if (entry.isDirectory() && entry.name === '_extract') {
@@ -1824,7 +2509,7 @@ ipcMain.handle('settings-purge-cache', () => {
 })
 
 ipcMain.handle('settings-open-data-root', () => {
-  const dataRoot = getZotlinDataRoot()
+  const dataRoot = getKindyrDataRoot()
   fs.mkdirSync(dataRoot, { recursive: true })
   shell.openPath(dataRoot)
   return { ok: true, path: dataRoot }
@@ -1877,10 +2562,10 @@ ipcMain.handle('settings-pick-background', async () => {
   const srcPath = result.filePaths[0]
   const ext = path.extname(srcPath).toLowerCase()
   const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv)$/i.test(srcPath)
-  fs.mkdirSync(getZotlinDataRoot(), { recursive: true })
+  fs.mkdirSync(getKindyrDataRoot(), { recursive: true })
 
   if (isVideo) {
-    const target = path.join(getZotlinDataRoot(), 'background.mp4')
+    const target = path.join(getKindyrDataRoot(), 'background.mp4')
     try {
       await convertVideoToH264(srcPath, target)
       return { ok: true, path: target }
@@ -1888,7 +2573,7 @@ ipcMain.handle('settings-pick-background', async () => {
       return { ok: false, error: 'No se pudo convertir el video: ' + err.message }
     }
   } else {
-    const target = path.join(getZotlinDataRoot(), 'background' + ext)
+    const target = path.join(getKindyrDataRoot(), 'background' + ext)
     try {
       fs.copyFileSync(srcPath, target)
       return { ok: true, path: target }
@@ -1907,7 +2592,7 @@ ipcMain.handle('settings-get-background', () => {
 })
 
 ipcMain.handle('settings-clear-background', () => {
-  const target = path.join(getZotlinDataRoot(), 'background.png')
+  const target = path.join(getKindyrDataRoot(), 'background.png')
   if (fs.existsSync(target)) fs.unlinkSync(target)
   return { ok: true }
 })
@@ -1922,7 +2607,6 @@ ipcMain.handle('open-instance-folder', (_event, instanceId) => {
   shell.openPath(getInstanceDir(instanceId))
   return { ok: true }
 })
-
 
 ipcMain.handle('get-instance-details', (_event, instanceId) => {
   const instance = getInstance(instanceId)
@@ -2009,7 +2693,7 @@ ipcMain.handle('modrinth-versions', async (_event, payload) => {
 
 ipcMain.handle('get-onboarding-settings', () => {
   try {
-    const file = path.join(getZotlinDataRoot(), 'settings.json')
+    const file = path.join(getKindyrDataRoot(), 'settings.json')
     if (!fs.existsSync(file)) return { ok: false }
     const data = JSON.parse(fs.readFileSync(file, 'utf8'))
     return { ok: true, settings: data }
@@ -2067,127 +2751,42 @@ ipcMain.handle('import-mrpack', async (event) => {
   const mrpackPath = result.filePaths[0]
   let instanceDir = null
 
-  // Fix file.close() + unlink race en Windows
-  function safeCleanTmp(file, tmpPath) {
-    return new Promise((resolve) => {
-      file.close(() => {
-        try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath) } catch { }
-        resolve()
-      })
-    })
-  }
-
   try {
-    const AdmZip = require('adm-zip')
-    const zip = new AdmZip(mrpackPath)
-    const indexEntry = zip.getEntry('modrinth.index.json')
-    if (!indexEntry) return { ok: false, error: 'Archivo .mrpack inválido: falta modrinth.index.json' }
-
-    const index = JSON.parse(indexEntry.getData().toString('utf8'))
+    const indexBytes = await readZipEntryBuffer(mrpackPath, 'modrinth.index.json')
+    if (!indexBytes) return { ok: false, error: 'Archivo .mrpack inválido: falta modrinth.index.json' }
+    const index = JSON.parse(indexBytes.toString('utf8'))
     const packName = index.name || path.basename(mrpackPath, '.mrpack')
     const mcVersion = index.dependencies?.minecraft || 'unknown'
-    const loader = Object.keys(index.dependencies || {}).find(k => k !== 'minecraft') || 'vanilla'
-
-    const instanceId = 'modpack-' + packName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now()
-    instanceDir = path.join(getZotlinDataRoot(), 'instances', instanceId)
-    fs.mkdirSync(path.join(instanceDir, 'minecraft', 'mods'), { recursive: true })
-
-    function safePath(base, filePath) {
-      const baseResolved = path.resolve(base) + path.sep
-      const resolved = path.resolve(base, filePath)
-      if (!resolved.startsWith(baseResolved)) throw new Error('Path traversal detectado: ' + filePath)
-      return resolved
+    let { loader, loaderVersion } = resolveLoaderFromDependencies(index.dependencies, mcVersion)
+    if (loader !== 'vanilla' && !loaderVersion) {
+      const supported = await getSupportedMinecraftVersions(loader)
+      loaderVersion = pickLatestLoaderVersion(loader, mcVersion, supported)
+    }
+    if (loader !== 'vanilla' && !loaderVersion) {
+      throw new Error('No se pudo determinar la version del loader del modpack.')
     }
 
+    const instanceId = 'modpack-' + packName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now()
+    instanceDir = path.join(getKindyrDataRoot(), 'instances', instanceId)
+    fs.mkdirSync(path.join(instanceDir, 'minecraft', 'mods'), { recursive: true })
+
     event.sender.send('mrpack-progress', { stage: 'overrides', done: 0, total: 0, message: 'Extrayendo archivos...' })
-    zip.getEntries().forEach(entry => {
-      if (entry.entryName.startsWith('overrides/') && !entry.isDirectory) {
-        const relPath = entry.entryName.replace(/^overrides\//, '')
-        try {
-          const destPath = safePath(path.join(instanceDir, 'minecraft'), relPath)
-          fs.mkdirSync(path.dirname(destPath), { recursive: true })
-          fs.writeFileSync(destPath, entry.getData())
-        } catch (e) {
-          console.error('Override bloqueado por path traversal:', e.message)
-        }
+    await extractZipEntries(mrpackPath, path.join(instanceDir, 'minecraft'), {
+      maxEntryBytes: 512 * 1024 * 1024,
+      maxTotalBytes: 2 * 1024 * 1024 * 1024,
+      mapEntry(normalized) {
+        const prefix = ['overrides/', 'client-overrides/'].find(value => normalized.startsWith(value))
+        if (!prefix) return null
+        const relative = normalized.slice(prefix.length)
+        return isSafeRelativePath(relative) ? relative : null
       }
     })
 
-    const https = require('https')
-    const http = require('http')
-
-    function downloadFile(url, destPath, redirectCount = 0) {
-      return new Promise((resolve, reject) => {
-        if (redirectCount > 5) return reject(new Error('Demasiados redirects'))
-        const proto = url.startsWith('https') ? https : http
-        const tmpPath = destPath + '.tmp'
-        const file = fs.createWriteStream(tmpPath)
-
-        const req = proto.get(url, (res) => {
-          if ([301, 302, 307, 308].includes(res.statusCode)) {
-            safeCleanTmp(file, tmpPath).then(() =>
-              downloadFile(res.headers.location, destPath, redirectCount + 1).then(resolve).catch(reject)
-            )
-            return
-          }
-          if (res.statusCode !== 200) {
-            safeCleanTmp(file, tmpPath).then(() =>
-              reject(new Error(`HTTP ${res.statusCode}`))
-            )
-            return
-          }
-          res.pipe(file)
-          file.on('finish', () => {
-            file.close(() => {
-              try {
-                fs.renameSync(tmpPath, destPath)
-                resolve()
-              } catch (e) {
-                reject(e)
-              }
-            })
-          })
-        })
-
-        req.setTimeout(30000, () => {
-          req.destroy()
-          safeCleanTmp(file, tmpPath).then(() => reject(new Error('Timeout')))
-        })
-
-        req.on('error', (err) => {
-          safeCleanTmp(file, tmpPath).then(() => reject(err))
-        })
-      })
-    }
-
-    async function downloadWithFallback(downloads, destPath) {
-      for (const url of downloads) {
-        try {
-          await downloadFile(url, destPath)
-          return true
-        } catch (e) { /* intentar siguiente mirror */ }
-      }
-      return false
-    }
-
-    // Verificar hash SHA1 o SHA512
-    function verifyHash(filePath, hashes) {
-      if (!hashes) return true
-      const algo = hashes.sha512 ? 'sha512' : hashes.sha1 ? 'sha1' : null
-      if (!algo) return true
-      return new Promise((resolve) => {
-        const hash = crypto.createHash(algo)
-        const stream = fs.createReadStream(filePath)
-        stream.on('data', chunk => hash.update(chunk))
-        stream.on('end', () => resolve(hash.digest('hex') === hashes[algo]))
-        stream.on('error', () => resolve(false))
-      })
-    }
-
-    const files = index.files || []
+    const preparedFiles = getClientMrpackFiles(index)
+    const files = preparedFiles.accepted
     const total = files.length
     let done = 0
-    const failedDownloads = []
+    const failedDownloads = preparedFiles.rejected.map(file => `${file.path} (${file.error})`)
     const maxConcurrent = 6
     let fileIdx = 0
 
@@ -2196,28 +2795,9 @@ ipcMain.handle('import-mrpack', async (event) => {
       fileIdx += maxConcurrent
       if (!batch.length) return
       await Promise.all(batch.map(async (file) => {
-        const downloads = file.downloads || []
-
-        if (!downloads.length) {
-          failedDownloads.push(file.path)
-          const current = ++done
-          event.sender.send('mrpack-progress', { stage: 'downloading', done: current, total, message: `Descargando mods... ${current}/${total}` })
-          return
-        }
-
         try {
-          const destPath = safePath(path.join(instanceDir, 'minecraft'), file.path)
-          fs.mkdirSync(path.dirname(destPath), { recursive: true })
-          const ok = await downloadWithFallback(downloads, destPath)
-          if (ok) {
-            // Verificar hash si está disponible
-            if (file.hashes && !await verifyHash(destPath, file.hashes)) {
-              try { fs.unlinkSync(destPath) } catch { }
-              failedDownloads.push(file.path + ' (hash inválido)')
-            }
-          } else {
-            failedDownloads.push(file.path)
-          }
+          const ok = await downloadMrpackFile(file, path.join(instanceDir, 'minecraft'))
+          if (!ok) failedDownloads.push(file.path)
         } catch (e) {
           failedDownloads.push(file.path)
         }
@@ -2233,7 +2813,6 @@ ipcMain.handle('import-mrpack', async (event) => {
     try {
       await downloadChunk()
     } catch (err) {
-      // Error grave durante descarga — limpiar instancia incompleta
       if (instanceDir) try { fs.rmSync(instanceDir, { recursive: true, force: true }) } catch { }
       throw err
     }
@@ -2244,15 +2823,17 @@ ipcMain.handle('import-mrpack', async (event) => {
       name: packName,
       version: mcVersion,
       loader: loader,
+      loaderVersion: loader === 'vanilla' ? '' : loaderVersion,
+      versionType: 'release',
       type: 'modpack',
       dir: instanceDir,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     })
     saveCustomInstances(instances)
 
     return { ok: true, name: packName, warnings: failedDownloads.length }
   } catch (err) {
-    // Error grave global — limpiar instancia si se llegó a crear
     if (instanceDir) try { fs.rmSync(instanceDir, { recursive: true, force: true }) } catch { }
     return { ok: false, error: err.message }
   }
@@ -2261,7 +2842,8 @@ ipcMain.handle('import-mrpack', async (event) => {
 ipcMain.handle('open-external-url', (_event, url) => {
   try {
     const parsed = new URL(String(url || ''))
-    if (!['https:', 'http:'].includes(parsed.protocol)) {
+    const host = parsed.hostname.toLowerCase()
+    if (parsed.protocol !== 'https:' || !['modrinth.com', 'www.modrinth.com'].includes(host)) {
       return { ok: false, error: 'URL invalida.' }
     }
     shell.openExternal(parsed.toString())
@@ -2271,264 +2853,609 @@ ipcMain.handle('open-external-url', (_event, url) => {
   }
 })
 
-async function launchWithMCLC(instance, username, memory, javaPath, minecraftRoot, customArgs) {
-  const settings = loadLauncherSettings()
-  const maxSockets = Math.max(2, Math.min(Number(settings.maxConcurrentDownloads) || 6, 20))
-  const opts = {
-    authorization: (() => {
-      const msAccount = microsoftAccounts.find(a => a.active)
-      if (msAccount) {
-        return {
-          access_token: msAccount.access_token,
-          client_token: msAccount.client_token || 'null',
-          uuid: msAccount.uuid,
-          name: msAccount.name,
-          user_properties: '{}'
-        }
-      }
-      return {
-        access_token: 'null',
-        client_token: 'null',
-        uuid: createOfflineUuid(username),
-        name: username,
-        user_properties: '{}'
-      }
-    })(),
-    root: minecraftRoot,
-    version: { number: instance.version, type: instance.versionType || 'release' },
-    memory: {
-      max: memory.max,
-      min: memory.min
-    },
-    javaPath: javaPath,
-    overrides: {
-      maxSockets
-    }
-  }
-
-  if (customArgs.length) opts.customArgs = customArgs
-
-  try {
-    await prepareLoaderLaunch(instance, minecraftRoot, opts)
-  } catch (error) {
-    writeLaunchLog(error.message || String(error))
-    currentLogFile = null
-    return { ok: false, error: error.message || String(error) }
-  }
-
-  const Client = getLauncherClientClass()
-  launcher = new Client()
+function beginXmclLaunch(instance) {
   launchStartedAt = Date.now()
   inicioCancelado = false
+  xmclCancellationRequested = false
+  minecraftStopRequested = false
   lastProgressMessage = ''
   lastProgressSentAt = 0
   lastDataMessage = ''
   lastDataSentAt = 0
   pendingLogLines = []
+  pendingLogBytes = 0
   if (logFlushTimer) {
     clearTimeout(logFlushTimer)
     logFlushTimer = null
   }
-  logAndSend('starting', `Preparando ${instance.name} (MCLC)`)
-  logOnly('debug', `Instancia: ${getInstanceDir(instance.id)}`)
-  logOnly('debug', `Minecraft root: ${minecraftRoot}`)
-  logOnly('debug', `Java: ${javaPath}`)
-  logOnly('debug', `Java major: ${getRequiredJavaMajor(instance.version)} para MC ${instance.version}`)
-  logOnly('debug', `Memoria: min=${memory.min}MB max=${memory.max}MB`)
-  logOnly('debug', `Descargas simultaneas: ${maxSockets}`)
-  logOnly('debug', `Custom args: ${customArgs.length > 0 ? customArgs.join(' ') : '(ninguno)'}`)
+  logAndSend('starting', `Preparando ${instance.name} (XMCL)`)
+}
 
-  launcher.on('debug', (message) => {
-    logOnly('debug', message)
-  })
-  launcher.on('download', (message) => {
-    logOnly('download', 'Descargado: ' + message)
-  })
-  launcher.on('progress', (progress) => {
-    const message = formatProgress(progress)
-    writeLaunchLog(message)
-    if (shouldSendProgress(message)) sendLauncherStatus('progress', message)
-  })
-  launcher.on('data', (message) => {
-    logData(message)
-  })
-  launcher.on('close', (code, signal) => {
-    const ranFor = Math.round((Date.now() - launchStartedAt) / 1000)
-    let cleanMessage
-    if (code === 0) {
-      cleanMessage = 'Minecraft se cerro correctamente.'
-    } else if (code === null || code === undefined) {
-      cleanMessage = `Minecraft se cerro (terminado por el launcher${signal ? ', señal: ' + signal : ''}).`
-    } else {
-      cleanMessage = `Minecraft se cerro/crasheo con codigo ${code}.`
+function formatMinecraftCloseMessage(code, signal, stoppedByLauncher) {
+  if (stoppedByLauncher) return 'Minecraft se cerro desde el launcher.'
+  if (code === 0) return 'Minecraft se cerro correctamente.'
+  if (code === null || code === undefined) {
+    return `Minecraft se cerro${signal ? ` (señal: ${signal})` : '.'}`
+  }
+  return `Minecraft se cerro/crasheo con codigo ${code}.`
+}
+
+function isXmclCancellationError(error) {
+  const name = String(error?.name || '')
+  const message = String(error?.message || error || '')
+  return name === 'CancelledError' || /^cancelled$/i.test(message)
+}
+
+function replaceLaunchArgumentPlaceholders(argumentsList, replacements) {
+  const replaceValue = (value) => {
+    if (typeof value === 'string') {
+      return value.replace(/\$\{(clientid|auth_xuid)\}/g, (placeholder, key) => {
+        return replacements[key] || placeholder
+      })
     }
-    logAndSend('close', `${cleanMessage} Duracion: ${ranFor}s`)
-    flushLaunchLog()
-    launcher = null
-    minecraftProcess = null
-    runningInstanceId = null
-    currentLogFile = null
+    if (Array.isArray(value)) return value.map(replaceValue)
+    return value
+  }
+
+  return argumentsList.map(argument => {
+    if (typeof argument === 'string') return replaceValue(argument)
+    return { ...argument, value: replaceValue(argument.value) }
   })
-  launcher.on('error', (err) => {
-    logAndSend('error', err.stack || err.message || String(err))
-    flushLaunchLog()
-    launcher = null
-    currentLogFile = null
-  })
+}
+
+function applyModernAuthPlaceholders(resolvedVersion, auth) {
+  if (!auth.clientId && !auth.xuid) return resolvedVersion
+  return {
+    ...resolvedVersion,
+    arguments: {
+      ...resolvedVersion.arguments,
+      game: replaceLaunchArgumentPlaceholders(resolvedVersion.arguments.game, {
+        clientid: auth.clientId,
+        auth_xuid: auth.xuid
+      })
+    }
+  }
+}
+
+function throwIfXmclLaunchCancelled() {
+  if (inicioCancelado || xmclCancellationRequested) {
+    const error = new Error('Cancelled')
+    error.name = 'CancelledError'
+    throw error
+  }
+}
+
+async function runXmclTask(task, stage) {
+  throwIfXmclLaunchCancelled()
+  xmclLaunchTask = task
+  const context = {
+    onUpdate: (updatedTask) => {
+      if (inicioCancelado || xmclCancellationRequested) {
+        return
+      }
+      const total = updatedTask.total > 0 ? updatedTask.total : '?'
+      const current = updatedTask.progress || 0
+      const message = `${stage} ${current}/${total}`
+      if (shouldSendProgress(message)) {
+        writeLaunchLog(message)
+        sendLauncherStatus('progress', message)
+      }
+    },
+    onFailed: () => { }
+  }
 
   try {
-    minecraftProcess = await launcher.launch(opts)
-    
-    if (inicioCancelado) {
-      if (minecraftProcess) {
-        minecraftProcess.kill('SIGKILL')
-        minecraftProcess = null
-      }
-      launcher = null
-      currentLogFile = null
-      return { ok: false, error: 'Lanzamiento cancelado' }
-    }
-    
-    const child = minecraftProcess
-    if (child && child.on) {
-      child.on('error', (error) => {
-        logAndSend('error', error.stack || error.message || String(error))
-        flushLaunchLog()
-        launcher = null
-        currentLogFile = null
-      })
-      if (child.stdout) {
-        child.stdout.on('data', (data) => {
-          logData(data.toString())
-        })
-      }
-      if (child.stderr) {
-        child.stderr.on('data', (data) => {
-          logData(data.toString())
-        })
-      }
-      child.on('close', (code, signal) => {
-        // Process close event - handled by launcher
-      })
-      child.on('exit', (code, signal) => {
-        // Process exit event - handled by launcher
-      })
-    }
-    runningInstanceId = instance.id
-    logAndSend('running', 'Minecraft iniciado.')
-    return { ok: true }
-  } catch (error) {
-    launcher = null
-    logAndSend('error', error.stack || error.message || String(error))
-    flushLaunchLog()
-    currentLogFile = null
-    return { ok: false, error: error.message || String(error) }
+    return await task.startAndWait(context)
+  } finally {
+    if (xmclLaunchTask === task) xmclLaunchTask = null
   }
+}
+
+function getXmclLeafErrors(error, seen = new Set()) {
+  if (!error || seen.has(error)) return []
+  if (typeof error === 'object') seen.add(error)
+
+  const nested = Array.isArray(error.errors) ? error.errors : []
+  if (nested.length > 0) {
+    return nested.flatMap(item => getXmclLeafErrors(item, seen))
+  }
+  if (error.cause && error.cause !== error) {
+    const caused = getXmclLeafErrors(error.cause, seen)
+    if (caused.length > 0) return caused
+  }
+  return [error]
+}
+
+function formatXmclError(error) {
+  const errors = getXmclLeafErrors(error)
+  const lines = []
+
+  for (const item of errors) {
+    const name = String(item?.name || 'Error')
+    const message = String(item?.message || item || 'Error desconocido')
+    const metadata = [
+      item?.code ? `codigo=${item.code}` : '',
+      item?.statusCode ? `HTTP=${item.statusCode}` : '',
+      item?.phase ? `fase=${item.phase}` : '',
+      item?.url ? `url=${item.url}` : '',
+      item?.destination ? `destino=${item.destination}` : ''
+    ].filter(Boolean)
+    const line = `${name}: ${message}${metadata.length > 0 ? ` (${metadata.join(', ')})` : ''}`
+    if (!lines.includes(line)) lines.push(line)
+  }
+
+  if (lines.length === 0) return error?.stack || error?.message || String(error)
+  const heading = lines.length > 1 ? `Se produjeron ${lines.length} errores:` : 'Detalle del error:'
+  return `${heading}\n${lines.slice(0, 12).join('\n')}${lines.length > 12 ? `\n...y ${lines.length - 12} errores mas.` : ''}`
+}
+
+async function waitForXmclProfile(minecraftRoot, versionIds, timeoutMs = 5 * 60 * 1000) {
+  const xmclCore = await getXmclCore()
+  const startedAt = Date.now()
+  const stableSince = new Map()
+  const lastSignatures = new Map()
+
+  while (Date.now() - startedAt < timeoutMs) {
+    throwIfXmclLaunchCancelled()
+    for (const versionId of versionIds) {
+      const profilePath = getXmclVersionJsonPath(minecraftRoot, versionId)
+      try {
+        const stat = await fs.promises.stat(profilePath)
+        const signature = `${stat.size}:${stat.mtimeMs}`
+        if (lastSignatures.get(versionId) !== signature) {
+          lastSignatures.set(versionId, signature)
+          stableSince.set(versionId, Date.now())
+          continue
+        }
+        if (Date.now() - (stableSince.get(versionId) || 0) < 1500) continue
+        const resolvedVersion = await xmclCore.Version.parse(minecraftRoot, versionId)
+        if (!await hasValidXmclGeneratedArtifacts(minecraftRoot, resolvedVersion)) continue
+        return versionId
+      } catch { }
+    }
+    await new Promise(resolve => setTimeout(resolve, 250))
+  }
+  return ''
+}
+
+async function hasValidXmclGeneratedArtifacts(minecraftRoot, resolvedVersion) {
+  const xmclCore = await getXmclCore()
+  const generatedLibraries = resolvedVersion.libraries.filter(library =>
+    /^net\.minecraftforge:forge:.*:client(?:@jar)?$/.test(String(library.name || ''))
+  )
+  const expectedArtifacts = generatedLibraries.map(library => ({
+    file: path.join(minecraftRoot, 'libraries', library.download.path),
+    sha1: library.download.sha1
+  }))
+
+  const installProfilePath = path.join(minecraftRoot, 'versions', resolvedVersion.id, 'install_profile.json')
+  try {
+    const installProfile = JSON.parse(await fs.promises.readFile(installProfilePath, 'utf8'))
+    for (const [name, value] of Object.entries(installProfile.data || {})) {
+      const coordinate = value?.client
+      const expectedSha = installProfile.data?.[`${name}_SHA`]?.client
+      if (!coordinate || !expectedSha || !/^\[.+\]$/.test(coordinate)) continue
+      const artifactPath = resolveXmclMavenCoordinate(coordinate)
+      if (!artifactPath) continue
+      expectedArtifacts.push({
+        file: path.join(minecraftRoot, 'libraries', artifactPath),
+        sha1: String(expectedSha).replace(/^'|'$/g, '')
+      })
+    }
+  } catch { }
+
+  for (const artifact of expectedArtifacts) {
+    try {
+      const stat = await fs.promises.stat(artifact.file)
+      if (stat.size === 0) return false
+      if (artifact.sha1 && await xmclCore.checksum(artifact.file, 'sha1') !== artifact.sha1) return false
+    } catch {
+      return false
+    }
+  }
+  return true
+}
+
+function resolveXmclMavenCoordinate(value) {
+  const coordinate = String(value || '').replace(/^\[|\]$/g, '')
+  const [withoutExtension, extension = 'jar'] = coordinate.split('@')
+  const [group, artifact, version, classifier] = withoutExtension.split(':')
+  if (!group || !artifact || !version) return ''
+  return `${group.replaceAll('.', '/')}/${artifact}/${version}/${artifact}-${version}${classifier ? `-${classifier}` : ''}.${extension}`
+}
+
+async function removeInvalidXmclGeneratedArtifacts(minecraftRoot, resolvedVersion) {
+  const generatedLibraries = resolvedVersion.libraries.filter(library =>
+    /^net\.minecraftforge:forge:.*:client(?:@jar)?$/.test(String(library.name || ''))
+  )
+  for (const library of generatedLibraries) {
+    await fs.promises.unlink(path.join(minecraftRoot, 'libraries', library.download.path)).catch(() => { })
+  }
+  const installProfilePath = path.join(minecraftRoot, 'versions', resolvedVersion.id, 'install_profile.json')
+  try {
+    const installProfile = JSON.parse(await fs.promises.readFile(installProfilePath, 'utf8'))
+    for (const [name, value] of Object.entries(installProfile.data || {})) {
+      if (!installProfile.data?.[`${name}_SHA`]?.client) continue
+      const artifactPath = resolveXmclMavenCoordinate(value?.client)
+      if (artifactPath) await fs.promises.unlink(path.join(minecraftRoot, 'libraries', artifactPath)).catch(() => { })
+    }
+  } catch { }
+  await fs.promises.rm(path.join(minecraftRoot, 'versions', resolvedVersion.id), { recursive: true, force: true })
+}
+
+async function runXmclTaskWithProfileFallback(task, stage, minecraftRoot, versionIds) {
+  const taskPromise = runXmclTask(task, stage)
+  const profilePromise = waitForXmclProfile(minecraftRoot, versionIds).then(versionId => {
+    if (!versionId) return new Promise(() => { })
+    return versionId
+  })
+  const winner = await Promise.race([
+    taskPromise.then(versionId => ({ source: 'task', versionId })),
+    profilePromise.then(versionId => ({ source: 'profile', versionId }))
+  ])
+
+  if (winner.source === 'profile') {
+
+    taskPromise.catch(() => { })
+    Promise.resolve(task.cancel()).catch(() => { })
+    if (xmclLaunchTask === task) xmclLaunchTask = null
+    logOnly('debug', `${stage}: perfil ${winner.versionId} completo; continuando tras tarea XMCL pendiente.`)
+  }
+  return winner.versionId
+}
+
+async function runXmclTaskWithRetry(createTask, stage, attempts = 3, profileFallback = null) {
+  let lastError
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    throwIfXmclLaunchCancelled()
+    try {
+      const task = createTask()
+      return profileFallback
+        ? await runXmclTaskWithProfileFallback(task, stage, profileFallback.minecraftRoot, profileFallback.versionIds)
+        : await runXmclTask(task, stage)
+    } catch (error) {
+      if (isXmclCancellationError(error) || inicioCancelado || xmclCancellationRequested) throw error
+      lastError = error
+      logOnly('debug', `${stage} fallo en el intento ${attempt}: ${formatXmclError(error)}`)
+      if (attempt >= attempts) break
+
+      const delayMs = attempt * 1000
+      logAndSend('progress', `${stage} tuvo errores de descarga. Reintentando (${attempt + 1}/${attempts})...`)
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+    }
+  }
+
+  throw lastError
+}
+
+function getXmclVersionJsonPath(minecraftRoot, versionId) {
+  return path.join(minecraftRoot, 'versions', versionId, versionId + '.json')
+}
+
+function persistXmclVersionId(instance, versionId) {
+  instance.xmclVersionId = versionId
+  instance.updatedAt = new Date().toISOString()
+  registerCustomInstance(instance)
+  fs.writeFileSync(
+    path.join(getInstanceDir(instance.id), 'instance.json'),
+    JSON.stringify(instance, null, 2)
+  )
+}
+
+function getExpectedXmclLoaderVersionIds(instance) {
+  if (instance.loader === 'forge') {
+    const suffix = `-${instance.version}`
+    const normalizedLoader = String(instance.loaderVersion || '').endsWith(suffix)
+      ? String(instance.loaderVersion).slice(0, -suffix.length)
+      : String(instance.loaderVersion || '')
+    return [`${instance.version}-forge-${normalizedLoader}`]
+  }
+  if (instance.loader === 'neoforge') return [`neoforge-${instance.loaderVersion}`]
+  if (instance.loader === 'fabric') return [`${instance.version}-fabric${instance.loaderVersion}`]
+  if (instance.loader === 'quilt') return [`${instance.version}-quilt${instance.loaderVersion}`]
+  return []
+}
+
+async function installForgeWithOfficialInstaller(instance, minecraftRoot, javaPath) {
+  const suffix = `-${instance.version}`
+  const forgeVersion = String(instance.loaderVersion || '').endsWith(suffix)
+    ? String(instance.loaderVersion).slice(0, -suffix.length)
+    : String(instance.loaderVersion || '')
+  const artifactVersion = `${instance.version}-${instance.loaderVersion}`
+  const artifactName = `forge-${artifactVersion}-installer.jar`
+  const installerPath = path.join(minecraftRoot, 'libraries', 'net', 'minecraftforge', 'forge', artifactVersion, artifactName)
+  const installerUrl = `https://maven.minecraftforge.net/net/minecraftforge/forge/${artifactVersion}/${artifactName}`
+
+  const installerStat = await fs.promises.stat(installerPath).catch(() => null)
+  if (!installerStat || installerStat.size === 0) {
+    sendLauncherStatus('progress', `Descargando instalador de Forge ${forgeVersion}...`)
+    await downloadToFile(installerUrl, installerPath)
+  }
+
+  const launcherProfilesPath = path.join(minecraftRoot, 'launcher_profiles.json')
+  if (!fs.existsSync(launcherProfilesPath)) {
+    await fs.promises.writeFile(launcherProfilesPath, JSON.stringify({ profiles: {}, settings: {} }))
+  }
+
+  sendLauncherStatus('progress', `Procesando Forge ${forgeVersion}...`)
+  const { spawn } = require('child_process')
+  let outputTail = ''
+  const appendOutput = (data) => {
+    outputTail = (outputTail + data.toString()).slice(-65536)
+  }
+  const exitCode = await new Promise((resolve, reject) => {
+    const child = spawn(javaPath, ['-jar', installerPath, '--installClient', minecraftRoot], {
+      cwd: minecraftRoot,
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    child.stdout.on('data', appendOutput)
+    child.stderr.on('data', appendOutput)
+    child.once('error', reject)
+    child.once('close', resolve)
+  })
+  if (exitCode !== 0) {
+    const usefulTail = outputTail.split(/\r?\n/).filter(Boolean).slice(-20).join('\n')
+    throw new Error(`El instalador oficial de Forge termino con codigo ${exitCode}.\n${usefulTail}`)
+  }
+
+  const launcherProfiles = JSON.parse(await fs.promises.readFile(launcherProfilesPath, 'utf8'))
+  const versionId = launcherProfiles?.profiles?.forge?.lastVersionId || `${instance.version}-forge-${forgeVersion}`
+  const xmclCore = await getXmclCore()
+  const resolvedVersion = await xmclCore.Version.parse(minecraftRoot, versionId)
+  if (!await hasValidXmclGeneratedArtifacts(minecraftRoot, resolvedVersion)) {
+    throw new Error(`Forge termino sin generar todos los artefactos requeridos (${versionId}).`)
+  }
+  return versionId
+}
+
+async function installXmclLoader(instance, minecraftRoot, javaPath, maxSockets, dispatcher) {
+  if (!instance.loader || instance.loader === 'vanilla') return instance.version
+
+  await ensureInstanceLoaderVersion(instance)
+  throwIfXmclLaunchCancelled()
+  const xmclCore = await getXmclCore()
+
+  const cachedVersionId = String(instance.xmclVersionId || '').trim()
+  if (cachedVersionId && fs.existsSync(getXmclVersionJsonPath(minecraftRoot, cachedVersionId))) {
+    try {
+      const resolvedVersion = await xmclCore.Version.parse(minecraftRoot, cachedVersionId)
+      if (await hasValidXmclGeneratedArtifacts(minecraftRoot, resolvedVersion)) return cachedVersionId
+      logOnly('debug', `Perfil XMCL en cache incompleto para ${instance.id}: faltan artefactos generados.`)
+      await removeInvalidXmclGeneratedArtifacts(minecraftRoot, resolvedVersion)
+    } catch (error) {
+      logOnly('debug', `Perfil XMCL en cache invalido para ${instance.id}: ${error.message || error}`)
+    }
+  }
+
+  const expectedVersionIds = getExpectedXmclLoaderVersionIds(instance)
+  for (const versionId of expectedVersionIds) {
+    if (!fs.existsSync(getXmclVersionJsonPath(minecraftRoot, versionId))) continue
+    try {
+      const resolvedVersion = await xmclCore.Version.parse(minecraftRoot, versionId)
+      if (!await hasValidXmclGeneratedArtifacts(minecraftRoot, resolvedVersion)) {
+        await removeInvalidXmclGeneratedArtifacts(minecraftRoot, resolvedVersion)
+        continue
+      }
+      persistXmclVersionId(instance, versionId)
+      return versionId
+    } catch (error) {
+      logOnly('debug', `Perfil XMCL detectado pero invalido (${versionId}): ${error.message || error}`)
+    }
+  }
+
+  sendLauncherStatus('progress', `Instalando ${instance.loader} ${instance.loaderVersion}...`)
+  const xmclInstaller = await getXmclInstaller()
+  let versionId = ''
+
+  if (instance.loader === 'fabric') {
+    versionId = await xmclInstaller.installFabric({
+      minecraftVersion: instance.version,
+      version: instance.loaderVersion,
+      minecraft: minecraftRoot,
+      side: 'client'
+    })
+  } else if (instance.loader === 'quilt') {
+    versionId = await xmclInstaller.installQuiltVersion({
+      minecraftVersion: instance.version,
+      version: instance.loaderVersion,
+      minecraft: minecraftRoot,
+      side: 'client'
+    })
+  } else if (instance.loader === 'forge') {
+    versionId = await installForgeWithOfficialInstaller(instance, minecraftRoot, javaPath)
+  } else if (instance.loader === 'neoforge') {
+    versionId = await runXmclTaskWithRetry(
+      () => xmclInstaller.installNeoForgedTask('neoforge', instance.loaderVersion, minecraftRoot, {
+        side: 'client',
+        java: javaPath,
+        librariesDownloadConcurrency: maxSockets,
+        dispatcher,
+        mavenHost: ['https://maven.neoforged.net/releases']
+      }),
+      'Instalando NeoForge',
+      3,
+      { minecraftRoot, versionIds: expectedVersionIds }
+    )
+  } else {
+    throw new Error(`Loader XMCL no soportado: ${instance.loader}`)
+  }
+
+  throwIfXmclLaunchCancelled()
+  if (!versionId) throw new Error(`XMCL no devolvio la version instalada de ${instance.loader}.`)
+  persistXmclVersionId(instance, versionId)
+  return versionId
+}
+
+function waitForProcessSpawn(child) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      child.off('spawn', onSpawn)
+      child.off('error', onError)
+    }
+    const onSpawn = () => {
+      cleanup()
+      resolve()
+    }
+    const onError = (error) => {
+      cleanup()
+      reject(error)
+    }
+    child.once('spawn', onSpawn)
+    child.once('error', onError)
+  })
+}
+
+async function checkXmclNatives(resource, version, option = {}) {
+  const xmclCore = await getXmclCore()
+  const nativeRoot = option.nativeRoot || resource.getNativesRoot(version.id)
+  await fs.promises.mkdir(nativeRoot, { recursive: true })
+
+  const natives = version.libraries.filter((library) => library.isNative || String(library.classifier || '').startsWith('natives'))
+  const includedLibraries = natives.map((library) => library.name).sort()
+  const extractedByFile = new Map()
+  const platform = option.platform || xmclCore.getPlatform()
+
+  for (const library of natives) {
+    if (!library.download?.path) {
+      throw Object.assign(new TypeError(`Library ${library.name}(${version.id}) has no download path!`), { library })
+    }
+
+    const excluded = library.extractExclude || []
+    const archivePath = resource.getLibraryByPath(library.download.path)
+    const result = await extractZipEntries(archivePath, nativeRoot, {
+      maxEntries: 100000,
+      maxEntryBytes: 512 * 1024 * 1024,
+      maxTotalBytes: 2 * 1024 * 1024 * 1024,
+      mapEntry(entryName) {
+        if (entryName.includes('META-INF/') || entryName.endsWith('.sha1') || entryName.endsWith('.git')) return null
+        if (excluded.some((prefix) => entryName.startsWith(prefix))) return null
+        if (entryName.includes('/')) {
+          const [entryOs, entryArch] = entryName.split('/')
+          const normalizedArch = entryArch === 'ia32' ? 'x86' : entryArch
+          if (entryOs !== platform.name || normalizedArch !== platform.arch) return null
+        }
+        return path.basename(entryName)
+      }
+    })
+    for (const extracted of result.entries) {
+      extractedByFile.set(extracted.relativePath, library.name)
+    }
+  }
+
+  const entries = []
+  for (const [file, name] of extractedByFile) {
+    entries.push({ file, name, sha1: await xmclCore.checksum(path.join(nativeRoot, file), 'sha1') })
+  }
+  await fs.promises.writeFile(path.join(nativeRoot, '.json'), JSON.stringify({ entries, libraries: includedLibraries }))
 }
 
 async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoot, customArgs) {
   const settings = loadLauncherSettings()
   const maxSockets = Math.max(2, Math.min(Number(settings.maxConcurrentDownloads) || 6, 20))
-  
-  launchStartedAt = Date.now()
-  inicioCancelado = false
-  lastProgressMessage = ''
-  lastProgressSentAt = 0
-  lastDataMessage = ''
-  lastDataSentAt = 0
-  pendingLogLines = []
-  if (logFlushTimer) {
-    clearTimeout(logFlushTimer)
-    logFlushTimer = null
-  }
-  
-  logAndSend('starting', `Preparando ${instance.name} (XMCL)`)
+
   logOnly('debug', `Instancia: ${getInstanceDir(instance.id)}`)
   logOnly('debug', `Minecraft root: ${minecraftRoot}`)
-  logOnly('debug', `Java: ${javaPath}`)
   logOnly('debug', `Java major: ${getRequiredJavaMajor(instance.version)} para MC ${instance.version}`)
   logOnly('debug', `Memoria: min=${memory.min}MB max=${memory.max}MB`)
   logOnly('debug', `Descargas simultaneas: ${maxSockets}`)
   logOnly('debug', `Custom args: ${customArgs.length > 0 ? customArgs.join(' ') : '(ninguno)'}`)
 
-  const msAccount = microsoftAccounts.find(a => a.active)
+  const msAccount = await getActiveMicrosoftAccount()
   const auth = msAccount ? {
     accessToken: msAccount.access_token,
     gameProfile: {
       id: msAccount.uuid,
       name: msAccount.name
     },
-    userType: 'msa'
+    userType: 'msa',
+    properties: msAccount.user_properties || {},
+    clientId: msAccount.client_id || getMicrosoftAuth().token?.client_id || '',
+    xuid: msAccount.xuid || getXuidFromMinecraftToken(msAccount.access_token)
   } : {
     accessToken: 'null',
     gameProfile: {
       id: createOfflineUuid(username),
       name: username
     },
-    userType: 'offline'
+    userType: 'legacy',
+    properties: {},
+    clientId: '',
+    xuid: ''
   }
 
   const minecraftLocation = minecraftRoot
-  
+  let installDispatcher = null
+
   try {
-    // Get version metadata from Mojang
+    const [xmclCore, xmclFileTransfer, xmclInstaller] = await Promise.all([
+      getXmclCore(),
+      getXmclFileTransfer(),
+      getXmclInstaller()
+    ])
+
     logOnly('debug', 'Obteniendo metadata de version...')
-    const versionList = await getVersionList()
+    const versionList = await xmclInstaller.getVersionList()
     const versionMeta = versionList.versions.find(v => v.id === instance.version)
     if (!versionMeta) {
       throw new Error(`Version de Minecraft no encontrada en el manifest: ${instance.version}`)
     }
-    
-    // Install version with progress tracking (handles new and existing installations)
-    logOnly('debug', 'Instalando version y dependencias...')
-    const task = installVersionTask(versionMeta, minecraftLocation, {
+
+    installDispatcher = xmclFileTransfer.getDefaultAgent({
+      maxRetries: 5,
+      minTimeout: 750,
+      maxTimeout: 10000
+    })
+    const installOptions = {
       side: 'client',
       assetsDownloadConcurrency: maxSockets,
       librariesDownloadConcurrency: maxSockets,
-      prevalidSizeOnly: true
-    })
-    
-    xmclLaunchTask = task
-    
-    // Create task context for progress tracking
-    const context = {
-      onUpdate: (t) => {
-        if (inicioCancelado) {
-          task.cancel()
-          return
-        }
-        const total = t.total || '?'
-        const current = t.progress || 0
-        const message = `Descargando ${current}/${total}`
-        writeLaunchLog(message)
-        if (shouldSendProgress(message)) sendLauncherStatus('progress', message)
-      },
-      onFailed: (t, error) => {
-        if (!inicioCancelado) {
-          logAndSend('error', error.message || String(error))
-        }
-      }
+      prevalidSizeOnly: true,
+      dispatcher: installDispatcher
     }
-    
-    const resolvedVersion = await task.startAndWait(context)
-    
-    if (inicioCancelado) {
-      currentLogFile = null
-      xmclLaunchTask = null
-      return { ok: false, error: 'Lanzamiento cancelado' }
+
+    logOnly('debug', 'Instalando Minecraft y dependencias base...')
+    const baseResolvedVersion = await runXmclTaskWithRetry(
+      () => xmclInstaller.installTask(versionMeta, minecraftLocation, installOptions),
+      'Descargando Minecraft'
+    )
+    throwIfXmclLaunchCancelled()
+
+    javaPath = ensureJavaExecutableForLaunch(javaPath)
+    logOnly('debug', `Java: ${javaPath}`)
+
+    let resolvedVersion = baseResolvedVersion
+    if (instance.loader && instance.loader !== 'vanilla') {
+      const loaderVersionId = await installXmclLoader(
+        instance,
+        minecraftLocation,
+        javaPath,
+        maxSockets,
+        installDispatcher
+      )
+      throwIfXmclLaunchCancelled()
+      resolvedVersion = await xmclCore.Version.parse(minecraftLocation, loaderVersionId)
+      resolvedVersion = await runXmclTaskWithRetry(
+        () => xmclInstaller.installDependenciesTask(resolvedVersion, installOptions),
+        `Descargando dependencias de ${instance.loader}`
+      )
+      throwIfXmclLaunchCancelled()
     }
-    
-    xmclLaunchTask = null
+
+    await installDispatcher.close()
+    installDispatcher = null
     logOnly('debug', 'Instalacion completada. Iniciando lanzamiento...')
-    
-    // Prepare launch options
+
+    resolvedVersion = applyModernAuthPlaceholders(resolvedVersion, auth)
+
     const launchOptions = {
       gameProfile: auth.gameProfile,
       accessToken: auth.accessToken,
       userType: auth.userType,
-      launcherName: 'ZotlinLauncher',
-      launcherBrand: 'ZotlinLauncher',
-      versionName: instance.version,
+      properties: auth.properties,
+      launcherName: 'KindyrLauncher',
+      launcherBrand: 'KindyrLauncher',
+      versionName: resolvedVersion.id,
       versionType: instance.versionType || 'release',
       gamePath: minecraftRoot,
       resourcePath: minecraftRoot,
@@ -2538,53 +3465,52 @@ async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoo
       version: resolvedVersion,
       extraJVMArgs: [],
       extraMCArgs: customArgs,
-      prechecks: []
+      prechecks: [
+        xmclCore.LaunchPrecheck.checkVersion,
+        xmclCore.LaunchPrecheck.checkLibraries,
+        checkXmclNatives,
+        xmclCore.LaunchPrecheck.linkAssets
+      ]
     }
-    
-    // Launch
-    minecraftProcess = await xmclLaunch(launchOptions)
-    
+
+    minecraftProcess = await xmclCore.launch(launchOptions)
+
     if (inicioCancelado) {
       if (minecraftProcess) {
         minecraftProcess.kill('SIGKILL')
         minecraftProcess = null
       }
       currentLogFile = null
-      return { ok: false, error: 'Lanzamiento cancelado' }
+      return { ok: false, cancelled: true, error: 'Lanzamiento cancelado.' }
     }
-    
-    // Attach process event handlers
+
+    let spawnConfirmed = false
     if (minecraftProcess && minecraftProcess.on) {
       minecraftProcess.on('error', (error) => {
+        if (!spawnConfirmed) return
         logAndSend('error', error.stack || error.message || String(error))
         flushLaunchLog()
         minecraftProcess = null
         runningInstanceId = null
         currentLogFile = null
       })
-      
+
       if (minecraftProcess.stdout) {
         minecraftProcess.stdout.on('data', (data) => {
           logData(data.toString())
         })
       }
-      
+
       if (minecraftProcess.stderr) {
         minecraftProcess.stderr.on('data', (data) => {
           logData(data.toString())
         })
       }
-      
+
       minecraftProcess.on('close', (code, signal) => {
         const ranFor = Math.round((Date.now() - launchStartedAt) / 1000)
-        let cleanMessage
-        if (code === 0) {
-          cleanMessage = 'Minecraft se cerro correctamente.'
-        } else if (code === null || code === undefined) {
-          cleanMessage = `Minecraft se cerro (terminado por el launcher${signal ? ', señal: ' + signal : ''}).`
-        } else {
-          cleanMessage = `Minecraft se cerro/crasheo con codigo ${code}.`
-        }
+        const cleanMessage = formatMinecraftCloseMessage(code, signal, minecraftStopRequested)
+        minecraftStopRequested = false
         logAndSend('close', `${cleanMessage} Duracion: ${ranFor}s`)
         flushLaunchLog()
         minecraftProcess = null
@@ -2592,29 +3518,57 @@ async function launchWithXMCL(instance, username, memory, javaPath, minecraftRoo
         currentLogFile = null
       })
     }
-    
+
+    await waitForProcessSpawn(minecraftProcess)
+    spawnConfirmed = true
+    if (inicioCancelado) {
+      minecraftProcess.kill('SIGKILL')
+      minecraftProcess = null
+      currentLogFile = null
+      return { ok: false, cancelled: true, error: 'Lanzamiento cancelado.' }
+    }
+
     runningInstanceId = instance.id
     logAndSend('running', 'Minecraft iniciado.')
     return { ok: true }
-    
+
   } catch (error) {
+    if (installDispatcher) {
+      await installDispatcher.close().catch(() => { })
+      installDispatcher = null
+    }
     xmclLaunchTask = null
-    logAndSend('error', error.stack || error.message || String(error))
+    minecraftProcess = null
+    runningInstanceId = null
+    if (inicioCancelado || xmclCancellationRequested || isXmclCancellationError(error)) {
+      const message = 'Lanzamiento cancelado.'
+      logAndSend('close', message)
+      flushLaunchLog()
+      currentLogFile = null
+      inicioCancelado = false
+      minecraftStopRequested = false
+      return { ok: false, cancelled: true, error: message }
+    }
+    const detailedError = formatXmclError(error)
+    logAndSend('error', detailedError)
     flushLaunchLog()
     currentLogFile = null
-    return { ok: false, error: error.message || String(error) }
+    return { ok: false, error: detailedError }
   }
 }
 
 ipcMain.handle('launch-game', async (_event, payload) => {
-  if (launcher || minecraftProcess) {
+  if (minecraftProcess || xmclLaunchTask || launchRequestInProgress) {
     return { ok: false, error: 'Minecraft ya se esta iniciando o ejecutando.' }
   }
 
-  const instance = getInstance(payload.instanceId)
-  if (!instance) {
-    return { ok: false, error: 'No existe la instancia seleccionada.' }
-  }
+  launchRequestInProgress = true
+  try {
+    const instance = getInstance(payload.instanceId)
+    if (!instance) {
+      return { ok: false, error: 'No existe la instancia seleccionada.' }
+    }
+    activeLaunchInstanceId = instance.id
 
   let username
   let memory
@@ -2631,18 +3585,21 @@ ipcMain.handle('launch-game', async (_event, payload) => {
   currentLogFile = path.join(launcherLogsDir, 'latest.log')
   fs.writeFileSync(currentLogFile, '')
 
+  beginXmclLaunch(instance)
+
   let javaPath = ''
   try {
     javaPath = await resolveLaunchJavaPath(instance.version)
   } catch (error) {
-    writeLaunchLog(error.message || String(error))
+    logAndSend('error', error.stack || error.message || String(error))
+    flushLaunchLog()
     currentLogFile = null
     return { ok: false, error: error.message || String(error) }
   }
 
   if (!javaPath || typeof javaPath !== 'string' || javaPath.trim() === '') {
     const errMsg = 'No se encontro ruta valida de Java. Asegurate de tener Java instalado o configurado en Ajustes.'
-    writeLaunchLog(errMsg)
+    logAndSend('error', errMsg)
     currentLogFile = null
     return { ok: false, error: errMsg }
   }
@@ -2659,21 +3616,11 @@ ipcMain.handle('launch-game', async (_event, payload) => {
     .map(item => item.trim())
     .filter(Boolean)
 
-  // Route to XMCL or MCLC based on environment variable
-  const useXMCL = process.env.LORYQ_USE_XMCL === '1'
-  
-  if (useXMCL) {
-    logOnly('debug', 'Usando ruta XMCL (LORYQ_USE_XMCL=1)')
-    // For now, only vanilla instances are supported with XMCL
-    if (instance.loader && instance.loader !== 'vanilla') {
-      const errMsg = `XMCL: Loader ${instance.loader} no implementado aun. Usando MCLC como fallback.`
-      logOnly('debug', errMsg)
-      return await launchWithMCLC(instance, username, memory, javaPath, minecraftRoot, customArgs)
-    }
+    logOnly('debug', 'Usando XMCL como motor de lanzamiento')
     return await launchWithXMCL(instance, username, memory, javaPath, minecraftRoot, customArgs)
-  } else {
-    logOnly('debug', 'Usando ruta MCLC (default)')
-    return await launchWithMCLC(instance, username, memory, javaPath, minecraftRoot, customArgs)
+  } finally {
+    launchRequestInProgress = false
+    activeLaunchInstanceId = null
   }
 })
 
@@ -2682,13 +3629,20 @@ ipcMain.handle('ms-login', async () => {
     const auth = getMicrosoftAuth()
     const xboxManager = await auth.launch('electron')
     const token = await xboxManager.getMinecraft()
-    const mclc = token.mclc()
+    const minecraftCredentials = getMinecraftCredentials(token)
+    const refreshToken = xboxManager.save()
+    if (!refreshToken) throw new Error('Microsoft no devolvió un token de renovación válido.')
     const account = {
-      id: mclc.uuid,
-      name: mclc.name,
-      uuid: mclc.uuid,
-      access_token: mclc.access_token,
+      id: minecraftCredentials.uuid,
+      name: minecraftCredentials.name,
+      uuid: minecraftCredentials.uuid,
+      access_token: minecraftCredentials.access_token,
+      refresh_token: refreshToken,
       client_token: crypto.randomUUID(),
+      client_id: auth.token?.client_id || '',
+      xuid: minecraftCredentials.xuid,
+      expires_at: minecraftCredentials.expires_at,
+      user_properties: minecraftCredentials.user_properties || {},
       active: true,
       type: 'microsoft'
     }
@@ -2698,7 +3652,7 @@ ipcMain.handle('ms-login', async () => {
     if (existing >= 0) microsoftAccounts[existing] = account
     else microsoftAccounts.push(account)
     saveMicrosoftAccounts(microsoftAccounts)
-    return { ok: true, account }
+    return { ok: true, account: sanitizeMicrosoftAccount(account) }
   } catch (error) {
     return { ok: false, error: error.message || String(error) }
   }
@@ -2718,7 +3672,7 @@ ipcMain.handle('ms-logout', (_event, accountId) => {
 ipcMain.handle('ms-accounts-list', () => {
   try {
     microsoftAccounts = loadMicrosoftAccounts()
-    return { ok: true, accounts: microsoftAccounts }
+    return { ok: true, accounts: microsoftAccounts.map(sanitizeMicrosoftAccount) }
   } catch (error) {
     return { ok: false, error: error.message || String(error) }
   }
@@ -2736,204 +3690,183 @@ ipcMain.handle('ms-set-active', (_event, accountId) => {
 })
 
 ipcMain.handle('kill-minecraft', () => {
+  inicioCancelado = true
+
   if (xmclLaunchTask) {
-    // Cancel XMCL installation task
+
+    xmclCancellationRequested = true
     try {
-      xmclLaunchTask.cancel()
+      xmclLaunchTask.cancel().catch(() => { })
     } catch (e) {
-      // Ignore cancel errors
+
     }
     xmclLaunchTask = null
   }
-  
+
   if (minecraftProcess) {
-    minecraftProcess.kill('SIGTERM')
+    const processToStop = minecraftProcess
+    minecraftStopRequested = true
+    processToStop.kill('SIGTERM')
     setTimeout(() => {
-      if (minecraftProcess) {
-        minecraftProcess.kill('SIGKILL')
-        minecraftProcess = null
+      if (minecraftProcess === processToStop) {
+        processToStop.kill('SIGKILL')
       }
     }, 5000)
     return { ok: true }
   }
-  // Si no hay proceso, estamos en fase de descarga - marcar como cancelado
-  inicioCancelado = true
   return { ok: true }
 })
 
 ipcMain.handle('mc-status', () => {
-  return { running: minecraftProcess !== null, instanceId: runningInstanceId }
+  return {
+    running: launchRequestInProgress || minecraftProcess !== null,
+    instanceId: runningInstanceId || activeLaunchInstanceId
+  }
 })
 
-ipcMain.handle('skin-save-local', async (_event, skinUrl, skinName) => {
+ipcMain.handle('skin-save-local', async (_event, skinUrl, skinName, skinBytes) => {
   try {
-    return { ok: true }
+    const bytes = await resolveSkinBytes(skinUrl, skinBytes)
+    const skinsDirectory = path.join(getKindyrDataRoot(), 'skins')
+    const fileName = `${sanitizeSkinName(skinName)}-${Date.now()}.png`
+    const destination = path.join(skinsDirectory, fileName)
+    fs.mkdirSync(skinsDirectory, { recursive: true, mode: 0o700 })
+    fs.writeFileSync(destination, bytes, { mode: 0o600, flag: 'wx' })
+    return { ok: true, name: fileName }
   } catch (err) {
     return { ok: false, error: err.message }
   }
 })
 
-// Función helper para retry con backoff exponencial para errores transitorios
 async function uploadSkinToMinecraftWithRetry(skinBytes, model, accessToken, maxRetries = 3) {
   const transientCodes = [502, 503, 504, 429]
   let lastError = null
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await uploadSkinToMinecraft(skinBytes, model, accessToken)
     } catch (err) {
       lastError = err
-      
-      // Verificar si el error es de un código transitorio usando la propiedad statusCode
+
       const isTransient = transientCodes.includes(err.statusCode)
-      
+
       if (!isTransient || attempt === maxRetries) {
-        // No es transitorio o se agotaron los reintentos
         throw err
       }
-      
-      // Calcular backoff
+
       let delayMs = Math.pow(2, attempt) * 1000 // 1s, 2s, 4s
-      
-      // Si es 429, verificar header Retry-After usando la propiedad retryAfter
+
       if (err.statusCode === 429 && err.retryAfter) {
         delayMs = parseInt(err.retryAfter) * 1000
       }
-      
-      // Esperar antes del próximo reintento
+
       await new Promise(resolve => setTimeout(resolve, delayMs))
     }
   }
-  
+
   throw lastError
 }
 
-ipcMain.handle('skin-apply-online', async (_event, skinUrl, model, accessToken, skinBytes) => {
+ipcMain.handle('skin-apply-online', async (_event, skinUrl, model, skinBytes) => {
   try {
-    // Si se recibieron bytes directos del renderer (caso blob:), usarlos directamente
-    if (skinBytes) {
-      skinBytes = Buffer.from(skinBytes)
-    } else if (skinUrl.startsWith('http://') || skinUrl.startsWith('https://')) {
-      // Descargar la imagen a Buffer en memoria (caso galería online)
-      skinBytes = await downloadUrlToBuffer(skinUrl)
-    } else {
-      // URL no soportada o blob sin bytes (no debería pasar)
-      return { ok: false, error: 'Unsupported URL format or missing skin bytes' }
-    }
-    
-    // Enviar a Minecraft Services con retry para errores transitorios
-    const response = await uploadSkinToMinecraftWithRetry(skinBytes, model, accessToken)
+    const activeAccount = await getActiveMicrosoftAccount()
+    if (!activeAccount?.access_token) return { ok: false, error: 'Iniciá sesión con Microsoft para aplicar una skin online.' }
+    skinBytes = await resolveSkinBytes(skinUrl, skinBytes)
+    const response = await uploadSkinToMinecraftWithRetry(skinBytes, model, activeAccount.access_token)
     return response
   } catch (err) {
-    // Manejo de token expirado (401)
     if (err.message === 'Authentication failed. Please log in again.') {
       try {
-        // Refrescar el token usando la misma lógica que ms-login
-        const auth = getMicrosoftAuth()
-        const xboxManager = await auth.launch('electron')
-        const token = await xboxManager.getMinecraft()
-        const mclc = token.mclc()
-        
-        // Actualizar el access_token en la cuenta activa
-        microsoftAccounts = loadMicrosoftAccounts()
-        const activeAccount = microsoftAccounts.find(a => a.active)
-        if (activeAccount) {
-          activeAccount.access_token = mclc.access_token
-          saveMicrosoftAccounts(microsoftAccounts)
-          
-          // Reintentar la petición con el nuevo token (con retry para errores transitorios)
-          // Usar los mismos bytes que se obtuvieron originalmente
-          let retrySkinBytes
-          if (skinBytes) {
-            // Si ya teníamos bytes del renderer, reusarlos
-            retrySkinBytes = Buffer.from(skinBytes)
-          } else if (skinUrl.startsWith('http://') || skinUrl.startsWith('https://')) {
-            // Si era una URL remota, volver a descargar
-            retrySkinBytes = await downloadUrlToBuffer(skinUrl)
-          } else {
-            return { ok: false, error: 'Unsupported URL format or missing skin bytes' }
-          }
-          
-          const response = await uploadSkinToMinecraftWithRetry(retrySkinBytes, model, mclc.access_token)
+        const activeAccount = await getActiveMicrosoftAccount({ force: true })
+        if (activeAccount?.access_token) {
+          const retrySkinBytes = validateSkinPng(skinBytes)
+          const response = await uploadSkinToMinecraftWithRetry(retrySkinBytes, model, activeAccount.access_token)
           return response
         }
       } catch (refreshErr) {
-        // Si falla el refresco, devolver el error original
-        return { ok: false, error: err.message }
+        return { ok: false, error: refreshErr.message || err.message }
       }
     }
     return { ok: false, error: err.message }
   }
 })
 
-async function downloadBlobUrl(blobUrl) {
-  // Esta función ya no se usa en el flujo de applyOnline
-  // Los bytes de blob URLs se extraen en el renderer y se pasan directamente
-  throw new Error('downloadBlobUrl is deprecated. Use the new flow with bytes from renderer.')
+async function resolveSkinBytes(skinUrl, skinBytes) {
+  const bytes = validateSkinPng(skinBytes || await downloadUrlToBuffer(skinUrl))
+  const image = nativeImage.createFromBuffer(bytes)
+  const size = image.isEmpty() ? null : image.getSize()
+  if (!size || size.width !== 64 || ![32, 64].includes(size.height)) {
+    throw new Error('La skin no contiene una imagen PNG válida de 64×64 o 64×32 píxeles.')
+  }
+  return bytes
 }
 
-async function uploadToMcHeads(filePath) {
-  // mc-heads.net no tiene una API pública de upload
-  // Por ahora, vamos a usar una solución alternativa
-  throw new Error('Local skins not yet supported for online upload. Please use a skin from mc-heads.net.')
-}
-
-// Función helper para descargar una URL a un Buffer en memoria
-async function downloadUrlToBuffer(url) {
+async function downloadUrlToBuffer(value, redirectCount = 0) {
+  if (redirectCount > 3) throw new Error('La descarga de la skin tuvo demasiadas redirecciones.')
   const https = require('https')
-  const http = require('http')
-  const protocol = url.startsWith('https') ? https : http
-  
+  const url = validateSkinSourceUrl(value)
+
   return new Promise((resolve, reject) => {
-    const parsedUrl = new URL(url)
-    const options = {
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
-      path: parsedUrl.pathname + parsedUrl.search,
-      method: 'GET'
-    }
-    
-    const req = protocol.request(options, (res) => {
+    const req = https.get(url, {
+      headers: { 'User-Agent': MODRINTH_USER_AGENT }
+    }, (res) => {
+      if ([301, 302, 307, 308].includes(res.statusCode)) {
+        res.resume()
+        if (!res.headers.location) return reject(new Error('La redirección de la skin no tiene destino.'))
+        const redirected = new URL(res.headers.location, url)
+        downloadUrlToBuffer(redirected, redirectCount + 1).then(resolve, reject)
+        return
+      }
+      if (res.statusCode !== 200) {
+        res.resume()
+        reject(new Error(`No se pudo descargar la skin: HTTP ${res.statusCode}`))
+        return
+      }
+      const declaredLength = Number(res.headers['content-length'] || 0)
+      if (declaredLength > MAX_SKIN_BYTES) {
+        res.destroy()
+        reject(new Error('La skin supera el límite de 5 MiB.'))
+        return
+      }
       const chunks = []
-      res.on('data', (chunk) => chunks.push(chunk))
-      res.on('end', () => {
-        if (res.statusCode === 200 || res.statusCode === 304) {
-          resolve(Buffer.concat(chunks))
-        } else {
-          reject(new Error(`HTTP ${res.statusCode}: Failed to download image from ${url}`))
+      let totalBytes = 0
+      res.on('data', (chunk) => {
+        totalBytes += chunk.length
+        if (totalBytes > MAX_SKIN_BYTES) {
+          res.destroy(new Error('La skin supera el límite de 5 MiB.'))
+          return
         }
+        chunks.push(chunk)
       })
+      res.on('end', () => {
+        resolve(Buffer.concat(chunks, totalBytes))
+      })
+      res.on('error', reject)
     })
-    
+    req.setTimeout(15000, () => req.destroy(new Error('La descarga de la skin agotó el tiempo de espera.')))
     req.on('error', reject)
-    req.end()
   })
 }
 
 async function uploadSkinToMinecraft(skinBytes, model, accessToken) {
   const https = require('https')
-  
+
   const variant = model === 'slim' ? 'slim' : 'classic'
-  
-  // Construir body multipart/form-data manualmente
+
   const boundary = '----WebKitFormBoundary' + Math.random().toString(16).substr(2, 16)
-  
-  // Parte 1: variant
+
   const variantPart = `--${boundary}\r\nContent-Disposition: form-data; name="variant"\r\n\r\n${variant}\r\n`
-  
-  // Parte 2: file
+
   const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="skin.png"\r\nContent-Type: image/png\r\n\r\n`
-  
-  // Cierre
+
   const closingPart = `\r\n--${boundary}--\r\n`
-  
-  // Combinar todo en un Buffer
+
   const variantBuffer = Buffer.from(variantPart, 'utf8')
   const fileHeaderBuffer = Buffer.from(filePart, 'utf8')
   const closingBuffer = Buffer.from(closingPart, 'utf8')
-  
+
   const bodyBuffer = Buffer.concat([variantBuffer, fileHeaderBuffer, skinBytes, closingBuffer])
-  
+
   const options = {
     hostname: 'api.minecraftservices.com',
     port: 443,
@@ -2945,7 +3878,7 @@ async function uploadSkinToMinecraft(skinBytes, model, accessToken) {
       'Content-Length': bodyBuffer.length
     }
   }
-  
+
   return new Promise((resolve, reject) => {
     const req = https.request(options, (res) => {
       let body = ''
@@ -2984,17 +3917,19 @@ async function uploadSkinToMinecraft(skinBytes, model, accessToken) {
         }
       })
     })
-    
+
     req.on('error', (error) => {
       reject(error)
     })
-    
+
     req.write(bodyBuffer)
     req.end()
   })
 }
 
 app.on('window-all-closed', () => {
+  clearSplashCloseTimer()
+  clearMainWindowLoadFallbackTimer()
   if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close()
   splashWindow = null
   if (process.platform !== 'darwin') app.quit()

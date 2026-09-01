@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "preload*.js",
+    "*.html",
+    "common.js",
+    "navigation.js",
+    "accounts.js",
+    "instances.js",
+    "modrinth.js",
+    "launcher.js",
+    "sections/**/*.html",
+    "scripts/**/*.js",
+    "tools/performance/app-metrics.js",
+    "tools/performance/memlab-scenario.js"
+  ],
+  "project": [
+    "**/*.js"
+  ],
+  "ignoreDependencies": [
+    "@fortawesome/fontawesome-free",
+    "clinic",
+    "memlab"
+  ]
+}

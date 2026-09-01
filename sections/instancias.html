@@ -1,60 +1,76 @@
-<div class="page-head">
+<div class="page-head instances-page-head">
   <div>
     <div class="page-title" data-i18n="instances.title">Instancias</div>
     <div class="page-subtitle" data-i18n="instances.subtitle">Elegí un perfil de juego para usar.</div>
   </div>
-  <div class="hero-actions">
-    <input class="search-box" id="version-search" placeholder="Buscar instancia..." data-i18n-placeholder="instances.search" oninput="filterVersions()">
+  <div class="hero-actions instances-actions">
+    <label class="instance-search-wrap" for="version-search">
+      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+      <input class="search-box" id="version-search" placeholder="Buscar instancia..." data-i18n-placeholder="instances.search" oninput="filterVersions()">
+    </label>
     <button type="button" class="secondary-btn" onclick="importMrpack()"><i class="fa-solid fa-file-import"></i> <span data-i18n="instances.import">Importar modpack</span></button>
     <button type="button" class="primary-btn" onclick="openCreateInstanceModal()"><i class="fa-solid fa-plus"></i> <span data-i18n="instances.add">Agregar instalación</span></button>
   </div>
 </div>
 
-<div class="versions-list" id="versions-list">
-  <div class="version-row selected" data-instance="vanilla-1.21.4" data-version="1.21.4" onclick="selectVersionFromList(this)">
-    <div class="version-info">
-      <strong>Minecraft 1.21.4</strong>
-      <span>Release · <span data-i18n="instances.lastSelected">Última seleccionada</span></span>
-    </div>
-    <div class="version-badge" data-i18n="instances.current">Actual</div>
-    <button type="button" class="icon-action" onclick="openInstanceFolder(event, this)" title="Abrir carpeta" aria-label="Abrir carpeta" data-i18n-title="instance.openFolder" data-i18n-aria-label="instance.openFolder"><i class="fa-regular fa-folder-open"></i></button>
-    <button type="button" class="version-action" onclick="useVersion(event, this)" data-i18n="instances.use">Usar</button>
+<div class="instances-summary" aria-label="Resumen de instancias">
+  <div class="instance-summary-card">
+    <span data-i18n="instances.summary.total">Total</span>
+    <strong id="instances-total">0</strong>
+    <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
   </div>
-  <div class="version-row" data-instance="vanilla-1.20.6" data-version="1.20.6" onclick="selectVersionFromList(this)">
-    <div class="version-info">
-      <strong>Minecraft 1.20.6</strong>
-      <span>Release · <span data-i18n="instances.stable">Estable</span></span>
-    </div>
-    <div class="version-badge">Release</div>
-    <button type="button" class="icon-action" onclick="openInstanceFolder(event, this)" title="Abrir carpeta" aria-label="Abrir carpeta" data-i18n-title="instance.openFolder" data-i18n-aria-label="instance.openFolder"><i class="fa-regular fa-folder-open"></i></button>
-    <button type="button" class="version-action" onclick="useVersion(event, this)" data-i18n="instances.use">Usar</button>
+  <div class="instance-summary-card">
+    <span>Vanilla</span>
+    <strong id="instances-vanilla">0</strong>
+    <i class="fa-solid fa-cube" aria-hidden="true"></i>
   </div>
-  <div class="version-row" data-instance="vanilla-1.19.4" data-version="1.19.4" onclick="selectVersionFromList(this)">
-    <div class="version-info">
-      <strong>Minecraft 1.19.4</strong>
-      <span>Release · <span data-i18n="instances.modFriendly">Compatible con muchos mods</span></span>
-    </div>
-    <div class="version-badge">Release</div>
-    <button type="button" class="icon-action" onclick="openInstanceFolder(event, this)" title="Abrir carpeta" aria-label="Abrir carpeta" data-i18n-title="instance.openFolder" data-i18n-aria-label="instance.openFolder"><i class="fa-regular fa-folder-open"></i></button>
-    <button type="button" class="version-action" onclick="useVersion(event, this)" data-i18n="instances.use">Usar</button>
+  <div class="instance-summary-card">
+    <span data-i18n="instances.summary.modded">Con loader</span>
+    <strong id="instances-modded">0</strong>
+    <i class="fa-solid fa-puzzle-piece" aria-hidden="true"></i>
   </div>
-  <div class="version-row" data-instance="vanilla-1.18.2" data-version="1.18.2" onclick="selectVersionFromList(this)">
-    <div class="version-info">
-      <strong>Minecraft 1.18.2</strong>
-      <span>Release · <span data-i18n="instances.oldModpacks">Buena para modpacks viejos</span></span>
-    </div>
-    <div class="version-badge">Release</div>
-    <button type="button" class="icon-action" onclick="openInstanceFolder(event, this)" title="Abrir carpeta" aria-label="Abrir carpeta" data-i18n-title="instance.openFolder" data-i18n-aria-label="instance.openFolder"><i class="fa-regular fa-folder-open"></i></button>
-    <button type="button" class="version-action" onclick="useVersion(event, this)" data-i18n="instances.use">Usar</button>
+  <div class="instance-summary-card summary-accent">
+    <span data-i18n="instances.summary.visible">Visibles</span>
+    <strong id="instances-visible">0</strong>
+    <i class="fa-solid fa-eye" aria-hidden="true"></i>
   </div>
 </div>
 
+<div class="instances-library-head">
+  <div>
+    <div class="bento-label" data-i18n="instances.library.label">Biblioteca</div>
+    <div class="bento-title" data-i18n="instances.library.title">Tus instalaciones</div>
+  </div>
+</div>
+
+<div class="versions-list instances-card-grid" id="versions-list"></div>
+
 <script>
+function updateInstancesSummary(visibleCount = null) {
+  const instances = Array.isArray(launcherInstances) ? launcherInstances : []
+  const vanilla = instances.filter(instance => !instance.loader || instance.loader === 'vanilla').length
+  const total = instances.length
+  const values = {
+    'instances-total': total,
+    'instances-vanilla': vanilla,
+    'instances-modded': total - vanilla,
+    'instances-visible': visibleCount === null ? total : visibleCount
+  }
+  Object.entries(values).forEach(([id, value]) => {
+    const element = document.getElementById(id)
+    if (element) element.textContent = value
+  })
+}
+
 function renderLauncherInstancesList() {
   const list = document.getElementById('versions-list')
   if (!list) return
   list.innerHTML = ''
-  if (!launcherInstances || !launcherInstances.length) return
+  updateInstancesSummary()
+  if (!launcherInstances || !launcherInstances.length) {
+    list.innerHTML = '<div class="instances-empty"><i class="fa-solid fa-layer-group"></i><span>' + escapeHtml(t('instances.empty')) + '</span></div>'
+    return
+  }
 
   const chunkSize = 10
   let idx = 0
@@ -64,17 +80,26 @@ function renderLauncherInstancesList() {
     for (let i = 0; i < chunkSize && idx < launcherInstances.length; i++, idx++) {
       const instance = launcherInstances[idx]
       const div = document.createElement('div')
-      div.className = 'version-row ' + (instance.id === selectedInstance ? 'selected' : '')
+      const loader = instance.loader || 'vanilla'
+      const initial = String(instance.name || 'M').charAt(0).toUpperCase()
+      div.className = 'version-row instance-card'
       div.dataset.instance = instance.id
       div.dataset.version = instance.version
+      div.dataset.search = [instance.name, instance.version, loader, instance.type].filter(Boolean).join(' ').toLowerCase()
       div.setAttribute('onclick', 'openInstanceView(this)')
-      div.innerHTML = '<div class="version-info">' +
-        '<strong>' + escapeHtml(instance.name) + '</strong>' +
-        '<span>' + escapeHtml((instance.loader || 'vanilla') + ' · ' + instance.version + (instance.type === 'modpack' ? ' · Modpack' : '')) + '</span>' +
+      div.innerHTML = '<div class="instance-card-head">' +
+        '<div class="instance-card-icon">' + escapeHtml(initial) + '</div>' +
+        '<div class="version-info"><strong>' + escapeHtml(instance.name) + '</strong>' +
+          '<span>' + escapeHtml(loader + ' · ' + instance.version + (instance.type === 'modpack' ? ' · Modpack' : '')) + '</span></div>' +
+        '<div class="version-badge">' + escapeHtml(loader) + '</div>' +
       '</div>' +
-      '<div class="version-badge">' + (instance.id === selectedInstance ? escapeHtml(t('instances.current')) : escapeHtml(instance.loader || 'Release')) + '</div>' +
-      '<button type="button" class="icon-action" onclick="openInstanceFolder(event, this)" title="' + escapeHtml(t('instance.openFolder')) + '" aria-label="' + escapeHtml(t('instance.openFolder')) + '"><i class="fa-regular fa-folder-open"></i></button>' +
-      '<button type="button" class="version-action" onclick="openInstanceFromList(event, this)">' + escapeHtml(t('instances.open')) + '</button>'
+      '<div class="instance-card-footer">' +
+        '<span class="instance-version-chip"><i class="fa-solid fa-cube"></i> ' + escapeHtml(instance.version) + '</span>' +
+        '<div class="instance-card-actions">' +
+          '<button type="button" class="icon-action" onclick="openInstanceFolder(event, this)" title="' + escapeHtml(t('instance.openFolder')) + '" aria-label="' + escapeHtml(t('instance.openFolder')) + '"><i class="fa-regular fa-folder-open"></i></button>' +
+          '<button type="button" class="version-action" onclick="openInstanceFromList(event, this)">' + escapeHtml(t('instances.open')) + ' <i class="fa-solid fa-arrow-right"></i></button>' +
+        '</div>' +
+      '</div>'
       frag.appendChild(div)
     }
     list.appendChild(frag)
@@ -95,30 +120,33 @@ function useVersion(event, button) {
 }
 
 function filterVersions() {
-  const search = document.getElementById('version-search').value.toLowerCase()
+  const search = document.getElementById('version-search').value.trim().toLowerCase()
+  let visible = 0
   document.querySelectorAll('.version-row').forEach(row => {
-    row.style.display = row.dataset.version.includes(search) ? 'grid' : 'none'
+    const matches = !search || String(row.dataset.search || row.dataset.version || '').includes(search)
+    row.style.display = matches ? '' : 'none'
+    if (matches) visible++
   })
+  updateInstancesSummary(visible)
 }
 
-// Load instances when this section is shown
+
 if (typeof refreshLauncherInstances === 'function') {
   refreshLauncherInstances()
 }
 async function importMrpack() {
-  if (!window.zotlinAPI?.instances?.importMrpack) {
+  if (!window.kindyrAPI?.instances?.importMrpack) {
     setStatus(t('instances.importError'))
     return
   }
 
-  // Escuchar progreso
-  window.zotlinAPI.instances.onImportProgress((data) => {
+  window.kindyrAPI.instances.onImportProgress((data) => {
     setStatus(data.message)
   })
 
-  const result = await window.zotlinAPI.instances.importMrpack()
+  const result = await window.kindyrAPI.instances.importMrpack()
 
-  window.zotlinAPI.instances.offImportProgress()
+  window.kindyrAPI.instances.offImportProgress()
 
   if (result.ok) {
     if (result.warnings) {

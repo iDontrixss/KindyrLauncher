@@ -1,5 +1,4 @@
 <style>
-  /* Skins section — usa variables del launcher */
   .skins-root {
     display: flex;
     height: 100%;
@@ -245,14 +244,14 @@
     gap: 8px;
     position: relative;
   }
-  .skin-card:hover { 
-    border-color: #1D9E75; 
-    transform: translateY(-2px); 
+  .skin-card:hover {
+    border-color: #1D9E75;
+    transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(29, 158, 117, 0.2);
   }
-  .skin-card.selected { 
-    border-color: #1D9E75; 
-    background: #17382d; 
+  .skin-card.selected {
+    border-color: #1D9E75;
+    background: #17382d;
     box-shadow: 0 0 0 2px rgba(29, 158, 117, 0.3);
   }
 
@@ -327,9 +326,17 @@
   #skin-file-input { display: none; }
 </style>
 
-<div class="skins-root">
+<div class="page-head skins-page-head">
+  <div>
+    <div class="page-kicker"><i class="fa-solid fa-shirt"></i> <span data-i18n="skins.kicker">IDENTIDAD DEL JUGADOR</span></div>
+    <div class="page-title" data-i18n="skins.title">Skins</div>
+    <div class="page-subtitle" data-i18n="skins.subtitle">Buscá, previsualizá y guardá tu próxima apariencia.</div>
+  </div>
+  <div class="source-badge skins-source-badge"><span class="source-dot"></span><span>MOJANG + MC HEADS</span></div>
+</div>
 
-  <!-- LEFT: Viewer -->
+<div class="skins-root" id="skins-view">
+
   <div class="skin-viewer-panel">
     <div class="skin-viewer-wrap">
       <canvas id="skin-canvas" width="160" height="230"></canvas>
@@ -345,17 +352,17 @@
     </div>
 
     <div class="skin-actions">
-      <button class="skin-action-btn primary" id="btn-apply" onclick="applySkin()" data-i18n="skins.apply">
+      <button class="skin-action-btn primary" id="btn-apply" onclick="applySkin()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-        Aplicar skin
+        <span data-i18n="skins.apply">Aplicar skin</span>
       </button>
-      <button class="skin-action-btn secondary" onclick="openTab('subir')" data-i18n="skins.upload">
+      <button class="skin-action-btn secondary" onclick="openTab('subir')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Subir skin
+        <span data-i18n="skins.upload">Subir skin</span>
       </button>
-      <button class="skin-action-btn ghost" onclick="favCurrentSkin()" data-i18n="skins.saveFavorite">
+      <button class="skin-action-btn ghost" onclick="favCurrentSkin()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        Guardar favorita
+        <span data-i18n="skins.saveFavorite">Guardar favorita</span>
       </button>
     </div>
 
@@ -363,7 +370,6 @@
     <div class="sv-status" id="sv-status" data-i18n="skins.selectSkin">Seleccioná una skin para comenzar</div>
   </div>
 
-  <!-- RIGHT: Gallery -->
   <div class="skin-gallery-panel">
     <div class="skin-gallery-top">
       <div class="skin-tabs">
@@ -385,19 +391,15 @@
 <input type="file" id="skin-file-input" accept=".png" onchange="handleFileUpload(event)">
 
 <script>
-// Cargar skinview3d
 (function() {
   if (window.skinview3d) {
-    console.log('skinview3d ya cargado, inicializando...')
     initViewer();
     return;
   }
-  console.log('Cargando skinview3d desde jsDelivr CDN...')
   const s = document.createElement('script')
   s.src = 'https://cdn.jsdelivr.net/npm/skinview3d@3.4.1/bundles/skinview3d.bundle.js'
   s.crossOrigin = 'anonymous'
   s.onload = () => {
-    console.log('skinview3d cargado exitosamente, window.skinview3d:', window.skinview3d)
     if (window.skinview3d) {
       initViewer()
     } else {
@@ -411,15 +413,23 @@
   document.head.appendChild(s)
 })()
 
-// ── Estado
 let viewer = null
 let currentSkin = null
 let currentModel = 'classic'
 let currentTab = 'populares'
 let favorites = []
 let useFallback2D = false
+let activeSkinObjectUrl = ''
 
-// ── Jugadores famosos (solo nombres, UUID se resuelve dinámicamente)
+function setSkinsPerformanceMode(active) {
+  if (!viewer) return
+  viewer.renderPaused = !active
+  viewer.autoRotate = active
+  if (viewer.animation && 'paused' in viewer.animation) {
+    viewer.animation.paused = !active
+  }
+}
+
 const FEATURED = [
   'Notch', 'Technoblade', 'Dream', 'GeorgeNotFound', 'Sapnap',
   'TommyInnit', 'Skeppy', 'BadBoyHalo', 'Philza', 'WilburSoot',
@@ -430,7 +440,6 @@ const avatar = uuid => `https://mc-heads.net/avatar/${uuid}/48`
 const skin   = uuid => `https://mc-heads.net/skin/${uuid}`
 const body   = uuid => `https://mc-heads.net/body/${uuid}/160`
 
-// ── Resolver UUID desde nombre usando Mojang API
 async function resolveUUID(username) {
   try {
     const res = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(username)}`)
@@ -442,31 +451,27 @@ async function resolveUUID(username) {
   }
 }
 
-// ── Cache de UUIDs
 const uuidCache = new Map()
 
 async function getCachedUUID(username) {
   if (uuidCache.has(username)) return uuidCache.get(username)
   const uuid = await resolveUUID(username)
-  if (uuid) uuidCache.set(username, uuid)
+  if (uuid) {
+    uuidCache.set(username, uuid)
+    if (uuidCache.size > 100) {
+      uuidCache.delete(uuidCache.keys().next().value)
+    }
+  }
   return uuid
 }
 
-// ── Init viewer
 async function initViewer() {
   const canvas = document.getElementById('skin-canvas')
   if (!canvas) {
     console.error('Canvas no encontrado')
     return
   }
-  console.log('Canvas encontrado:', canvas)
-  console.log('Canvas dimensions:', canvas.width, canvas.height)
-  console.log('Canvas style:', canvas.style.cssText)
-  console.log('Canvas offsetWidth/Height:', canvas.offsetWidth, canvas.offsetHeight)
-
-  // Destruir viewer anterior si existe para evitar conflictos de contexto
   if (viewer) {
-    console.log('Destruyendo viewer anterior')
     try {
       viewer.dispose()
     } catch (e) {
@@ -477,7 +482,6 @@ async function initViewer() {
 
   if (!window.skinview3d) {
     console.error('skinview3d no está disponible')
-    console.log('window.skinview3d:', window.skinview3d)
     useFallback2D = true
     skinSetStatus('⚠️ skinview3d no disponible. Usando vista 2D.', 'error')
     loadFavorites()
@@ -488,40 +492,26 @@ async function initViewer() {
     }
     return
   }
-  console.log('skinview3d disponible:', window.skinview3d)
-  console.log('skinview3d.SkinViewer:', window.skinview3d.SkinViewer)
-
   try {
-    console.log('Creando viewer con skinview3d.SkinViewer...')
     viewer = new skinview3d.SkinViewer({ canvas, width: 160, height: 230 })
-    console.log('Viewer creado exitosamente:', viewer)
-    
-    // Configurar viewer según API de skinview3d 3.x
-    console.log('Configurando viewer...')
-    
-    // Auto-rotación
+
     viewer.autoRotate = true
-    console.log('Auto-rotación habilitada')
-    
-    // Animación de caminar
+
     if (skinview3d.WalkingAnimation) {
       viewer.animation = new skinview3d.WalkingAnimation()
       viewer.animation.speed = 0.5
-      console.log('Animación WalkingAnimation configurada')
     } else {
       console.warn('WalkingAnimation no disponible en esta versión')
     }
-    
-    // Mostrar canvas
+    setSkinsPerformanceMode(
+      !document.hidden && document.hasFocus() && currentSection === 'skins'
+    )
+
     canvas.style.display = 'block'
-    console.log('Canvas visible')
-    
-    console.log('Viewer configurado completamente')
 
     loadFavorites()
     renderTab('populares')
 
-    // Cargar skin por defecto (Notch)
     const defaultUUID = await getCachedUUID(FEATURED[0])
     if (defaultUUID) {
       selectSkin(FEATURED[0], defaultUUID, 'popular')
@@ -541,7 +531,6 @@ async function initViewer() {
   }
 }
 
-// ── Tabs
 async function openTab(tab, el) {
   currentTab = tab
   document.querySelectorAll('.skin-tab').forEach(t => t.classList.remove('active'))
@@ -562,7 +551,6 @@ async function renderTab(tab) {
   else renderSubir(body)
 }
 
-// ── Populares
 async function renderPopulares(el) {
   el.innerHTML = `
     <div class="skin-grid-label">${t('skins.featured')}</div>
@@ -570,58 +558,58 @@ async function renderPopulares(el) {
       <div class="skin-loading">${t('skins.loading')}</div>
     </div>
     <div id="search-results"></div>`
-  
-  // Resolver UUIDs dinámicamente
+
   const grid = document.getElementById('popular-grid')
-  const cards = []
-  
-  for (const username of FEATURED) {
+  const cards = await Promise.all(FEATURED.map(async username => {
     const uuid = await getCachedUUID(username)
-    if (uuid) {
-      cards.push(mkCard(username, body(uuid), uuid, 'popular'))
-    }
-  }
-  
-  grid.innerHTML = cards.join('')
+    return uuid ? mkCard(username, body(uuid), uuid, 'popular') : ''
+  }))
+
+  if (grid?.isConnected) grid.innerHTML = cards.filter(Boolean).join('')
 }
 
 function mkCard(name, avatarUrl, uuid, source) {
-  const fav = favorites.some(f => f.uuid === uuid)
-  return `<div class="skin-card" id="card-${uuid}" onclick="selectSkin('${name}','${uuid}','${source}')">
-    <button class="skin-card-fav ${fav ? 'active' : ''}" title="${t('skins.saveFavorite')}" onclick="event.stopPropagation();toggleFav('${name}','${uuid}')">★</button>
-    <img class="skin-card-avatar" src="${avatarUrl}" alt="${name}">
-    <div class="skin-card-name">${name}</div>
+  const safeUuid = String(uuid || '').replace(/[^a-f0-9-]/gi, '')
+  if (!safeUuid) return ''
+  const safeSource = ['popular', 'search', 'fav'].includes(source) ? source : 'search'
+  const encodedName = escapeHtml(JSON.stringify(String(name || 'Minecraft')))
+  const encodedUuid = escapeHtml(JSON.stringify(safeUuid))
+  const encodedSource = escapeHtml(JSON.stringify(safeSource))
+  const fav = favorites.some(f => f.uuid === safeUuid)
+  return `<div class="skin-card" id="card-${safeUuid}" onclick="selectSkin(${encodedName},${encodedUuid},${encodedSource})">
+    <button class="skin-card-fav ${fav ? 'active' : ''}" title="${escapeHtml(t('skins.saveFavorite'))}" onclick="event.stopPropagation();toggleFav(${encodedName},${encodedUuid})">★</button>
+    <img class="skin-card-avatar" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(name)}" loading="lazy" decoding="async">
+    <div class="skin-card-name">${escapeHtml(name)}</div>
   </div>`
 }
 
-// ── Buscar
 async function searchSkin() {
   const q = document.getElementById('skin-search').value.trim()
   if (!q) return
   const wrap = document.getElementById('search-results')
   if (!wrap) return
-  wrap.innerHTML = `<div class="skin-loading">${t('skins.searching', { q })}</div>`
+  wrap.innerHTML = `<div class="skin-loading">${escapeHtml(t('skins.searching', { q }))}</div>`
   try {
     const res = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(q)}`)
     if (!res.ok) throw new Error()
     const { id, name } = await res.json()
     wrap.innerHTML = `
-      <div class="skin-grid-label">${t('skins.searchResult', { name })}</div>
+      <div class="skin-grid-label">${escapeHtml(t('skins.searchResult', { name }))}</div>
       <div class="skin-grid">${mkCard(name, body(id), id, 'search')}</div>`
   } catch {
-    wrap.innerHTML = `<div class="skin-empty">${t('skins.searchNotFound', { q })}</div>`
+    wrap.innerHTML = `<div class="skin-empty">${escapeHtml(t('skins.searchNotFound', { q }))}</div>`
   }
 }
 
-// ── Seleccionar
 async function selectSkin(name, uuid, source) {
-  console.log(`=== selectSkin llamado: name=${name}, uuid=${uuid}, source=${source}`)
-  
   document.querySelectorAll('.skin-card').forEach(c => c.classList.remove('selected'))
   document.getElementById('card-' + uuid)?.classList.add('selected')
 
   const skinUrl = skin(uuid)
-  console.log('URL de skin:', skinUrl)
+  if (activeSkinObjectUrl) {
+    URL.revokeObjectURL(activeSkinObjectUrl)
+    activeSkinObjectUrl = ''
+  }
   currentSkin = { name, uuid, url: skinUrl, model: currentModel, source }
 
   document.getElementById('sv-name').textContent = name
@@ -629,13 +617,10 @@ async function selectSkin(name, uuid, source) {
   document.getElementById('sv-badge').textContent = `${currentModel === 'classic' ? t('skins.modelClassic') : t('skins.modelSlim')} · ${srcLabel[source] || ''}`
   skinSetStatus('', '')
 
-  // Fallback 2D si WebGL no está disponible
   if (useFallback2D) {
-    console.log('Usando fallback 2D')
     const previewImg = document.getElementById('skin-preview-img')
     const canvas = document.getElementById('skin-canvas')
     if (previewImg) {
-      // Usar render de cuerpo completo de mc-heads
       previewImg.src = `https://mc-heads.net/body/${uuid}/160`
       previewImg.style.display = 'block'
     }
@@ -644,19 +629,14 @@ async function selectSkin(name, uuid, source) {
     return
   }
 
-  // Mostrar canvas 3D
   const previewImg = document.getElementById('skin-preview-img')
   const canvas = document.getElementById('skin-canvas')
   if (previewImg) previewImg.style.display = 'none'
   if (canvas) canvas.style.display = 'block'
-  console.log('Canvas visible, imagen oculta')
 
   if (viewer) {
-    console.log('Viewer disponible, cargando skin...')
     try {
-      // En skinview3d 3.x, loadSkin solo toma la URL, el modelo se detecta automáticamente
       await viewer.loadSkin(skinUrl)
-      console.log('Skin cargada exitosamente')
       skinSetStatus(t('skins.skinLoaded'), 'ok')
     } catch (error) {
       console.error('Error al cargar skin:', error)
@@ -668,26 +648,20 @@ async function selectSkin(name, uuid, source) {
   }
 }
 
-// ── Modelo
 function setModel(m) {
-  console.log(`=== setModel llamado: ${m}`)
   currentModel = m
   document.getElementById('model-classic').classList.toggle('active', m === 'classic')
   document.getElementById('model-slim').classList.toggle('active', m === 'slim')
-  
+
   if (currentSkin && viewer) {
-    console.log('Cambiando modelo a:', m)
-    // API correcta de SkinView3D 3.x para cambiar el modelo
     viewer.playerObject.skin.modelType = m === 'slim' ? 'slim' : 'default'
-    console.log('Modelo cambiado a:', viewer.playerObject.skin.modelType)
   }
-  
+
   if (currentSkin) {
     document.getElementById('sv-badge').textContent = `${m === 'classic' ? t('skins.modelClassic') : t('skins.modelSlim')} · ${currentSkin.source?.toUpperCase() || ''}`
   }
 }
 
-// ── Aplicar
 async function applySkin() {
   if (!currentSkin) return
   const btn = document.getElementById('btn-apply')
@@ -696,22 +670,27 @@ async function applySkin() {
   skinSetStatus('', '')
 
   try {
-    const result = await window.zotlinAPI.microsoft.list()
+    const result = await window.kindyrAPI.microsoft.list()
     const active = result?.accounts?.find(a => a.active)
 
-    if (active?.access_token) {
+    if (active) {
       let skinBytes = null
-      // Si es una URL blob:, extraer los bytes en el renderer
       if (currentSkin.url.startsWith('blob:')) {
         const response = await fetch(currentSkin.url)
         const arrayBuffer = await response.arrayBuffer()
         skinBytes = new Uint8Array(arrayBuffer)
       }
-      const r = await window.zotlinAPI.skins.applyOnline(currentSkin.url, currentModel, active.access_token, skinBytes)
+      const r = await window.kindyrAPI.skins.applyOnline(currentSkin.url, currentModel, skinBytes)
       r.ok ? skinSetStatus(t('skins.skinApplied'), 'ok')
              : skinSetStatus('Error: ' + (r.error || t('skins.tryAgain')), 'error')
     } else {
-      const r = await window.zotlinAPI.skins.saveLocal(currentSkin.url, currentSkin.name)
+      let skinBytes = null
+      if (currentSkin.url.startsWith('blob:')) {
+        const response = await fetch(currentSkin.url)
+        const arrayBuffer = await response.arrayBuffer()
+        skinBytes = new Uint8Array(arrayBuffer)
+      }
+      const r = await window.kindyrAPI.skins.saveLocal(currentSkin.url, currentSkin.name, skinBytes)
       r.ok ? skinSetStatus(t('skins.skinSavedLocal'), 'ok')
              : skinSetStatus('Error: ' + (r.error || t('skins.tryAgain')), 'error')
     }
@@ -723,12 +702,11 @@ async function applySkin() {
   btn.textContent = t('skins.apply')
 }
 
-// ── Favoritas
 function loadFavorites() {
-  try { favorites = JSON.parse(localStorage.getItem('zotlin_favs') || '[]') } catch { favorites = [] }
+  try { favorites = JSON.parse(localStorage.getItem('kindyr_favs') || '[]') } catch { favorites = [] }
 }
 function saveFavorites() {
-  localStorage.setItem('zotlin_favs', JSON.stringify(favorites))
+  localStorage.setItem('kindyr_favs', JSON.stringify(favorites))
 }
 function toggleFav(name, uuid) {
   const idx = favorites.findIndex(f => f.uuid === uuid)
@@ -753,7 +731,6 @@ function renderFavoritas(el) {
     <div class="skin-grid">${favorites.map(f => mkCard(f.name, avatar(f.uuid), f.uuid, 'fav')).join('')}</div>`
 }
 
-// ── Subir
 function renderSubir(el) {
   el.innerHTML = `
     <div class="skin-upload-zone" id="upload-zone"
@@ -780,32 +757,26 @@ function handleDrop(e) {
 function handleFileUpload(e) { if (e.target.files[0]) processFile(e.target.files[0]) }
 
 async function processFile(file) {
-  console.log('=== processFile llamado:', file.name)
-  
   if (!file.name.endsWith('.png')) {
     document.getElementById('upload-msg').innerHTML = `<div class="sv-status error" style="text-align:center;padding:12px">${t('skins.pngOnly')}</div>`
     return
   }
+  if (activeSkinObjectUrl) URL.revokeObjectURL(activeSkinObjectUrl)
   const url = URL.createObjectURL(file)
+  activeSkinObjectUrl = url
   const name = file.name.replace('.png', '')
-  console.log('URL de skin local:', url)
   currentSkin = { name, url, model: currentModel, source: 'upload' }
   document.getElementById('sv-name').textContent = name
   document.getElementById('sv-badge').textContent = `${currentModel === 'classic' ? t('skins.modelClassic') : t('skins.modelSlim')} · ${t('skins.sourceUpload')}`
 
-  // Mostrar canvas 3D
   const previewImg = document.getElementById('skin-preview-img')
   const canvas = document.getElementById('skin-canvas')
   if (previewImg) previewImg.style.display = 'none'
   if (canvas) canvas.style.display = 'block'
-  console.log('Canvas visible, imagen oculta')
 
   if (viewer) {
-    console.log('Viewer disponible, cargando skin local...')
     try {
-      // En skinview3d 3.x, loadSkin solo toma la URL
       await viewer.loadSkin(url)
-      console.log('Skin local cargada exitosamente')
     } catch (error) {
       console.error('Error al cargar skin local:', error)
     }

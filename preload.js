@@ -4,11 +4,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateConfirm: (accepted) => ipcRenderer.send('update-confirm', accepted)
 })
 
-contextBridge.exposeInMainWorld('zotlinAPI', {
+contextBridge.exposeInMainWorld('kindyrAPI', {
   window: {
     minimize: () => ipcRenderer.send('minimize'),
     maximize: () => ipcRenderer.send('maximize'),
     close: () => ipcRenderer.send('close')
+  },
+  profile: {
+    checkpoint: (label, renderer = null) => ipcRenderer.send('profile-checkpoint', { label, renderer })
   },
   log: {
   info: (msg) => ipcRenderer.send('log-info', msg),
@@ -88,14 +91,13 @@ contextBridge.exposeInMainWorld('zotlinAPI', {
     getSettings: () => ipcRenderer.invoke('get-onboarding-settings')
   },
   skins: {
-    saveLocal: (skinUrl, skinName) =>
-      ipcRenderer.invoke('skin-save-local', skinUrl, skinName),
+    saveLocal: (skinUrl, skinName, skinBytes) =>
+      ipcRenderer.invoke('skin-save-local', skinUrl, skinName, skinBytes),
 
-    applyOnline: (skinUrl, model, accessToken, skinBytes) =>
-      ipcRenderer.invoke('skin-apply-online', skinUrl, model, accessToken, skinBytes)
+    applyOnline: (skinUrl, model, skinBytes) =>
+      ipcRenderer.invoke('skin-apply-online', skinUrl, model, skinBytes)
   }
 })
-// preload.js — agregá esto al final
 window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('contextmenu', e => e.preventDefault())
 })

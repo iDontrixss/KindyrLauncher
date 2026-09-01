@@ -1,8 +1,8 @@
-// Navigation and sidebar management
+
 
 let currentSection = 'home'
 let loadedSections = new Set()
-const sectionNodeCache = new Map()
+let discoverInstanceContextId = null
 
 const sectionFiles = {
   home: 'sections/inicio.html',
@@ -11,161 +11,150 @@ const sectionFiles = {
   skins: 'sections/skins.html',
   settings: 'sections/ajustes.html'
 }
+const sectionLoadPromises = new Map()
 
-async function loadSection(sectionName, navEl) {
-  if (currentSection === sectionName && loadedSections.has(sectionName)) return
+function reportSectionCheckpoint(sectionName, state) {
+  window.kindyrAPI?.profile?.checkpoint?.(`section:${sectionName}:${state}`, {
+    section: sectionName,
+    state,
+    domNodes: document.getElementsByTagName('*').length,
+    images: document.images.length,
+    loadedSections: [...loadedSections]
+  })
+}
 
-  // Ocultar vista de instancia si está activa
-  const instanceDetailView = document.getElementById('instance-detail-view')
-  if (instanceDetailView) instanceDetailView.classList.remove('active')
+function getDiscoverInstanceContext() {
+  if (!discoverInstanceContextId) return null
+  return launcherInstances.find(instance => instance.id === discoverInstanceContextId) || null
+}
 
-  // Detach previous section nodes into a cache so scripts are not re-executed
-  const previousSection = currentSection
-  if (previousSection && previousSection !== sectionName && previousSection !== 'instance-detail') {
-    const prevView = document.getElementById(previousSection + '-view')
-    if (prevView) {
-      // Move child nodes out of the DOM and store them
-      const nodes = Array.from(prevView.childNodes)
-      if (nodes.length) {
-        sectionNodeCache.set(previousSection, nodes)
-        for (const n of nodes) prevView.removeChild(n)
-      }
-      // Keep loadedSections marked — content already executed and cached
+function updateInstanceDiscoverContext(patch = {}) {
+  const instance = getDiscoverInstanceContext()
+  if (instance) Object.assign(instance, patch)
+}
+
+async function syncDiscoverContext(refreshResults = false) {
+  if (typeof syncDiscoverContextView === 'function') {
+    syncDiscoverContextView(refreshResults)
+  }
+}
+
+function activateSectionView(sectionName, navEl = null) {
+  const targetView = document.getElementById(sectionName + '-view')
+  if (!targetView) return null
+
+  const activeView = document.querySelector('.view.active')
+  if (activeView !== targetView) {
+    if (activeView?.id === 'instance-detail-view' && typeof disposeInstanceDetailView === 'function') {
+      disposeInstanceDetailView()
     }
+    activeView?.classList.remove('active')
+    targetView.classList.add('active')
+  }
+
+  const activeNav = document.querySelector('.pill-nav.active')
+  if (activeNav !== navEl) {
+    activeNav?.classList.remove('active')
+    navEl?.classList.add('active')
   }
 
   currentSection = sectionName
-  
-  const navItems = document.querySelectorAll('.nav-item')
-  const views = document.querySelectorAll('.view')
-  
-  navItems.forEach(item => item.classList.remove('active'))
-  if (navEl) navEl.classList.add('active')
-  
-  views.forEach(view => view.classList.remove('active'))
-  
-  const targetView = document.getElementById(sectionName + '-view')
-  if (targetView) targetView.classList.add('active')
-  
+  if (typeof syncRendererActivity === 'function') syncRendererActivity()
+  reportSectionCheckpoint(sectionName, 'activated')
+  return targetView
+}
+
+async function openDiscoverSection(navEl = document.getElementById('nav-discover')) {
+  discoverInstanceContextId = null
+  await loadSection('discover', navEl)
+  await syncDiscoverContext(true)
+}
+
+async function openDiscoverForInstance(instanceId = selectedInstance) {
+  const instance = launcherInstances.find(item => item.id === instanceId)
+  if (!instance) {
+    setStatus(t('instance.selectedStatus', { name: selectedVersion }))
+    return
+  }
+  discoverInstanceContextId = instance.id
+  await loadSection('discover', document.getElementById('nav-discover'))
+  await syncDiscoverContext(true)
+}
+
+async function openStandardDiscover(navEl = document.getElementById('nav-discover')) {
+  return openDiscoverSection(navEl)
+}
+
+function getInstanceDiscoverContext() {
+  return getDiscoverInstanceContext()
+}
+
+function syncInstanceDiscoverContext(refreshResults = false) {
+  return syncDiscoverContext(refreshResults)
+}
+
+async function loadSection(sectionName, navEl) {
+  if (currentSection === sectionName && loadedSections.has(sectionName)) return
+  if (!sectionFiles[sectionName]) {
+    console.error('Unknown section:', sectionName)
+    return
+  }
+
+  const targetView = activateSectionView(sectionName, navEl)
+  if (!targetView) return
+
   setTopbarMode('nav', navEl ? (navEl.dataset.viewTitle || navEl.textContent.trim()) : t('nav.home'))
-  
-  if (!loadedSections.has(sectionName)) {
-    try {
-      const response = await fetch(sectionFiles[sectionName])
-      if (!response.ok) throw new Error('Failed to load section')
-      const html = await response.text()
-      const targetView = document.getElementById(sectionName + '-view')
-      if (targetView) {
-        targetView.innerHTML = html
+
+  if (loadedSections.has(sectionName)) {
+    return
+  }
+
+  if (!sectionLoadPromises.has(sectionName)) {
+    const loadPromise = (async () => {
+      try {
+        const response = await fetch(sectionFiles[sectionName])
+        if (!response.ok) throw new Error('Failed to load section')
+        targetView.innerHTML = await response.text()
         loadedSections.add(sectionName)
+        translateElement(targetView)
 
-        applyLanguage()
-        applyTheme()
-
-        // Execute scripts once by creating new script elements (only on first load)
         const scripts = targetView.querySelectorAll('script')
         const fragment = document.createDocumentFragment()
         scripts.forEach(script => {
           const newScript = document.createElement('script')
-          if (script.hasAttribute('data-isolate')) {
-            try {
-              newScript.textContent = '(function(){\n' + script.textContent + '\n})();'
-            } catch (e) {
-              newScript.textContent = script.textContent
-            }
-          } else {
-            newScript.textContent = script.textContent
-          }
+          newScript.textContent = script.hasAttribute('data-isolate')
+            ? '(function(){\n' + script.textContent + '\n})();'
+            : script.textContent
           fragment.appendChild(newScript)
           script.remove()
         })
         targetView.appendChild(fragment)
-      }
-    } catch (error) {
-      console.error('Error loading section:', error)
-      const targetView = document.getElementById(sectionName + '-view')
-      if (targetView) targetView.innerHTML = '<div class="empty-view">' + escapeHtml(t('settings.validation.error')) + '</div>'
-    }
-  } else {
-    // Section was previously loaded — reattach cached nodes if present without re-executing scripts
-    const targetView = document.getElementById(sectionName + '-view')
-    if (targetView) {
-      const cached = sectionNodeCache.get(sectionName)
-      if (cached && cached.length) {
-        // Re-attach nodes inside requestAnimationFrame to avoid layout thrashing
-        requestAnimationFrame(() => {
-          for (const n of cached) targetView.appendChild(n)
-          // Remove from cache since nodes are back in the DOM
-          sectionNodeCache.delete(sectionName)
-          
-          // Aplicamos traducción y renderizado si viene del caché
-          applyLanguage()
-          if (sectionName === 'instances' && typeof renderLauncherInstancesList === 'function') renderLauncherInstancesList()
-          if (sectionName === 'discover' && typeof renderDiscoverTypes === 'function') renderDiscoverTypes()
-        })
-      } else {
-        applyLanguage()
-        if (sectionName === 'instances' && typeof renderLauncherInstancesList === 'function') renderLauncherInstancesList()
-        if (sectionName === 'discover' && typeof renderDiscoverTypes === 'function') renderDiscoverTypes()
-      }
-    }
-  }
-}
 
-function reloadSectionsForLanguage() {
-  const sectionsToReload = ['discover', 'home', 'instances']
-  sectionsToReload.forEach(section => {
-    loadedSections.delete(section)
-    sectionNodeCache.delete(section)
-    const view = document.getElementById(section + '-view')
-    if (view) view.innerHTML = ''
-  })
-  if (currentSection !== 'settings') {
-    const activeNav = document.getElementById('nav-' + currentSection)
-    loadSection(currentSection, activeNav)
+        applyTheme()
+        if (typeof syncRendererActivity === 'function') syncRendererActivity()
+        reportSectionCheckpoint(sectionName, 'loaded')
+      } catch (error) {
+        console.error('Error loading section:', error)
+        targetView.innerHTML = '<div class="empty-view">' + escapeHtml(t('settings.validation.error')) + '</div>'
+      }
+    })()
+    sectionLoadPromises.set(sectionName, loadPromise)
+  }
+
+  try {
+    await sectionLoadPromises.get(sectionName)
+  } finally {
+    sectionLoadPromises.delete(sectionName)
   }
 }
 
 function goHomeFromInstance() {
-  loadedSections.delete('instance-detail')
-  document.querySelectorAll('.view').forEach(view => view.classList.remove('active'))
-  document.getElementById('home-view').classList.add('active')
-  document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'))
-  document.getElementById('nav-home').classList.add('active')
+  activateSectionView('home', document.getElementById('nav-home'))
   setTopbarMode('nav', t('nav.home'))
-  currentSection = 'home'
-}
-
-// Throttle helper to prevent expensive repeated DOM updates
-function throttle(fn, wait) {
-  let last = 0
-  let timeout = null
-  let lastArgs = null
-  return function throttled(...args) {
-    const now = Date.now()
-    const remaining = wait - (now - last)
-    lastArgs = args
-    if (remaining <= 0) {
-      if (timeout) {
-        clearTimeout(timeout)
-        timeout = null
-      }
-      last = now
-      fn.apply(this, lastArgs)
-      lastArgs = null
-    } else if (!timeout) {
-      timeout = setTimeout(() => {
-        last = Date.now()
-        timeout = null
-        if (lastArgs) fn.apply(this, lastArgs)
-        lastArgs = null
-      }, remaining)
-    }
-  }
 }
 
 const _setTopbarModeImpl = function(mode, title) {
-  const topbar = document.getElementById('topbar')
+  const topbar = document.getElementById('subheader')
   const titleEl = document.getElementById('topbar-title')
   if (!topbar || !titleEl) return
   if (mode === 'instance') {
@@ -179,5 +168,4 @@ const _setTopbarModeImpl = function(mode, title) {
   }
 }
 
-// Expose a throttled version to avoid style recalcs flooding the renderer
-const setTopbarMode = throttle(_setTopbarModeImpl, 200)
+const setTopbarMode = _setTopbarModeImpl
