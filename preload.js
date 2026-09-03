@@ -103,10 +103,21 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
      showUpdateNotice: () => ipcRenderer.invoke('show-update-notice'),
      checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
      getLastUpdateInfo: () => ipcRenderer.invoke('get-last-update-info'),
+     installUpdate: () => ipcRenderer.invoke('install-update'),
      onUpdateAvailable: (cb) => {
        const listener = (_event, info) => cb(info)
        ipcRenderer.on('update-available-notify', listener)
        return () => ipcRenderer.removeListener('update-available-notify', listener)
+     },
+     onUpdateDownloaded: (cb) => {
+       const listener = (_event, info) => cb(info)
+       ipcRenderer.on('update-downloaded-notify', listener)
+       return () => ipcRenderer.removeListener('update-downloaded-notify', listener)
+     },
+     onDownloadProgress: (cb) => {
+       const listener = (_event, p) => cb(p)
+       ipcRenderer.on('update-download-progress', listener)
+       return () => ipcRenderer.removeListener('update-download-progress', listener)
      }
   },
  microsoft: {

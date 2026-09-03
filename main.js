@@ -2949,16 +2949,18 @@ function configureAutoUpdater(updater) {
   if (autoUpdaterConfigured) return
   autoUpdaterConfigured = true
 
-  updater.autoDownload = true
-  updater.autoInstallOnAppQuit = true
-  updater.allowPrerelease = true
-  updater.allowDowngrade = true
+  // MODO MANUAL: vos controlás cuándo aparece la actualización.
+  // No se descarga ni instala solo. Todo requiere confirmación explícita del usuario.
+  updater.autoDownload = false
+  updater.autoInstallOnAppQuit = false
+  updater.allowPrerelease = false
+  updater.allowDowngrade = false
 
   updater.on('update-available', async (updateInfo) => {
-    // Guardar versión actual como previa antes de actualizar (para downgrade)
+    // Guardar versión actual como previa antes de actualizar (para downgrade manual)
     try { savePreviousVersion(app.getVersion()) } catch {}
     lastUpdateInfo = updateInfo
-    // Notificar al renderer para mostrar botón "Actualizar" en topnav
+    // Notificar al renderer para mostrar botón "Actualizar" en topnav — sin descargar
     try { mainWindow?.webContents.send('update-available-notify', updateInfo) } catch {}
     const isPrereleaseVersion = await isPrerelease(updateInfo.version)
 
@@ -2967,22 +2969,19 @@ function configureAutoUpdater(updater) {
       return
     }
 
-    if (isPrereleaseVersion) {
-      updater.autoDownload = false
-      showUpdateConfirmation(updateInfo)
-    } else {
-      updater.autoDownload = true
-      splashWindow?.webContents.send('update-status', 'Descargando actualización...')
-    }
+    // En modo manual, siempre pedimos confirmación, tanto para stable como prerelease
+    showUpdateConfirmation(updateInfo)
   })
 
   updater.on('download-progress', (progress) => {
     splashWindow?.webContents.send('update-status', `Descargando... ${Math.round(progress.percent)}%`)
+    try { mainWindow?.webContents.send('update-download-progress', progress) } catch {}
   })
 
   updater.on('update-downloaded', () => {
-    splashWindow?.webContents.send('update-status', 'Instalando actualización...')
-    setTimeout(() => updater.quitAndInstall(), 1500)
+    // No auto-instala. Avisa y espera a que el usuario haga clic en "Reiniciar para actualizar"
+    splashWindow?.webContents.send('update-status', 'Actualización lista — reinicia para instalar')
+    try { mainWindow?.webContents.send('update-downloaded-notify', lastUpdateInfo) } catch {}
   })
 
   updater.on('error', (err) => {
@@ -3062,8 +3061,13 @@ ipcMain.on('update-confirm', (_event, accepted) => {
   if (accepted && pendingUpdateInfo) {
     getAutoUpdater().downloadUpdate()
     splashWindow?.webContents.send('update-status', 'Descargando actualización...')
+    try { mainWindow?.webContents.send('update-status', 'Descargando actualización...') } catch {}
   }
   updateConfirmationWindow?.close()
+})
+ipcMain.handle('install-update', () => {
+  try { getAutoUpdater().quitAndInstall() } catch (e) { console.error('quitAndInstall failed', e) }
+  return { ok: true }
 })
 
 function createSplashWindow() {
@@ -3102,14 +3106,17 @@ function closeSplashAndShowMain() {
     splashWindow.close()
   }
   splashWindow = null
-  // Auto-updater: esperar a que la app sea visible (da tiempo a mostrar UI) — solo en producción
-  if (app.isPackaged) {
-    setTimeout(() => {
-      checkForUpdatesOnStartup().catch(error => {
-        console.error('AutoUpdater error:', error.message || error)
-      })
-    }, 2500)
-  }
+  // Auto-updater MANUAL: no se chequea solo al iniciar.
+  // Vos decidís cuándo aparece: el usuario debe ir a Ajustes > Buscar actualizaciones
+  // o hacer clic en el botón "Actualizar" del topnav. Si querés volver al chequeo
+  // automático, descomenta el bloque de abajo.
+  // if (app.isPackaged) {
+  //   setTimeout(() => {
+  //     checkForUpdatesOnStartup().catch(error => {
+  //       console.error('AutoUpdater error:', error.message || error)
+  //     })
+  //   }, 2500)
+  // }
 }
 function isOnboardingDone() {
   const file = path.join(getKindyrDataRoot(), 'onboarding-done.json')
