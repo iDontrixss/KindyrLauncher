@@ -37,6 +37,11 @@ La versión declarada es `0.1.0` (beta). Antes de publicar, debe completarse [RE
 
 Consulta [SECURITY.md](SECURITY.md), [PRIVACY.md](PRIVACY.md) y [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+## Términos de uso
+
+- Español: [TERMINOS_DE_USO.md](TERMINOS_DE_USO.md)
+- English: [TERMS_OF_USE.md](TERMS_OF_USE.md)
+
 ## Licencia
 
 El código propio se distribuye bajo **GPL-3.0-or-later** — ver [LICENSE](LICENSE). Se puede usar, modificar y compartir el programa siempre que se mantenga la misma licencia y se comparta el código fuente. Los componentes de terceros mantienen sus propias licencias (ver [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
