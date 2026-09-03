@@ -35,12 +35,16 @@ La versión declarada es `0.1.0` (beta). Antes de publicar, debe completarse [RE
 
 ## Seguridad y privacidad
 
-Consulta [SECURITY.md](SECURITY.md), [PRIVACY.md](PRIVACY.md) y [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Consulta [SECURITY.md](SECURITY.md), [docs/PRIVACY.md](docs/PRIVACY.md) / [docs/PRIVACY.en.md](docs/PRIVACY.en.md) y [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-## Términos de uso
+## Legal
 
-- Español: [TERMINOS_DE_USO.md](TERMINOS_DE_USO.md)
-- English: [TERMS_OF_USE.md](TERMS_OF_USE.md)
+- Español: [Términos de uso](docs/TERMINOS_DE_USO.md)
+- English: [Terms of Use](docs/TERMS_OF_USE.md)
+- Español: [Política de privacidad](docs/PRIVACY.md)
+- English: [Privacy Policy](docs/PRIVACY.en.md)
+- [License](LICENSE)
+- [Third-Party Notices](THIRD_PARTY_NOTICES.md)
 
 ## Licencia
 
