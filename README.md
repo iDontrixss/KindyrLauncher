@@ -33,6 +33,25 @@ Los artefactos se crean en `dist/`. Las credenciales de Microsoft se cifran con 
 
 La versión declarada es `0.1.0` (beta). Antes de publicar, debe completarse [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), incluida la validación en una instalación limpia, la firma de artefactos y la configuración del repositorio remoto. El changelog es local (`CHANGELOG.md` ignorado en git) — no se commitea.
 
+### Publicar una actualización (control manual)
+
+El auto-update es manual y seguro: aunque subas una release a GitHub, **no se ofrece hasta que ejecutes `pnpm update-kindyr`**.
+
+```bash
+# Desde la carpeta del proyecto (importante):
+cd C:\KindyrLauncher
+pnpm update-kindyr
+
+# Si estás en otra carpeta, usa:
+pnpm --dir C:\KindyrLauncher update-kindyr
+# o
+node C:\KindyrLauncher\scripts\update-kindyr.js
+
+# También podés hacer doble click en update-kindyr.bat
+```
+
+El comando actualiza `update.json` (`approvedAt` nuevo) y habilita **un solo ciclo** 5s→3s→5s en todos los launchers. Sin ese comando, una release vulnerada subida a GitHub no se descarga.
+
 ## Seguridad y privacidad
 
 Consulta [SECURITY.md](SECURITY.md), [docs/PRIVACY.md](docs/PRIVACY.md) / [docs/PRIVACY.en.md](docs/PRIVACY.en.md).
