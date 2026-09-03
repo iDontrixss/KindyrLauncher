@@ -39,4 +39,4 @@ Consulta [SECURITY.md](SECURITY.md), [PRIVACY.md](PRIVACY.md) y [THIRD_PARTY_NOT
 
 ## Licencia
 
-El código propio se distribuye bajo **GPL-3.0-or-later** — ver [LICENSE](LICENSE). Sos libre de usar, modificar y compartir el programa siempre que mantengas la misma licencia y compartas el código fuente. Los componentes de terceros mantienen sus propias licencias (ver [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+El código propio se distribuye bajo **GPL-3.0-or-later** — ver [LICENSE](LICENSE). Se puede usar, modificar y compartir el programa siempre que se mantenga la misma licencia y se comparta el código fuente. Los componentes de terceros mantienen sus propias licencias (ver [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
