@@ -26,8 +26,8 @@
 - [ ] Activar protección de rama y CI.
 - [ ] Configurar y verificar firma de código de Windows.
 - [ ] Definir firma o checksums verificables para AppImage.
-- [ ] Confirmar obligaciones de redistribución GPL-3.0-or-later: `LICENSE` incluida en el artefacto, `THIRD_PARTY_NOTICES.md` al día y cabeceras `SPDX` en cada fuente.
-- [ ] Confirmar obligaciones de redistribución de FFmpeg (GPL-3.0-or-later) y avisos de terceros.
+- [ ] Confirmar obligaciones de redistribución GPL-3.0-or-later: `LICENSE` incluida en el artefacto y cabeceras `SPDX` en cada fuente.
+- [ ] Confirmar obligaciones de redistribución de FFmpeg y avisos de dependencias (ver `package.json` y licencias en `node_modules`).
 - [ ] Crear una etiqueta firmada `v0.1.0` (o siguiente beta).
 - [ ] Publicar checksums SHA-256 y probar cada artefacto descargado.
 - [ ] Comprobar que electron-updater encuentra y valida la nueva versión.

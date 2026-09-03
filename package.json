@@ -100,7 +100,6 @@
       "styles.css",
       "package.json",
       "LICENSE",
-      "THIRD_PARTY_NOTICES.md",
       "icon.ico",
       "assets/**/*",
       "sections/**/*",

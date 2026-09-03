@@ -29,8 +29,7 @@ const REQUIRED_ASAR_FILES = [
   'main.js',
   'preload.js',
   'curseforge-embedded.json',
-  'LICENSE',
-  'THIRD_PARTY_NOTICES.md'
+  'LICENSE'
 ]
 
 module.exports = async function afterPack(context) {

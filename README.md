@@ -35,7 +35,7 @@ La versión declarada es `0.1.0` (beta). Antes de publicar, debe completarse [RE
 
 ## Seguridad y privacidad
 
-Consulta [SECURITY.md](SECURITY.md), [docs/PRIVACY.md](docs/PRIVACY.md) / [docs/PRIVACY.en.md](docs/PRIVACY.en.md) y [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Consulta [SECURITY.md](SECURITY.md), [docs/PRIVACY.md](docs/PRIVACY.md) / [docs/PRIVACY.en.md](docs/PRIVACY.en.md).
 
 ## Legal
 
@@ -44,8 +44,7 @@ Consulta [SECURITY.md](SECURITY.md), [docs/PRIVACY.md](docs/PRIVACY.md) / [docs/
 - Español: [Política de privacidad](docs/PRIVACY.md)
 - English: [Privacy Policy](docs/PRIVACY.en.md)
 - [License](LICENSE)
-- [Third-Party Notices](THIRD_PARTY_NOTICES.md)
 
 ## Licencia
 
-El código propio se distribuye bajo **GPL-3.0-or-later** — ver [LICENSE](LICENSE). Se puede usar, modificar y compartir el programa siempre que se mantenga la misma licencia y se comparta el código fuente. Los componentes de terceros mantienen sus propias licencias (ver [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+El código propio se distribuye bajo **GPL-3.0-or-later** — ver [LICENSE](LICENSE). Se puede usar, modificar y compartir el programa siempre que se mantenga la misma licencia y se comparta el código fuente.
