@@ -3037,23 +3037,25 @@ async function fetchApprovedUpdateVersion() {
 }
 
 async function hasNewerGitHubRelease() {
-  // 1. Puerta de seguridad: ¿hay versión aprobada en update.json mayor que la actual?
+  // Puerta de seguridad: solo si vos ejecutaste `pnpm update-kindyr` se habilita el chequeo.
+  // Circuito: subís release -> Kindyr no se entera -> pnpm update-kindyr actualiza update.json -> Kindyr ve update.json y recién ahí revisa GitHub.
+  // Así, una release vulnerada subida sin pnpm update-kindyr no se ofrece.
   let approvedVersion = null
   try {
     approvedVersion = await fetchApprovedUpdateVersion()
     const semver = getSemver()
     const cur = semver.valid(String(app.getVersion()).replace(/^[vV]/, ''), { loose: true })
     if (!cur || !semver.gt(approvedVersion, cur)) {
-      console.log(`[Kindyr] update.json no requiere update (approved=${approvedVersion}, current=${cur})`)
+      console.log(`[Kindyr] update.json no habilita check (approved=${approvedVersion}, current=${cur}) — pnpm update-kindyr no ejecutado`)
       return false
     }
-    console.log(`[Kindyr] update.json aprueba v${approvedVersion}, verificando que exista release en GitHub...`)
+    console.log(`[Kindyr] pnpm update-kindyr habilitó check (update.json v${approvedVersion}), revisando GitHub por cualquier versión mayor...`)
   } catch (e) {
-    console.warn('[Kindyr] No se pudo leer update.json, no se ofrecerá update por seguridad:', e.message || e)
+    console.warn('[Kindyr] No se pudo leer update.json, no se chequeará GitHub por seguridad:', e.message || e)
     return false
   }
 
-  // 2. Verificar que esa versión aprobada realmente exista como release no-draft en GitHub
+  // Ahora sí, revisa GitHub por CUALQUIER versión mayor (fix 0.0.1, beta 0.1.0, release 1.0.0)
   const response = await fetch('https://api.github.com/repos/iDontrixss/KindyrLauncher/releases?per_page=20', {
     headers: {
       Accept: 'application/vnd.github+json',
@@ -3066,10 +3068,11 @@ async function hasNewerGitHubRelease() {
   if (!Array.isArray(releases)) throw new Error('GitHub releases preflight returned invalid data')
 
   const semver = getSemver()
+  const currentVersion = semver.valid(String(app.getVersion()).replace(/^[vV]/, ''), { loose: true })
   return releases.some(release => {
     if (!release || release.draft) return false
     const releaseVersion = semver.valid(String(release.tag_name || '').replace(/^[vV]/, ''), { loose: true })
-    return releaseVersion === approvedVersion
+    return Boolean(releaseVersion && currentVersion && semver.gt(releaseVersion, currentVersion))
   })
 }
 
