@@ -3106,17 +3106,16 @@ function closeSplashAndShowMain() {
     splashWindow.close()
   }
   splashWindow = null
-  // Auto-updater MANUAL: no se chequea solo al iniciar.
-  // Vos decidís cuándo aparece: el usuario debe ir a Ajustes > Buscar actualizaciones
-  // o hacer clic en el botón "Actualizar" del topnav. Si querés volver al chequeo
-  // automático, descomenta el bloque de abajo.
-  // if (app.isPackaged) {
-  //   setTimeout(() => {
-  //     checkForUpdatesOnStartup().catch(error => {
-  //       console.error('AutoUpdater error:', error.message || error)
-  //     })
-  //   }, 2500)
-  // }
+  // Auto-updater: chequea al iniciar pero NUNCA descarga solo.
+  // Si hay actualización, solo muestra el diálogo. Si el usuario acepta, ahí descarga.
+  // Si no acepta, no pasa nada. Vos controlás cuándo se publica via `pnpm update-kindyr`.
+  if (app.isPackaged) {
+    setTimeout(() => {
+      checkForUpdatesOnStartup().catch(error => {
+        console.error('AutoUpdater error:', error.message || error)
+      })
+    }, 2500)
+  }
 }
 function isOnboardingDone() {
   const file = path.join(getKindyrDataRoot(), 'onboarding-done.json')

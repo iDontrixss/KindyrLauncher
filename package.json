@@ -20,7 +20,8 @@
     "perf:memlab": "node tools/performance/memlab-runner.js",
     "perf:clinic": "node tools/performance/clinic-runner.js",
     "test": "node --test",
-    "check:syntax": "node scripts/check-syntax.js"
+    "check:syntax": "node scripts/check-syntax.js",
+    "update-kindyr": "node scripts/update-kindyr.js"
   },
   "keywords": [],
   "author": "iDontrixss",
