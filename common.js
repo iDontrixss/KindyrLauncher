@@ -52,6 +52,17 @@ const I18N = {
     'settings.cache.title': 'Caché del launcher',
     'settings.cache.desc': 'Borra metadatos en caché y archivos temporales de descarga de Java.',
     'settings.cache.purge': 'Vaciar caché',
+    'settings.beta.title': 'Funciones beta',
+    'settings.beta.desc': 'Funciones experimentales que pueden cambiar en futuras versiones.',
+    'settings.beta.eager': 'Preparar instancias al crear',
+    'settings.beta.eager.desc': 'Descarga Java y Minecraft al crear la instancia. El primer inicio será instantáneo. Usa más espacio y red al crear.',
+    'settings.beta.enabled': 'Activado',
+    'settings.beta.disabled': 'Desactivado',
+    'settings.beta.preparing': 'Preparando {name}…',
+    'settings.beta.prepared': 'Instancia lista: {name}',
+    'settings.beta.failed': 'No se pudo preparar {name}',
+    'instance.preparing': 'Preparando…',
+    'instance.ready': 'Lista',
     'nav.home': 'Inicio',
     'nav.instances': 'Instancias',
     'nav.discover': 'Descubrir',
@@ -374,6 +385,8 @@ const I18N = {
     'skins.sourceSearch': 'BÚSQUEDA',
     'skins.sourceFavorite': 'FAVORITA',
     'skins.sourceUpload': 'PROPIA',
+    'skins.sourceEquipped': 'EQUIPADA',
+    'skins.equipped': 'Skin equipada — tu skin premium actual',
     'skins.modelClassic': 'CLASSIC',
     'skins.modelSlim': 'SLIM',
     'skins.view2dActive': '✓ Vista 2D activa',
@@ -451,6 +464,17 @@ const I18N = {
     'settings.cache.title': 'Launcher cache',
     'settings.cache.desc': 'Clears cached metadata and temporary Java download files.',
     'settings.cache.purge': 'Purge cache',
+    'settings.beta.title': 'Beta features',
+    'settings.beta.desc': 'Experimental features that may change in future versions.',
+    'settings.beta.eager': 'Prepare instances on create',
+    'settings.beta.eager.desc': 'Download Java and Minecraft when creating the instance. First launch will be instant. Uses more space and network at creation.',
+    'settings.beta.enabled': 'Enabled',
+    'settings.beta.disabled': 'Disabled',
+    'settings.beta.preparing': 'Preparing {name}…',
+    'settings.beta.prepared': 'Instance ready: {name}',
+    'settings.beta.failed': 'Could not prepare {name}',
+    'instance.preparing': 'Preparing…',
+    'instance.ready': 'Ready',
     'nav.home': 'Home',
     'nav.instances': 'Instances',
     'nav.discover': 'Discover',
@@ -767,6 +791,8 @@ const I18N = {
     'skins.sourceSearch': 'SEARCH',
     'skins.sourceFavorite': 'FAVORITE',
     'skins.sourceUpload': 'OWN',
+    'skins.sourceEquipped': 'EQUIPPED',
+    'skins.equipped': 'Equipped skin — your current premium skin',
     'skins.modelClassic': 'CLASSIC',
     'skins.modelSlim': 'SLIM',
     'skins.view2dActive': '✓ 2D view active',
@@ -803,7 +829,8 @@ let settings = {
   theme: 'kindyr',
   backgroundImage: '',
   javaArgs: '',
-  maxConcurrentDownloads: 6
+  maxConcurrentDownloads: 6,
+  eagerPrepareOnCreate: false
 }
 let accounts = []
 const consoleLines = []
@@ -832,7 +859,9 @@ function t(key, vars = {}) {
   const dict = I18N[settings.language] || I18N.es
   let text = dict[key] || I18N.es[key] || key
   Object.keys(vars).forEach(name => {
-    text = text.replace('{' + name + '}', vars[name])
+    const placeholder = '{' + name + '}'
+    const value = String(vars[name] ?? '')
+    text = text.split(placeholder).join(value)
   })
   return text
 }
@@ -880,7 +909,12 @@ function applyLanguage() {
 function translateElement(root) {
   root.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n')
-    if (key) el.textContent = t(key)
+    if (key) {
+      const translated = t(key)
+      // Claves con HTML (skins.searchNotFound) deben usar innerHTML
+      if (translated.includes('<')) el.innerHTML = translated
+      else el.textContent = translated
+    }
   })
   
   root.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
@@ -1218,7 +1252,12 @@ function syncRamFromInput(kind) {
   const slider = document.getElementById('setting-' + kind + '-ram-slider')
   const hint = document.getElementById('setting-' + kind + '-ram-hint')
   const mb = parseRamInput(input.value)
-  if (!mb) return
+  if (!mb) {
+    hint.textContent = 'Inválido (512-32768 MB, ej: 2048 o 4G)'
+    hint.style.color = '#ff5a3c'
+    return
+  }
+  hint.style.color = ''
   input.value = String(mb)
   slider.value = String(mb)
   hint.textContent = mb + ' MB (' + mbToRamString(mb) + ')'
@@ -1273,13 +1312,15 @@ function isValidUsername(name) {
 }
 
 function parseRam(value) {
-  const clean = String(value || '').trim().toUpperCase()
-  const match = clean.match(/^(\d+)(G|M)$/)
+  const clean = String(value || '').trim().toUpperCase().replace(/\s+/g, '')
+  const match = clean.match(/^(\d+(?:\.\d+)?)(G|M|GB|MB)?$/)
   if (!match) return null
   const amount = Number(match[1])
-  const mb = match[2] === 'G' ? amount * 1024 : amount
-  if (mb < 512 || mb > 32768) return null
-  return { value: clean, mb }
+  const unit = (match[2] || 'M').replace('B', '')
+  const mb = unit === 'G' ? Math.round(amount * 1024) : Math.round(amount)
+  if (!Number.isFinite(mb) || mb < 512 || mb > 32768) return null
+  const normalized = unit === 'G' ? (mb % 1024 === 0 ? (mb / 1024) + 'G' : mb + 'M') : mb + 'M'
+  return { value: normalized, mb }
 }
 
 function toggleSidebar() {
@@ -1402,7 +1443,7 @@ function recordRecentInstance(instanceId) {
 function loadAccounts() {
   const saved = JSON.parse(localStorage.getItem('kindyr-accounts') || '[]')
   accounts = Array.isArray(saved) ? saved : []
-  if (isValidUsername(settings.username)) ensureAccount(settings.username)
+  if (settings.accountType !== 'microsoft' && isValidUsername(settings.username)) ensureAccount(settings.username)
   if (typeof renderAccounts === 'function') renderAccounts()
 }
 
@@ -1445,27 +1486,96 @@ function getInitials(name) {
   return isValidUsername(name) ? name.slice(0, 2).toUpperCase() : '--'
 }
 
-function applyActiveAccount(name, type = 'offline') {
+function getPremiumHeadUrl(uuid) {
+  const clean = String(uuid || '').replace(/-/g, '').trim()
+  if (!/^[a-f0-9]{32}$/i.test(clean)) return ''
+  return `https://mc-heads.net/avatar/${clean}/48`
+}
+
+function setAvatarContent(element, name, type, uuid) {
+  if (!element) return
+  element.className = 'avatar ' + (type === 'microsoft' ? 'premium' : 'offline')
+  const headUrl = type === 'microsoft' ? getPremiumHeadUrl(uuid) : ''
+  if (headUrl) {
+    element.textContent = ''
+    element.style.padding = '0'
+    element.style.overflow = 'hidden'
+    const img = document.createElement('img')
+    img.src = headUrl
+    img.alt = name || 'avatar'
+    img.loading = 'eager'
+    img.decoding = 'async'
+    img.style.width = '100%'
+    img.style.height = '100%'
+    img.style.objectFit = 'cover'
+    img.style.imageRendering = 'pixelated'
+    img.style.display = 'block'
+    img.onerror = () => {
+      element.textContent = getInitials(name)
+      element.style.padding = ''
+      element.style.overflow = ''
+    }
+    element.appendChild(img)
+  } else {
+    element.textContent = getInitials(name)
+    element.style.padding = ''
+    element.style.overflow = ''
+  }
+}
+
+async function hydratePremiumAvatars() {
+  if (settings.accountType !== 'microsoft' || !isValidUsername(settings.username)) return
+  try {
+    if (!window.kindyrAPI?.microsoft?.list) return
+    const result = await window.kindyrAPI.microsoft.list()
+    if (!result?.ok || !Array.isArray(result.accounts)) return
+    const active = result.accounts.find(a => a.active) || result.accounts.find(a => a.name === settings.username)
+    if (!active || !active.uuid) return
+    if (active.name !== settings.username) {
+      settings.username = active.name
+      settings.settingsSavedAt = Date.now()
+      localStorage.setItem('kindyr-settings', JSON.stringify(settings))
+      const usernameEl = document.getElementById('username')
+      if (usernameEl) usernameEl.textContent = active.name
+      const modalNameEl = document.getElementById('modal-current-name')
+      if (modalNameEl) modalNameEl.textContent = active.name
+    }
+    settings.activeUuid = String(active.uuid).replace(/-/g, '')
+    settings.settingsSavedAt = Date.now()
+    localStorage.setItem('kindyr-settings', JSON.stringify(settings))
+    const avatarEls = document.querySelectorAll('.topnav-account .avatar, .profile-area .avatar, #nav-avatar, #modal-avatar')
+    avatarEls.forEach(el => setAvatarContent(el, active.name, 'microsoft', active.uuid))
+    if (typeof window.refreshSkinsEquipped === 'function') {
+      try { window.refreshSkinsEquipped() } catch {}
+    }
+  } catch {}
+}
+
+function applyActiveAccount(name, type = 'offline', uuid = '') {
   const hasAccount = isValidUsername(name)
   settings.username = hasAccount ? name : ''
   settings.accountType = type
+  if (type === 'microsoft' && uuid) settings.activeUuid = String(uuid).replace(/-/g, '')
+  else if (type !== 'microsoft') delete settings.activeUuid
+  settings.settingsSavedAt = Date.now()
   localStorage.setItem('kindyr-settings', JSON.stringify(settings))
   const usernameEl = document.getElementById('username')
-  const avatarEl = document.querySelector('.topnav-account .avatar, .profile-area .avatar')
+  const avatarEls = document.querySelectorAll('.topnav-account .avatar, .profile-area .avatar, #nav-avatar')
   const modeEl = document.querySelector('.topnav-account-mode, .profile-mode')
   const modalNameEl = document.getElementById('modal-current-name')
   const modalAvatarEl = document.getElementById('modal-avatar')
   const modalModeEl = document.querySelector('.account-current span')
   if (usernameEl) usernameEl.textContent = hasAccount ? name : t('account.none')
-  if (avatarEl) {
-    avatarEl.textContent = getInitials(name)
-    avatarEl.className = 'avatar ' + (type === 'microsoft' ? 'premium' : 'offline')
-  }
+  avatarEls.forEach(el => setAvatarContent(el, name, type, uuid || settings.activeUuid || ''))
   if (modeEl) modeEl.textContent = hasAccount ? (type === 'microsoft' ? t('account.mode.microsoft') : t('account.mode.offline')) : t('account.none')
   if (modalNameEl) modalNameEl.textContent = hasAccount ? name : t('account.none')
-  if (modalAvatarEl) modalAvatarEl.textContent = getInitials(name)
+  if (modalAvatarEl) setAvatarContent(modalAvatarEl, name, type, uuid || settings.activeUuid || '')
   if (modalModeEl) modalModeEl.textContent = hasAccount ? (type === 'microsoft' ? t('account.ms.premiumStatus') : t('account.offline')) : t('account.none.offline')
   if (typeof renderAccounts === 'function') renderAccounts()
+  if (type === 'microsoft' && !uuid) hydratePremiumAvatars()
+  else if (type === 'microsoft' && typeof window.refreshSkinsEquipped === 'function') {
+    try { window.refreshSkinsEquipped() } catch {}
+  }
 }
 
 function openAccountManager() {
@@ -1477,10 +1587,11 @@ function openAccountManager() {
   const modalAvatarEl = document.getElementById('modal-avatar')
   const modalModeEl = document.querySelector('.account-current span')
   if (modalNameEl) modalNameEl.textContent = isValidUsername(settings.username) ? settings.username : t('account.none')
-  if (modalAvatarEl) modalAvatarEl.textContent = getInitials(settings.username)
+  if (modalAvatarEl) setAvatarContent(modalAvatarEl, settings.username, settings.accountType === 'microsoft' ? 'microsoft' : 'offline', settings.activeUuid || '')
   if (modalModeEl) modalModeEl.textContent = isValidUsername(settings.username)
     ? (settings.accountType === 'microsoft' ? t('account.ms.premiumStatus') : t('account.offline'))
     : t('account.none')
+  if (settings.accountType === 'microsoft') hydratePremiumAvatars()
   
   renderAccounts()
 }
@@ -1511,6 +1622,7 @@ function deleteOfflineAccount(event, name) {
     if (settings.username === name) {
       const next = accounts.find(a => a.type === 'offline')
       if (next) applyActiveAccount(next.name, 'offline')
+      else applyActiveAccount('', 'offline')
     }
     renderAccounts()
   })
@@ -1571,6 +1683,7 @@ try {
     backgroundImage: '',
     javaArgs: '',
     maxConcurrentDownloads: 6,
+    eagerPrepareOnCreate: false,
     ...saved
   }
   const legacyThemes = { dark: 'midnight', kindyr: 'midnight', light: 'steel', green: 'azure', neobrutal: 'navy' }
@@ -1585,13 +1698,15 @@ try {
     if (parsedMax) settings.maxRamMb = parsedMax.mb
   }
   settings.maxConcurrentDownloads = Math.max(1, Math.min(Number(settings.maxConcurrentDownloads) || 6, 20))
+  settings.eagerPrepareOnCreate = Boolean(saved.eagerPrepareOnCreate ?? settings.eagerPrepareOnCreate)
   settings.settingsSavedAt = Number(settings.settingsSavedAt || 0)
   try {
     localStorage.setItem('kindyr-settings', JSON.stringify(settings))
   } catch {}
   if (typeof loadBackgroundFromDisk === 'function') await loadBackgroundFromDisk()
 
-  applyActiveAccount(settings.username, settings.accountType || 'offline')
+  applyActiveAccount(settings.username, settings.accountType || 'offline', settings.activeUuid || '')
+  if (settings.accountType === 'microsoft') hydratePremiumAvatars()
   applyTheme()
   applyLanguage()
 }
@@ -1603,9 +1718,110 @@ async function loadBackgroundFromDisk() {
   applyBackground()
 }
 
+let prepareToastEl = null
+let prepareToastTimeout = null
+
+function showPrepareToast(name, message = 'Iniciando…') {
+  const stack = document.getElementById('prepare-toast-stack')
+  if (!stack) return
+  if (prepareToastEl) prepareToastEl.remove()
+  clearTimeout(prepareToastTimeout)
+  const toast = document.createElement('div')
+  toast.id = 'prepare-toast'
+  toast.setAttribute('role', 'status')
+  toast.setAttribute('aria-live', 'polite')
+  toast.style.cssText = 'pointer-events:auto; width:340px; background:var(--kindyr-surface, #0a2559); border:2px solid var(--kindyr-ink, #010712); border-left:3px solid var(--kindyr-accent, #ff5a3c); border-radius:0; padding:14px; display:flex; flex-direction:column; gap:10px; box-shadow:4px 4px 0 var(--kindyr-ink, #010712); animation: viewIn 0.14s ease-out;'
+  toast.innerHTML = `
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:36px;height:36px;border-radius:0;background:var(--kindyr-blue, #4c8dff);color:var(--kindyr-ink, #010712);border:2px solid var(--kindyr-ink, #010712);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:2px 2px 0 var(--kindyr-ink, #010712);"><i class="fa-solid fa-download" aria-hidden="true"></i></div>
+      <div style="min-width:0; flex:1;">
+        <div style="color:var(--kindyr-text, #f4f8ff);font-family:'Space Grotesk','Segoe UI',system-ui,sans-serif;font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.01em;">${escapeHtml(name)}</div>
+        <div id="prepare-toast-message" style="color:var(--kindyr-blue-soft, #aacdff);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;">${escapeHtml(message)}</div>
+      </div>
+      <button type="button" onclick="hidePrepareToast(true)" style="background:var(--kindyr-accent, #ff5a3c);border:2px solid var(--kindyr-ink, #010712);color:var(--kindyr-ink, #010712);cursor:pointer;font-size:14px;line-height:1;width:28px;height:28px;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 var(--kindyr-ink, #010712);font-weight:800;">×</button>
+    </div>
+    <div style="height:8px;background:var(--kindyr-bg, #030f2b);border:2px solid var(--kindyr-ink, #010712);border-radius:0;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);">
+      <div id="prepare-toast-bar" style="height:100%;width:0%;background:var(--kindyr-accent, #ff5a3c);transition:width 0.3s ease;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span id="prepare-toast-percent" style="color:var(--kindyr-accent, #ff5a3c);font-family:'JetBrains Mono',monospace;font-weight:800;font-size:11px;letter-spacing:0.04em;">0%</span>
+      <span id="prepare-toast-stage" style="color:var(--kindyr-blue-soft, #79b0ff);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Preparando…</span>
+    </div>
+  `
+  stack.appendChild(toast)
+  prepareToastEl = toast
+}
+
+function updatePrepareToast(percent, message, stage) {
+  if (!prepareToastEl) return
+  const bar = document.getElementById('prepare-toast-bar')
+  const pctEl = document.getElementById('prepare-toast-percent')
+  const msgEl = document.getElementById('prepare-toast-message')
+  const stageEl = document.getElementById('prepare-toast-stage')
+  const p = Math.max(0, Math.min(100, Math.round(percent)))
+  if (bar) bar.style.width = p + '%'
+  if (pctEl) pctEl.textContent = p + '%'
+  if (msgEl && message) msgEl.textContent = message
+  if (stageEl && stage) stageEl.textContent = stage
+}
+
+function hidePrepareToast(immediate = false) {
+  if (!prepareToastEl) return
+  if (immediate) {
+    prepareToastEl.remove()
+    prepareToastEl = null
+    clearTimeout(prepareToastTimeout)
+    return
+  }
+  prepareToastEl.style.opacity = '0'
+  prepareToastEl.style.transform = 'translateX(8px)'
+  prepareToastEl.style.transition = 'opacity 0.2s, transform 0.2s'
+  prepareToastTimeout = setTimeout(() => {
+    if (prepareToastEl) prepareToastEl.remove()
+    prepareToastEl = null
+  }, 220)
+}
+
+// Compatibilidad con modal previo (ahora toast)
+function showPrepareProgress(name, message) { showPrepareToast(name, message) }
+function updatePrepareProgress(percent, message, stage) { updatePrepareToast(percent, message, stage) }
+function hidePrepareProgress(immediate) { hidePrepareToast(immediate) }
+
+function showUpdateNotice() {
+  if (window.kindyrAPI?.updater?.showUpdateNotice) {
+    window.kindyrAPI.updater.showUpdateNotice().catch(()=>{})
+  } else if (window.kindyrAPI?.updater?.checkForUpdates) {
+    window.kindyrAPI.updater.checkForUpdates().catch(()=>{})
+  }
+}
+if (window.kindyrAPI?.updater?.onUpdateAvailable) {
+  window.kindyrAPI.updater.onUpdateAvailable((info) => {
+    const btn = document.getElementById('topnav-update-btn')
+    const verEl = document.getElementById('topnav-update-ver')
+    if (btn) {
+      btn.style.display = 'inline-flex'
+      if (verEl && info && info.version) verEl.textContent = 'v' + String(info.version).replace(/^[vV]/,'')
+    }
+  })
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   initKindyrSelects()
   await loadSettings()
   loadAccounts()
   loadSidebarState()
+  // Mostrar botón actualizar si ya hay update pendiente
+  if (window.kindyrAPI?.updater?.getLastUpdateInfo) {
+    try {
+      const info = await window.kindyrAPI.updater.getLastUpdateInfo()
+      if (info && info.version) {
+        const btn = document.getElementById('topnav-update-btn')
+        const verEl = document.getElementById('topnav-update-ver')
+        if (btn) {
+          btn.style.display = 'inline-flex'
+          if (verEl) verEl.textContent = 'v' + String(info.version).replace(/^[vV]/,'')
+        }
+      }
+    } catch {}
+  }
 })

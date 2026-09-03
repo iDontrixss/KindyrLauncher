@@ -39,7 +39,9 @@ nav { padding: 16px 12px; flex: 1; display: flex; flex-direction: column; gap: 4
 .sidebar.collapsed .sidebar-collapse-slot { display: block; }
 .sidebar.collapsed .logo-area .sidebar-toggle { display: none; }
 .profile-area:hover { background: #2a2a2a; }
-.avatar { width: 30px; height: 30px; border-radius: 50%; background: #242014; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #facc15; flex-shrink: 0; }
+.avatar { width: 32px; height: 32px; border-radius: 0; border: 2px solid var(--kindyr-ink); box-shadow: 2px 2px 0 var(--kindyr-ink); background: var(--kindyr-surface-2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--kindyr-text); flex-shrink: 0; overflow: hidden; padding: 0; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: pixelated; }
+.topnav-account .avatar { width: 32px; height: 32px; border: 2px solid var(--kindyr-ink); border-radius: 0; box-shadow: 2px 2px 0 var(--kindyr-ink); background: var(--kindyr-surface-2); }
 .profile-name { font-size: 13px; font-weight: 600; color: #ffffff; }
 .profile-mode { font-size: 11px; color: #666; }
 
@@ -2387,6 +2389,51 @@ body::before {
   font-weight: 600;
 }
 
+.discover-provider-col { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.discover-provider-switch {
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px;
+  background: var(--kindyr-surface-2);
+  border: 2px solid var(--kindyr-ink);
+  box-shadow: 3px 3px 0 var(--kindyr-ink);
+}
+.provider-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font: 800 11px/1 'Space Grotesk', system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--kindyr-text);
+  background: #0e336f;
+  border: 2px solid var(--kindyr-ink);
+  box-shadow: 2px 2px 0 var(--kindyr-ink);
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s, color 0.12s;
+}
+.provider-chip:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--kindyr-ink); background: var(--kindyr-surface-2); }
+.provider-chip.active { background: var(--kindyr-accent); color: #260800; border-color: var(--kindyr-ink); box-shadow: 3px 3px 0 var(--kindyr-ink); }
+.provider-chip i { font-size: 11px; }
+
+.discover-curseforge-setup {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 12px 14px;
+  background: #0a2559;
+  border: 2px solid var(--kindyr-ink);
+  box-shadow: 4px 4px 0 var(--kindyr-ink);
+}
+.discover-curseforge-setup[hidden] { display: none !important; }
+.discover-curseforge-setup-icon { width: 36px; height: 36px; display: grid; place-items: center; background: #facc15; border: 2px solid var(--kindyr-ink); color: #100d07; }
+.discover-curseforge-setup strong { display: block; color: var(--kindyr-text); font: 800 12px/1 'Space Grotesk', sans-serif; text-transform: uppercase; letter-spacing: 0.04em; }
+.discover-curseforge-setup small { color: #79b0ff; font-size: 11px; }
+.discover-curseforge-setup-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+
 .discover-api-badge {
   display: flex;
   align-items: center;
@@ -4677,8 +4724,8 @@ body::before {
 /* Kindyr install flow */
 #install-modal { background: rgba(1, 7, 18, 0.82); }
 #install-modal .install-modal {
-  width: min(620px, calc(100vw - 36px));
-  max-height: 86vh;
+  width: min(860px, calc(100vw - 24px));
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -4753,3 +4800,22 @@ body::before {
   #install-modal .install-project-icon { width: 44px; height: 44px; flex-basis: 44px; }
   #install-modal .install-project-meta { display: none; }
 }
+/* === Installer prototype copy-paste (modern UX + Kindyr UI) === */
+#install-modal .flow{display:grid;grid-template-columns:1.55fr .85fr;gap:14px}
+@media(max-width:720px){#install-modal .flow{grid-template-columns:1fr}}
+#install-modal .compat-list{display:grid;gap:8px;max-height:300px;overflow:auto;padding-right:4px}
+#install-modal .instance-card{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px;background:#0e336f;border:2px solid var(--kindyr-ink);box-shadow:3px 3px 0 var(--kindyr-ink);transition:transform .12s}
+#install-modal .instance-card:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--kindyr-ink)}
+#install-modal .ic{width:44px;height:44px;display:grid;place-items:center;background:#071c45;border:2px solid var(--kindyr-ink);font-size:16px}
+#install-modal .i-name{font:800 13px/1 'Space Grotesk',sans-serif}
+#install-modal .i-meta{font:600 11px/1 'JetBrains Mono',monospace;color:#79b0ff;margin-top:4px}
+#install-modal .i-tags{display:flex;gap:6px;margin-top:6px}
+#install-modal .mini{padding:3px 6px;background:#071c45;border:1px solid var(--kindyr-ink);font:800 9px/1 'JetBrains Mono',monospace;color:#79b0ff}
+#install-modal .mini.ok{background:var(--kindyr-success);color:#08251b;border-color:var(--kindyr-ink)}
+#install-modal .local-card{display:grid;gap:12px;align-content:start;padding:14px;background:#0a2559;border:3px dashed #255cb7;box-shadow:none}
+#install-modal .local-card h4{font:800 12px/1 'Space Grotesk',sans-serif;text-transform:uppercase;letter-spacing:0.04em}
+#install-modal .local-panel{display:grid;gap:10px;padding:12px;background:#071c45;border:2px solid var(--kindyr-ink);margin-top:4px}
+#install-modal .local-panel[hidden]{display:none !important}
+#install-modal .local-card .btn{padding:9px 12px;font:800 11px/1 'Space Grotesk',sans-serif;letter-spacing:0.06em;text-transform:uppercase;border:2px solid var(--kindyr-ink);box-shadow:2px 2px 0 var(--kindyr-ink);cursor:pointer}
+#install-modal .local-card .btn-primary{background:var(--kindyr-accent);color:#260800}
+#install-modal .local-card .btn-secondary{background:#0e336f;color:var(--kindyr-text)}

@@ -24,6 +24,11 @@ test('rejects traversal and absolute ZIP paths', () => {
   assert.throws(() => normalizeZipPath('/absolute'), /insegura/)
   assert.throws(() => normalizeZipPath('C:\\absolute'), /insegura/)
   assert.equal(normalizeZipPath('./overrides/config.txt'), 'overrides/config.txt')
+  // P0-2: alineado con path-util
+  assert.throws(() => normalizeZipPath('mods\\example.jar'), /insegura/)
+  assert.throws(() => normalizeZipPath('CON.txt'), /insegura/)
+  assert.throws(() => normalizeZipPath('mods/COM1.jar'), /insegura/)
+  assert.throws(() => normalizeZipPath('mods//example.jar'), /insegura/)
 })
 
 test('writes, reads and extracts a ZIP without buffering whole files', async () => {

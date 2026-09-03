@@ -140,13 +140,17 @@ async function importMrpack() {
     return
   }
 
+  window.kindyrAPI.instances.offImportProgress()
   window.kindyrAPI.instances.onImportProgress((data) => {
     setStatus(data.message)
   })
 
-  const result = await window.kindyrAPI.instances.importMrpack()
-
-  window.kindyrAPI.instances.offImportProgress()
+  let result
+  try {
+    result = await window.kindyrAPI.instances.importMrpack()
+  } finally {
+    window.kindyrAPI.instances.offImportProgress()
+  }
 
   if (result.ok) {
     if (result.warnings) {

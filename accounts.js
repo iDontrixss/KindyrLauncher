@@ -38,6 +38,9 @@ async function loginMicrosoft() {
   }
 
   statusEl.textContent = t('account.added.microsoft', { name: result.account.name })
+  if (result.account) {
+    applyActiveAccount(result.account.name, 'microsoft', result.account.uuid || result.account.id || '')
+  }
   await loadMicrosoftAccounts()
 }
 
@@ -49,10 +52,16 @@ async function loadMicrosoftAccounts() {
 
   const msAccounts = result.accounts || []
   const activeAccountId = result.accounts?.find(a => a.active)?.id
-  const msHtml = msAccounts.map(account => `
+  const msHtml = msAccounts.map(account => {
+    const cleanUuid = String(account.uuid || account.id || '').replace(/-/g, '')
+    const hasUuid = /^[a-f0-9]{32}$/i.test(cleanUuid)
+    const avatarHtml = hasUuid
+      ? `<img src="https://mc-heads.net/avatar/${cleanUuid}/48" alt="${escapeHtml(account.name)}" style="width:100%;height:100%;object-fit:cover;image-rendering:pixelated;display:block;" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fa-brands fa-microsoft\\'></i>'">`
+      : `<i class="fa-brands fa-microsoft"></i>`
+    return `
     <div class="account-item ${account.id === activeAccountId ? 'active microsoft' : ''}" onclick="setActiveMicrosoftAccount('${account.id}')">
-      <div class="avatar">
-        <i class="fa-brands fa-microsoft"></i>
+      <div class="avatar" style="overflow:hidden;padding:0;">
+        ${avatarHtml}
       </div>
       <div class="account-meta">
         <strong>${escapeHtml(account.name)}</strong>
@@ -62,9 +71,13 @@ async function loadMicrosoftAccounts() {
         <i class="fa-solid fa-right-from-bracket"></i>
       </button>
     </div>
-  `).join('')
+  `}).join('')
 
   list.innerHTML = msHtml || '<div style="color:#666;font-size:13px;">' + escapeHtml(t('account.ms.none')) + '</div>'
+  const active = result.accounts?.find(a => a.id === activeAccountId)
+  if (active && settings && settings.accountType === 'microsoft' && settings.username === active.name) {
+    if (typeof hydratePremiumAvatars === 'function') hydratePremiumAvatars()
+  }
 }
 
 async function setActiveMicrosoftAccount(accountId) {
@@ -72,7 +85,7 @@ async function setActiveMicrosoftAccount(accountId) {
   const result = await window.kindyrAPI.microsoft.list()
   const active = result.accounts?.find(a => a.id === accountId)
   if (active) {
-    applyActiveAccount(active.name, 'microsoft')
+    applyActiveAccount(active.name, 'microsoft', active.uuid || active.id || '')
   }
   await loadMicrosoftAccounts()
   const modal = document.getElementById('account-modal')
@@ -81,8 +94,29 @@ async function setActiveMicrosoftAccount(accountId) {
 
 async function logoutMicrosoft(event, accountId) {
   event.stopPropagation()
+  const before = await window.kindyrAPI.microsoft.list()
+  const loggingOut = before.accounts?.find(a => a.id === accountId)
   showConfirm(t('confirm.logout.ms'), async () => {
     await window.kindyrAPI.microsoft.logout(accountId)
     await loadMicrosoftAccounts()
+    const after = await window.kindyrAPI.microsoft.list()
+    const stillActive = after.accounts?.some(a => a.active)
+    if (!stillActive && settings.accountType === 'microsoft' && loggingOut && settings.username === loggingOut.name) {
+      const nextMicrosoft = after.accounts?.[0]
+      if (nextMicrosoft) {
+        await window.kindyrAPI.microsoft.setActive(nextMicrosoft.id)
+        const refreshed = await window.kindyrAPI.microsoft.list()
+        const newActive = refreshed.accounts?.find(a => a.active) || refreshed.accounts?.find(a => a.id === nextMicrosoft.id) || nextMicrosoft
+        applyActiveAccount(newActive.name, 'microsoft', newActive.uuid || newActive.id || '')
+      } else {
+        const nextOffline = (typeof accounts !== 'undefined' ? accounts.find(a => a.type === 'offline') : null)
+        if (nextOffline) applyActiveAccount(nextOffline.name, 'offline')
+        else applyActiveAccount('', 'offline')
+      }
+    } else if (stillActive) {
+      const newActive = after.accounts?.find(a => a.active)
+      if (newActive) applyActiveAccount(newActive.name, 'microsoft', newActive.uuid || newActive.id || '')
+    }
+    if (typeof hydratePremiumAvatars === 'function' && settings.accountType === 'microsoft') hydratePremiumAvatars()
   })
 }

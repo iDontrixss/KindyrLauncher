@@ -2,6 +2,7 @@
 <html lang="es" style="background:#030f2b;color-scheme:dark" data-theme="midnight">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' https: data: blob: file: filesystem:; media-src 'self' blob: file: filesystem:; font-src 'self' data:; connect-src 'self' https://api.modrinth.com https://api.curseforge.com https://api.mojang.com https://piston-meta.mojang.com https://piston-data.mojang.com https://api.minecraftservices.com https://authserver.mojang.com https://sessionserver.mojang.com https://meta.fabricmc.net https://meta.quiltmc.org https://maven.minecraftforge.net https://maven.neoforged.net https://api.adoptium.net https://mc-heads.net https://cdn.jsdelivr.net https://api.github.com; object-src 'none'; base-uri 'self'; form-action 'self';">
   <title>Kindyr Launcher</title>
   <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
@@ -13,7 +14,7 @@
     <img src="assets/logo-dark.png" alt="Kindyr Logo" class="topnav-logo">
     <div class="topnav-brand-text">
       <span class="topnav-brand-name">KINDYR</span>
-      <span class="topnav-brand-ver">v1.2.0</span>
+      <span class="topnav-brand-ver">v0.1.0</span>
     </div>
   </div>
 
@@ -26,6 +27,7 @@
   </nav>
 
   <div class="topnav-right">
+    <button type="button" id="topnav-update-btn" class="pill-nav" style="display:none; background:var(--kindyr-accent); color:var(--kindyr-ink); border:2px solid var(--kindyr-ink); box-shadow:2px 2px 0 var(--kindyr-ink); padding:8px 12px; font-size:12px; font-weight:800; margin-right:8px" onclick="showUpdateNotice()" title="Actualización disponible"><i class="fa-solid fa-download"></i> <span>Actualizar</span> <span id="topnav-update-ver" style="font-family:'JetBrains Mono',monospace; font-size:10px; opacity:0.8"></span></button>
     <button type="button" class="topnav-account" onclick="openAccountManager()" aria-label="Abrir gestor de cuentas" data-i18n-aria-label="account.open">
       <div class="avatar" id="nav-avatar">--</div>
       <div class="topnav-account-text">
@@ -105,7 +107,7 @@
       <div class="install-project-identity">
         <div class="install-project-icon" id="install-project-icon"><i class="fa-solid fa-box-open" aria-hidden="true"></i></div>
         <div>
-          <div class="install-modal-kicker"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> MODRINTH · INSTALADOR</div>
+          <div class="install-modal-kicker" id="install-kicker"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> <span id="install-kicker-text">MODRINTH · INSTALADOR</span></div>
           <div class="modal-title" id="install-title" data-i18n="install.title">Instalar contenido</div>
           <div class="install-project-meta" id="install-project-meta">Preparando instalación</div>
         </div>
@@ -114,39 +116,54 @@
     </div>
     <div class="modal-body">
       <div id="install-standard-view">
-      <div class="install-grid">
-        <div>
-          <div class="section-label">Minecraft</div>
-          <input class="setting-input" id="install-game-version" placeholder="1.21.4" onchange="loadInstallVersions()">
+      <div class="flow" id="install-flow">
+        <div class="card" id="install-compat-card">
+          <div class="card-head"><h3><i class="fa-solid fa-layer-group"></i> Tus instancias</h3><small id="install-compat-count"></small></div>
+          <div class="card-body" id="install-compat-body">
+            <div class="compat-list" id="install-compat-list"></div>
+          </div>
+          <div class="card-body" id="install-local-replace" hidden style="display:grid;gap:12px">
+            <div style="font:800 10px/1 'JetBrains Mono',monospace;letter-spacing:0.1em;color:var(--kindyr-accent);text-transform:uppercase">Descarga local — elegí versión y destino</div>
+            <div>
+              <div class="section-label">Minecraft</div>
+              <input class="setting-input" id="install-game-version" placeholder="1.21.4" onchange="loadInstallVersions()">
+            </div>
+            <div>
+              <div class="section-label">Loader</div>
+              <select class="discover-select" id="install-loader" onchange="loadInstallVersions()">
+                <option value="any" data-i18n="install.any">Cualquiera</option>
+                <option value="minecraft">Minecraft</option>
+                <option value="fabric">Fabric</option>
+                <option value="forge">Forge</option>
+                <option value="neoforge">NeoForge</option>
+                <option value="quilt">Quilt</option>
+                <option value="paper">Paper</option>
+                <option value="spigot">Spigot</option>
+                <option value="bukkit">Bukkit</option>
+              </select>
+            </div>
+            <div>
+              <div class="section-label">Ubicación</div>
+              <select class="discover-select" id="install-destination" onchange="updateInstallDestination()">
+                <option value="downloads" data-i18n="install.destination.downloads">PC - Carpeta Descargas</option>
+                <option value="instance" data-i18n="install.destination.instance">Instalación del launcher</option>
+              </select>
+            </div>
+            <div id="install-instance-wrap">
+              <div class="section-label" data-i18n="install.instance">Instalación</div>
+              <select class="discover-select" id="install-instance"></select>
+            </div>
+            <div>
+              <div class="section-label" data-i18n="install.compatibleVersions">Versiones compatibles</div>
+              <div class="install-version-list" id="install-version-list"></div>
+            </div>
+            <button type="button" class="secondary-btn" onclick="toggleInstallLocalPanel()" style="width:100%"><i class="fa-solid fa-arrow-left"></i> Volver a instancias</button>
+          </div>
         </div>
-        <div>
-          <div class="section-label">Loader</div>
-          <select class="discover-select" id="install-loader" onchange="loadInstallVersions()">
-            <option value="any" data-i18n="install.any">Cualquiera</option>
-            <option value="minecraft">Minecraft</option>
-            <option value="fabric">Fabric</option>
-            <option value="forge">Forge</option>
-            <option value="neoforge">NeoForge</option>
-            <option value="quilt">Quilt</option>
-            <option value="paper">Paper</option>
-            <option value="spigot">Spigot</option>
-            <option value="bukkit">Bukkit</option>
-          </select>
-        </div>
-        <div class="install-row-full">
-          <div class="section-label" data-i18n="install.destination">Destino</div>
-          <select class="discover-select" id="install-destination" onchange="updateInstallDestination()">
-            <option value="downloads" data-i18n="install.destination.downloads">PC - Carpeta Descargas</option>
-            <option value="instance" data-i18n="install.destination.instance">Instalación del launcher</option>
-          </select>
-        </div>
-        <div class="install-row-full" id="install-instance-wrap">
-          <div class="section-label" data-i18n="install.instance">Instalación</div>
-          <select class="discover-select" id="install-instance"></select>
-        </div>
-        <div class="install-row-full">
-          <div class="section-label" data-i18n="install.compatibleVersions">Versiones compatibles</div>
-          <div class="install-version-list" id="install-version-list"></div>
+        <div class="local-card" id="install-local-card">
+          <h4><i class="fa-regular fa-folder-open"></i> ¿No tenés instancia compatible?</h4>
+          <p>Descargá el archivo suelto a tu PC.</p>
+          <button type="button" id="install-local-toggle" class="btn btn-secondary" style="width:100%" onclick="toggleInstallLocalPanel()"><i class="fa-solid fa-download"></i> Descargar local</button>
         </div>
       </div>
       </div>
@@ -205,6 +222,8 @@
   </div>
 </div>
 
+<div id="prepare-toast-stack" style="position:fixed; top:16px; right:16px; z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none;"></div>
+
 <main class="main">
   <div class="content">
     <div class="view active" id="home-view"></div>
@@ -227,6 +246,7 @@
 <script src="accounts.js"></script>
 <script src="instances.js"></script>
 <script src="modrinth.js"></script>
+<script src="curseforge.js"></script>
 <script src="launcher.js"></script>
 <script>
 

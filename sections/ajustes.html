@@ -55,7 +55,7 @@
             <label class="setting-label" for="setting-min-ram-mb"><strong data-i18n="settings.ram.min">Mínima</strong></label>
             <span class="ram-hint" id="setting-min-ram-hint">2048 MB</span>
           </div>
-          <input class="ram-slider" type="range" id="setting-min-ram-slider" min="512" max="16384" step="256" value="2048" oninput="syncRamFromSlider('min')">
+            <input class="ram-slider" type="range" id="setting-min-ram-slider" min="512" max="32768" step="256" value="2048" oninput="syncRamFromSlider('min')">
           <div class="ram-input-row">
             <input class="setting-input" id="setting-min-ram-mb" value="2048" oninput="syncRamFromInput('min')">
             <span class="ram-hint">MB / G</span>
@@ -66,7 +66,7 @@
             <label class="setting-label" for="setting-max-ram-mb"><strong data-i18n="settings.ram.max">Máxima</strong></label>
             <span class="ram-hint" id="setting-max-ram-hint">4096 MB</span>
           </div>
-          <input class="ram-slider" type="range" id="setting-max-ram-slider" min="512" max="16384" step="256" value="4096" oninput="syncRamFromSlider('max')">
+          <input class="ram-slider" type="range" id="setting-max-ram-slider" min="512" max="32768" step="256" value="4096" oninput="syncRamFromSlider('max')">
           <div class="ram-input-row">
             <input class="setting-input" id="setting-max-ram-mb" value="4096" oninput="syncRamFromInput('max')">
             <span class="ram-hint">MB / G</span>
@@ -124,6 +124,42 @@
         <div class="settings-group-desc" data-i18n="settings.cache.desc">Borra metadatos en caché y archivos temporales de descarga de Java.</div>
         <button type="button" class="secondary-btn" onclick="purgeLauncherCache()"><i class="fa-solid fa-trash-can"></i> <span data-i18n="settings.cache.purge">Vaciar caché</span></button>
       </div>
+
+      <div class="settings-group" style="border-color:#facc15; background: linear-gradient(135deg, #1f1f1f 0%, #242014 100%);">
+        <div class="settings-group-title" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span data-i18n="settings.beta.title">Funciones beta</span>
+          <span class="beta-badge" style="background:#facc15; color:#100d07; border-radius:999px; padding:3px 8px; font-size:10px; font-weight:800; letter-spacing:0.06em;">BETA</span>
+          <span style="color:#facc15; font-size:11px; font-weight:600;"><i class="fa-solid fa-flask"></i> Experimental</span>
+        </div>
+        <div class="settings-group-desc" data-i18n="settings.beta.desc">Funciones experimentales que pueden cambiar en futuras versiones.</div>
+        <div class="setting-row">
+          <label class="setting-label" for="beta-eager-row">
+            <strong data-i18n="settings.beta.eager">Preparar instancias al crear</strong>
+            <span data-i18n="settings.beta.eager.desc">Descarga Java y Minecraft al crear la instancia. El primer inicio será instantáneo. Usa más espacio y red al crear.</span>
+          </label>
+          <div class="beta-toggle-row" id="beta-eager-row" style="display:flex; gap:8px; margin-top:4px;">
+            <button type="button" class="theme-chip" id="beta-eager-off" onclick="setEagerPrepare(false)" data-i18n="settings.beta.disabled">Desactivado</button>
+            <button type="button" class="theme-chip" id="beta-eager-on" onclick="setEagerPrepare(true)" data-i18n="settings.beta.enabled">Activado</button>
+          </div>
+          <div id="beta-eager-status" class="ram-hint" style="margin-top:6px; display:none;"></div>
+        </div>
+      </div>
+
+      <div class="settings-group" style="border:3px solid var(--kindyr-ink); background:var(--kindyr-surface); box-shadow:4px 4px 0 var(--kindyr-ink);">
+        <div class="settings-group-title" style="display:flex; align-items:center; gap:8px;">
+          <i class="fa-solid fa-rotate" style="color:var(--kindyr-blue)"></i> Actualizaciones & Rollback
+          <span id="settings-version-badge" style="margin-left:auto; background:var(--kindyr-accent); color:var(--kindyr-ink); border:2px solid var(--kindyr-ink); font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:800; padding:3px 8px; box-shadow:2px 2px 0 var(--kindyr-ink);">v0.1.0</span>
+        </div>
+        <div class="settings-group-desc">Canal beta con auto-update. Si una versión falla, volvé a la anterior sin perder datos.</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+          <button type="button" class="secondary-btn" onclick="checkForUpdatesManual()"><i class="fa-solid fa-arrows-rotate"></i> Buscar actualizaciones</button>
+          <button type="button" class="secondary-btn" onclick="loadPreviousVersions()"><i class="fa-solid fa-clock-rotate-left"></i> Ver versiones anteriores</button>
+          <button type="button" class="secondary-btn" id="downgrade-btn" onclick="downgradeToPreviousVersion()" style="border-color:#ff5a3c; color:#ff5a3c"><i class="fa-solid fa-rotate-left"></i> Desactualizar</button>
+        </div>
+        <div id="update-status" class="ram-hint" style="margin-top:8px; display:none"></div>
+        <div id="previous-versions-list" style="margin-top:10px; display:none; flex-direction:column; gap:8px"></div>
+        <div class="ram-hint" style="margin-top:8px; font-size:10px; opacity:0.7"><i class="fa-solid fa-circle-info"></i> Rollback descarga el instalador de GitHub y mantiene tus instancias/Java. Requiere reiniciar.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -171,6 +207,28 @@ function updateDownloadsLabel() {
   settings.maxConcurrentDownloads = Number(slider.value)
 }
 
+function updateEagerToggleUI() {
+  const on = document.getElementById('beta-eager-on')
+  const off = document.getElementById('beta-eager-off')
+  const status = document.getElementById('beta-eager-status')
+  const enabled = Boolean(settings.eagerPrepareOnCreate)
+  if (on) on.classList.toggle('active', enabled)
+  if (off) off.classList.toggle('active', !enabled)
+  if (status) {
+    status.style.display = 'block'
+    status.textContent = enabled ? '✓ ' + t('settings.beta.enabled') + ' · ' + t('settings.beta.eager.desc') : '○ ' + t('settings.beta.disabled')
+    status.style.color = enabled ? '#facc15' : '#666'
+  }
+}
+
+function setEagerPrepare(enabled) {
+  settings.eagerPrepareOnCreate = Boolean(enabled)
+  settings.settingsSavedAt = Date.now()
+  try { localStorage.setItem('kindyr-settings', JSON.stringify(settings)) } catch {}
+  updateEagerToggleUI()
+  setStatus((enabled ? t('settings.beta.enabled') : t('settings.beta.disabled')) + ' · ' + t('settings.beta.eager'))
+}
+
 async function renderJavaInstalls(force = false) {
   const list = document.getElementById('java-installs-list')
   if (!list || !window.kindyrAPI?.settings?.getJavaInstalls) return
@@ -203,13 +261,8 @@ async function renderJavaInstalls(force = false) {
         '</div>'
       )).join('')
       
-      const downloads = document.getElementById('setting-max-downloads')
-      const downloadsValue = document.getElementById('setting-max-downloads-value')
-      if (downloads && result.maxConcurrentDownloads) {
-        downloads.value = String(result.maxConcurrentDownloads)
-        if (downloadsValue) downloadsValue.value = String(result.maxConcurrentDownloads)
-        settings.maxConcurrentDownloads = result.maxConcurrentDownloads
-      }
+      // No sobrescribir maxConcurrentDownloads si el usuario está editando o si ya hay valor local más reciente
+      // El valor se gestiona via slider y saveSettings -> saveResources
       javaInstallsLoadedAt = Date.now()
     } catch (error) {
       console.error('Error rendering Java installs:', error)
@@ -386,6 +439,7 @@ function applySettingsToForm() {
       chip.classList.toggle('active', chip.dataset.lang === settings.language)
     })
     applyTheme()
+    try { updateEagerToggleUI() } catch {}
   } catch (error) {
     console.error('Error applying settings to form:', error)
   }
@@ -423,7 +477,8 @@ function getValidatedSettings() {
         theme: settings.theme,
         backgroundImage: settings.backgroundImage,
         javaArgs: settings.javaArgs,
-        maxConcurrentDownloads: Number(document.getElementById('setting-max-downloads')?.value || settings.maxConcurrentDownloads || 6)
+        maxConcurrentDownloads: Number(document.getElementById('setting-max-downloads')?.value || settings.maxConcurrentDownloads || 6),
+        eagerPrepareOnCreate: Boolean(settings.eagerPrepareOnCreate)
       }
     }
   } catch (error) {
@@ -441,16 +496,27 @@ async function saveSettings() {
       return
     }
 
-    settings = { ...validated.settings, settingsSavedAt: Date.now() }
+    settings = { ...settings, ...validated.settings, settingsSavedAt: Date.now() }
     localStorage.setItem('kindyr-settings', JSON.stringify(settings))
     if (window.kindyrAPI?.settings?.saveResources) {
       await window.kindyrAPI.settings.saveResources({
         maxConcurrentDownloads: settings.maxConcurrentDownloads
       })
     }
-    for (const major of JAVA_MAJORS_UI) {
+    const javaResults = await Promise.allSettled(JAVA_MAJORS_UI.map(major => {
       const input = document.getElementById('java-path-' + major)
-      if (input) await window.kindyrAPI.settings.setJavaPath({ major, path: input.value.trim() })
+      if (!input) return Promise.resolve({ ok: true })
+      return window.kindyrAPI.settings.setJavaPath({ major, path: input.value.trim() })
+    }))
+    const failedJava = javaResults.find(r => r.status === 'fulfilled' && r.value && r.value.ok === false)
+    if (failedJava) {
+      setStatus(failedJava.value.error || 'Error al guardar ruta de Java')
+      return
+    }
+    const rejectedJava = javaResults.find(r => r.status === 'rejected')
+    if (rejectedJava) {
+      setStatus('Error al guardar ruta de Java')
+      return
     }
     ensureAccount(settings.username)
     applyActiveAccount(settings.username)
@@ -466,6 +532,8 @@ async function resetSettings() {
     localStorage.removeItem('kindyr-settings')
     settings = {
       username: settings.username,
+      accountType: settings.accountType,
+      activeUuid: settings.activeUuid,
       minRam: '2G',
       maxRam: '4G',
       minRamMb: 2048,
@@ -475,8 +543,11 @@ async function resetSettings() {
       backgroundImage: '',
       javaArgs: '',
       maxConcurrentDownloads: 6,
+      eagerPrepareOnCreate: settings.eagerPrepareOnCreate,
       settingsSavedAt: Date.now()
     }
+    // Limpiar activeUuid si no corresponde
+    if (settings.accountType !== 'microsoft') delete settings.activeUuid
     await window.kindyrAPI.settings.clearBackground()
     applySettingsToForm()
     applyBackground()
@@ -488,6 +559,105 @@ async function resetSettings() {
 }
 
 
+async function checkForUpdatesManual() {
+  const status = document.getElementById('update-status')
+  if (status) { status.style.display = 'block'; status.textContent = 'Buscando actualizaciones...'; status.style.color = '#aacdff' }
+  try {
+    if (!window.kindyrAPI?.updater?.getVersion) throw new Error('Updater no disponible en dev')
+    const current = await window.kindyrAPI.updater.getVersion()
+    const res = await window.kindyrAPI.updater.getPreviousVersions()
+    if (!res.ok) throw new Error(res.error || 'No se pudo consultar GitHub')
+    const newer = res.versions.find(v => {
+      try { const semver = window.require ? require('semver') : null; return false } catch { return false }
+    })
+    // Fallback simple: si hay versiones, mostrar la más reciente distinta a current
+    const latest = res.versions[0]
+    if (latest && latest.version !== current) {
+      if (status) { status.textContent = `Nueva versión disponible: ${latest.tag} — revisá el aviso Kindyr`; status.style.color = '#1bd96a' }
+      setStatus(`Actualización disponible: ${latest.tag}`)
+    } else {
+      if (status) { status.textContent = `Estás en la última versión (v${current}) ✓`; status.style.color = '#1bd96a' }
+      setStatus('Sin actualizaciones')
+    }
+  } catch (e) {
+    if (status) { status.textContent = 'Error: ' + (e.message || String(e)); status.style.color = '#ff5a3c' }
+  }
+}
+
+async function loadPreviousVersions() {
+  const listEl = document.getElementById('previous-versions-list')
+  const status = document.getElementById('update-status')
+  if (!listEl) return
+  listEl.style.display = 'flex'
+  listEl.innerHTML = '<div class="ram-hint">Cargando versiones...</div>'
+  try {
+    const verRes = await window.kindyrAPI.updater.getVersion()
+    const current = typeof verRes === 'string' ? verRes : (verRes || '0.1.0')
+    // Actualizar badge
+    const badge = document.getElementById('settings-version-badge')
+    if (badge) badge.textContent = 'v' + current
+    const res = await window.kindyrAPI.updater.getPreviousVersions()
+    if (!res.ok) throw new Error(res.error || 'No se pudo cargar versiones')
+    const versions = res.versions || []
+    if (!versions.length) {
+      listEl.innerHTML = '<div class="ram-hint">No hay versiones anteriores publicadas.</div>'
+      return
+    }
+    listEl.innerHTML = versions.map(v => `
+      <div style="display:flex; align-items:center; gap:10px; background:var(--kindyr-bg); border:2px solid var(--kindyr-ink); padding:10px 12px; box-shadow:2px 2px 0 var(--kindyr-ink);">
+        <div style="min-width:0; flex:1">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; color:var(--kindyr-text)">${v.tag} ${v.prerelease ? '<span style=\"background:#facc15;color:#010712;padding:1px 5px;font-size:9px;margin-left:6px; border:1px solid #010712\">BETA</span>' : ''}</div>
+          <div style="font-size:11px; color:var(--kindyr-blue-soft)">${new Date(v.published_at).toLocaleDateString()} • <a href="${v.url}" target="_blank" style="color:var(--kindyr-blue)">GitHub</a></div>
+        </div>
+        <button type="button" class="secondary-btn" style="flex-shrink:0; padding:8px 10px; font-size:11px" onclick="rollbackToVersion('${v.tag.replace(/'/g, "\\'")}')"><i class="fa-solid fa-download"></i> Rollback</button>
+      </div>
+    `).join('')
+    if (status) { status.style.display = 'block'; status.textContent = `Encontradas ${versions.length} versiones • Actual: v${current}`; status.style.color = '#aacdff' }
+  } catch (e) {
+    listEl.innerHTML = `<div class="ram-hint" style="color:#ff5a3c">Error: ${e.message || String(e)}</div>`
+  }
+}
+
+async function rollbackToVersion(tag) {
+  if (!confirm(`¿Volver a ${tag}? Se descargará el instalador de GitHub. Tus instancias y Java se conservan.`)) return
+  const status = document.getElementById('update-status')
+  if (status) { status.style.display = 'block'; status.textContent = `Iniciando rollback a ${tag}...`; status.style.color = '#ff5a3c' }
+  try {
+    const res = await window.kindyrAPI.updater.rollback(tag)
+    if (!res.ok) throw new Error(res.error || 'Fallo rollback')
+    if (status) { status.textContent = `Descarga iniciada: ${tag} — revisá tu carpeta Descargas`; status.style.color = '#1bd96a' }
+    setStatus(`Rollback ${tag} iniciado`)
+  } catch (e) {
+    if (status) { status.textContent = 'Error rollback: ' + (e.message || String(e)); status.style.color = '#ff5a3c' }
+  }
+}
+
+async function downgradeToPreviousVersion() {
+  const btn = document.getElementById('downgrade-btn')
+  const status = document.getElementById('update-status')
+  if (btn) btn.disabled = true
+  if (status) { status.style.display = 'block'; status.textContent = 'Buscando versión anterior...'; status.style.color = '#aacdff' }
+  try {
+    const targetRes = await window.kindyrAPI.updater.getDowngradeTarget()
+    if (!targetRes.ok) throw new Error(targetRes.error || 'No hay versión anterior')
+    const tag = targetRes.tag
+    if (!confirm(`¿Desactualizar a ${tag}? Volverás a la versión que tenías antes de la última actualización. Tus instancias/Java se conservan.`)) {
+      if (btn) btn.disabled = false
+      if (status) status.style.display = 'none'
+      return
+    }
+    if (status) { status.textContent = `Desactualizando a ${tag}...`; status.style.color = '#ff5a3c' }
+    const res = await window.kindyrAPI.updater.downgradeToPrevious()
+    if (!res.ok) throw new Error(res.error || 'Fallo desactualización')
+    if (status) { status.textContent = `Desactualización iniciada: ${tag} — se descargará el instalador`; status.style.color = '#1bd96a' }
+    setStatus(`Desactualizado a ${tag}`)
+  } catch (e) {
+    if (status) { status.textContent = 'Error desactualizar: ' + (e.message || String(e)); status.style.color = '#ff5a3c' }
+  } finally {
+    if (btn) btn.disabled = false
+  }
+}
+
 function initializeSettings() {
   if (settingsInitialized) return
   settingsInitialized = true
@@ -495,6 +665,27 @@ function initializeSettings() {
   try {
     applySettingsToForm()
     applyBackground()
+    // Mostrar versión actual en badge y preparar downgrade
+    if (window.kindyrAPI?.updater?.getVersion) {
+      window.kindyrAPI.updater.getVersion().then(v => {
+        const badge = document.getElementById('settings-version-badge')
+        if (badge && v) badge.textContent = 'v' + String(v).replace(/^[vV]/,'')
+      }).catch(()=>{})
+    }
+    if (window.kindyrAPI?.updater?.getDowngradeTarget) {
+      window.kindyrAPI.updater.getDowngradeTarget().then(r => {
+        const btn = document.getElementById('downgrade-btn')
+        if (!btn) return
+        if (r.ok && r.tag) {
+          btn.title = `Volver a ${r.tag} (${r.source === 'stored' ? 'versión previa instalada' : 'anterior en GitHub'})`
+          btn.disabled = false
+        } else {
+          btn.title = 'No hay versión anterior disponible'
+          // Mantener habilitado para que el click muestre el error, o deshabilitar:
+          // btn.disabled = true
+        }
+      }).catch(()=>{})
+    }
   } catch (error) {
     console.error('Error initializing settings:', error)
   }

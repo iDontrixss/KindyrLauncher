@@ -375,9 +375,25 @@ async function refreshInstancePanel() {
     if (statMods) statMods.textContent = result.mods.length
     if (statWorlds) statWorlds.textContent = result.worlds.length
   })
+  const wasExpanded = modsExpanded
   renderInstanceContent(result.mods)
-  modsExpanded = false
-  toggleModsList()
+  modsExpanded = wasExpanded
+  // Sincronizar estado sin forzar colapso
+  const list = document.getElementById('instance-content-list')
+  if (list) {
+    const rows = list.querySelectorAll('.content-row')
+    const limit = 5
+    const shouldCollapse = !wasExpanded && rows.length > limit
+    // Aplicar estado actual
+    rows.forEach((row, i) => {
+      if (i >= limit) row.style.display = wasExpanded ? '' : 'none'
+    })
+    const btn = document.getElementById('toggle-mods-btn')
+    const icon = document.getElementById('toggle-mods-icon')
+    if (btn) btn.style.display = rows.length > limit ? '' : 'none'
+    if (icon) icon.className = wasExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'
+    if (btn) btn.innerHTML = `<i class="${wasExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'}" id="toggle-mods-icon"></i> ${wasExpanded ? t('instance.showLess') : t('instance.showMore')}`
+  }
   renderInstanceWorlds(result.worlds)
   renderInstanceLogs(result.logs)
   renderInstanceFolders()
@@ -397,13 +413,31 @@ function renderInstanceContent(mods) {
     const disabled = mod.name.endsWith('.disabled')
     const status = disabled ? t('instance.disabled') : t('instance.active')
     const action = disabled ? t('instance.enable') : t('instance.disable')
-    const encodedName = JSON.stringify(mod.name)
     const div = document.createElement('div')
     div.className = 'content-row'
-    div.innerHTML = '<div class="content-row-icon"><i class="fa-solid fa-puzzle-piece"></i></div>' +
-      '<div class="content-row-copy"><strong title="' + escapeHtml(mod.name) + '">' + escapeHtml(mod.name) + '</strong><span>' + formatFileSize(mod.size) + '</span></div>' +
-      '<span class="pill ' + (disabled ? 'disabled' : '') + '">' + status + '</span>' +
-      '<button type="button" class="small-action" onclick="toggleInstanceMod(' + escapeHtml(encodedName) + ')">' + action + '</button>'
+    const iconWrap = document.createElement('div')
+    iconWrap.className = 'content-row-icon'
+    const icon = document.createElement('i')
+    icon.className = 'fa-solid fa-puzzle-piece'
+    icon.setAttribute('aria-hidden', 'true')
+    iconWrap.appendChild(icon)
+    const copy = document.createElement('div')
+    copy.className = 'content-row-copy'
+    const strong = document.createElement('strong')
+    strong.title = mod.name
+    strong.textContent = mod.name
+    const sizeSpan = document.createElement('span')
+    sizeSpan.textContent = formatFileSize(mod.size)
+    copy.append(strong, sizeSpan)
+    const pill = document.createElement('span')
+    pill.className = 'pill' + (disabled ? ' disabled' : '')
+    pill.textContent = status
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'small-action'
+    btn.textContent = action
+    btn.addEventListener('click', () => toggleInstanceMod(mod.name))
+    div.append(iconWrap, copy, pill, btn)
     fragment.appendChild(div)
   })
   list.innerHTML = ''
@@ -642,8 +676,77 @@ async function createSelectedInstance() {
 
   await refreshLauncherInstances()
   closeCreateInstanceModal()
-  openInstanceView(result.instance.id)
-  setStatus(t('create.created', { name: result.instance.name }))
+
+  if (settings.eagerPrepareOnCreate && window.kindyrAPI?.instances?.prepare) {
+    showPrepareToast(result.instance.name, t('settings.beta.preparing', { name: result.instance.name }))
+    setStatus(t('settings.beta.preparing', { name: result.instance.name }))
+    let lastPercent = 5
+    updatePrepareToast(lastPercent, t('settings.beta.preparing', { name: result.instance.name }), 'Iniciando')
+    const off = window.kindyrAPI.launcher.onStatus((ev) => {
+      if (!ev || !ev.message) return
+      const msg = ev.message
+      const m = msg.match(/(\d+)\/(\d+)/)
+      if (m) {
+        const cur = parseInt(m[1], 10), tot = parseInt(m[2], 10)
+        if (tot > 0) {
+          const pct = Math.min(95, Math.max(lastPercent, Math.round((cur / tot) * 70 + 20)))
+          updatePrepareToast(pct, msg, `${cur}/${tot}`)
+          lastPercent = pct
+        }
+      } else if (msg.includes('Descargando Java')) {
+        updatePrepareToast(10, msg, 'Java')
+        lastPercent = 10
+      } else if (msg.includes('Instancia lista')) {
+        updatePrepareToast(100, msg, 'Listo')
+        lastPercent = 100
+      } else if (msg.includes('Preparando')) {
+        updatePrepareToast(lastPercent, msg, 'Preparando')
+      } else if (ev.type === 'error') {
+        updatePrepareToast(lastPercent, msg, 'Error')
+      }
+    })
+    try {
+      const prep = await window.kindyrAPI.instances.prepare(result.instance.id)
+      if (!prep || !prep.ok) {
+        const err = prep?.error || t('settings.beta.failed', { name: result.instance.name })
+        updatePrepareToast(lastPercent, err, 'Error')
+        setStatus(err)
+        setTimeout(() => hidePrepareToast(), 3000)
+        await new Promise(r => setTimeout(r, 1200))
+        hidePrepareToast(true)
+        await refreshLauncherInstances()
+        openInstanceView(result.instance.id)
+        return
+      }
+      // Esperar a que termine la preparación en segundo plano
+      let attempts = 0
+      while (attempts < 360) {
+        await new Promise(r => setTimeout(r, 500))
+        try {
+          const st = await window.kindyrAPI.instances.prepareStatus()
+          if (!st.preparing.includes(result.instance.id)) break
+        } catch {}
+        attempts++
+      }
+      updatePrepareToast(100, t('settings.beta.prepared', { name: result.instance.name }), 'Listo')
+      setStatus(t('settings.beta.prepared', { name: result.instance.name }))
+      await new Promise(r => setTimeout(r, 700))
+      hidePrepareToast(true)
+      await refreshLauncherInstances()
+      openInstanceView(result.instance.id)
+    } catch (e) {
+      updatePrepareToast(lastPercent, e.message || t('settings.beta.failed', { name: result.instance.name }), 'Error')
+      setStatus(t('settings.beta.failed', { name: result.instance.name }))
+      setTimeout(() => hidePrepareToast(true), 3000)
+      await refreshLauncherInstances()
+      openInstanceView(result.instance.id)
+    } finally {
+      try { off() } catch {}
+    }
+  } else {
+    openInstanceView(result.instance.id)
+    setStatus(t('create.created', { name: result.instance.name }))
+  }
 }
 
 async function refreshLauncherInstances() {

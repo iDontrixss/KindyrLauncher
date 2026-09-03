@@ -50,7 +50,9 @@ test('encrypts account tokens at rest and restores them for the main process', (
     assert.equal(raw.includes('secret-refresh-token'), false)
     assert.equal(JSON.parse(raw).version, ACCOUNT_STORE_VERSION)
     assert.deepEqual(store.load(), accounts)
-    assert.equal(fs.statSync(filePath).mode & 0o777, 0o600)
+    if (process.platform !== 'win32') {
+      assert.equal(fs.statSync(filePath).mode & 0o777, 0o600)
+    }
   })
 })
 

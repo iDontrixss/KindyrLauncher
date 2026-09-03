@@ -56,7 +56,7 @@ async function launchGame() {
       log.textContent = validated.error
       return
     }
-    settings = validated.settings
+    settings = { ...settings, ...validated.settings, settingsSavedAt: Date.now() }
     localStorage.setItem('kindyr-settings', JSON.stringify(settings))
     recordRecentInstance(selectedInstance)
     btn.disabled = true

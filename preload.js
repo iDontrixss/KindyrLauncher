@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
     list: () => ipcRenderer.invoke('get-instances'),
     versions: (payload) => ipcRenderer.invoke('minecraft-versions', payload),
     create: (payload) => ipcRenderer.invoke('create-instance', payload),
+    prepare: (instanceId) => ipcRenderer.invoke('prepare-instance', instanceId),
+    prepareStatus: () => ipcRenderer.invoke('prepare-status'),
     getDataRoot: () => ipcRenderer.invoke('get-data-root'),
     openFolder: (instanceId) => ipcRenderer.invoke('open-instance-folder', instanceId),
     getDetails: (instanceId) => ipcRenderer.invoke('get-instance-details', instanceId),
@@ -38,6 +40,15 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
     installLatestRelease: (payload) => ipcRenderer.invoke('modrinth-install-latest-release', payload),
     openProject: (url) => ipcRenderer.invoke('open-external-url', url)
   },
+  curseforge: {
+    search: (payload) => ipcRenderer.invoke('curseforge-search', payload),
+    versions: (payload) => ipcRenderer.invoke('curseforge-versions', payload),
+    install: (payload) => ipcRenderer.invoke('curseforge-install', payload),
+    installLatestRelease: (payload) => ipcRenderer.invoke('curseforge-install-latest-release', payload),
+    status: () => ipcRenderer.invoke('curseforge-status'),
+    setKey: (apiKey) => ipcRenderer.invoke('curseforge-set-key', apiKey),
+    openProject: (url) => ipcRenderer.invoke('open-external-url', url)
+  },
   launcher: {
   launch: (payload) => ipcRenderer.invoke('launch-game', payload),
   kill: () => ipcRenderer.invoke('kill-minecraft'),
@@ -48,33 +59,48 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
     return () => ipcRenderer.removeListener('launcher-status', listener)
   }
 },
- settings: {
-    getJavaInstalls: () => ipcRenderer.invoke('settings-get-java'),
-    saveResources: (payload) => ipcRenderer.invoke('settings-save-resources', payload),
-    setJavaPath: (payload) => ipcRenderer.invoke('settings-set-java-path', payload),
-    browseJava: () => ipcRenderer.invoke('settings-browse-java'),
-    detectJava: (major) => ipcRenderer.invoke('settings-detect-java', major),
-    installJava: (major) => ipcRenderer.invoke('settings-install-java', major),
-    getStorage: () => {
-      return ipcRenderer.invoke('settings-get-storage')
-      
-    },
-    purgeCache: async () => {
-      try {
-        return await ipcRenderer.invoke('settings-purge-cache')
-      } catch (error) {
-        return { ok: false, error: error?.message || String(error) }
-      }
-    },
-    openDataRoot: () => ipcRenderer.invoke('settings-open-data-root'),
-    pickBackground: () => ipcRenderer.invoke('settings-pick-background'),
-    getBackground: () => ipcRenderer.invoke('settings-get-background'),
-    clearBackground: () => ipcRenderer.invoke('settings-clear-background'),
-    onStatus: (callback) => {
-      const listener = (_event, status) => callback(status)
-      ipcRenderer.on('settings-status', listener)
-      return () => ipcRenderer.removeListener('settings-status', listener)
-    }
+  settings: {
+     getJavaInstalls: () => ipcRenderer.invoke('settings-get-java'),
+     saveResources: (payload) => ipcRenderer.invoke('settings-save-resources', payload),
+     setJavaPath: (payload) => ipcRenderer.invoke('settings-set-java-path', payload),
+     browseJava: () => ipcRenderer.invoke('settings-browse-java'),
+     detectJava: (major) => ipcRenderer.invoke('settings-detect-java', major),
+     installJava: (major) => ipcRenderer.invoke('settings-install-java', major),
+     getStorage: () => {
+       return ipcRenderer.invoke('settings-get-storage')
+       
+     },
+     purgeCache: async () => {
+       try {
+         return await ipcRenderer.invoke('settings-purge-cache')
+       } catch (error) {
+         return { ok: false, error: error?.message || String(error) }
+       }
+     },
+     openDataRoot: () => ipcRenderer.invoke('settings-open-data-root'),
+     pickBackground: () => ipcRenderer.invoke('settings-pick-background'),
+     getBackground: () => ipcRenderer.invoke('settings-get-background'),
+     clearBackground: () => ipcRenderer.invoke('settings-clear-background'),
+     onStatus: (callback) => {
+       const listener = (_event, status) => callback(status)
+       ipcRenderer.on('settings-status', listener)
+       return () => ipcRenderer.removeListener('settings-status', listener)
+     }
+  },
+  updater: {
+     getVersion: () => ipcRenderer.invoke('get-app-version'),
+     getPreviousVersions: () => ipcRenderer.invoke('get-previous-versions'),
+     rollback: (tag) => ipcRenderer.invoke('rollback-to-version', tag),
+     getDowngradeTarget: () => ipcRenderer.invoke('get-downgrade-target'),
+     downgradeToPrevious: () => ipcRenderer.invoke('downgrade-to-previous'),
+     showUpdateNotice: () => ipcRenderer.invoke('show-update-notice'),
+     checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+     getLastUpdateInfo: () => ipcRenderer.invoke('get-last-update-info'),
+     onUpdateAvailable: (cb) => {
+       const listener = (_event, info) => cb(info)
+       ipcRenderer.on('update-available-notify', listener)
+       return () => ipcRenderer.removeListener('update-available-notify', listener)
+     }
   },
  microsoft: {
     login: () => ipcRenderer.invoke('ms-login'),

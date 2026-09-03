@@ -20,6 +20,7 @@
   "ignoreDependencies": [
     "@fortawesome/fontawesome-free",
     "clinic",
-    "memlab"
+    "memlab",
+    "asar"
   ]
 }

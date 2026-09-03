@@ -1,3 +1,4 @@
+const crypto = require('crypto')
 const fs = require('fs')
 const path = require('path')
 const { Transform } = require('stream')
@@ -9,17 +10,39 @@ const DEFAULT_MAX_ENTRIES = 100000
 const DEFAULT_MAX_ENTRY_BYTES = 512 * 1024 * 1024
 const DEFAULT_MAX_TOTAL_BYTES = 4 * 1024 * 1024 * 1024
 
+function isReservedWindowsDeviceNameZip(component) {
+  const base = String(component).split('.')[0].split(':')[0].toLowerCase()
+  return [
+    'con', 'prn', 'aux', 'nul',
+    'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
+    'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9',
+    'conin$', 'conout$'
+  ].includes(base)
+}
+
 function normalizeZipPath(value) {
-  const normalized = String(value || '').replace(/\\/g, '/')
-  const parts = normalized.split('/')
-  if (
-    !normalized ||
-    normalized.includes('\0') ||
-    normalized.startsWith('/') ||
-    /^[a-zA-Z]:/.test(normalized) ||
-    parts.includes('..')
-  ) {
+  const raw = String(value || '')
+  if (!raw || raw.includes('\0')) {
     throw new Error(`Ruta insegura dentro del ZIP: ${value}`)
+  }
+  if (raw.includes('\\')) {
+    throw new Error(`Ruta insegura dentro del ZIP: ${value}`)
+  }
+  if (raw.startsWith('/') || /^[a-zA-Z]:/.test(raw) || raw.startsWith('//')) {
+    throw new Error(`Ruta insegura dentro del ZIP: ${value}`)
+  }
+  const parts = raw.split('/')
+  for (const part of parts) {
+    if (part === '') {
+      throw new Error(`Ruta insegura dentro del ZIP: ${value}`)
+    }
+    if (part === '..') {
+      throw new Error(`Ruta insegura dentro del ZIP: ${value}`)
+    }
+    if (part === '.') continue
+    if (isReservedWindowsDeviceNameZip(part)) {
+      throw new Error(`Ruta insegura dentro del ZIP: ${value}`)
+    }
   }
   return parts.filter(part => part && part !== '.').join('/')
 }
@@ -29,8 +52,71 @@ function isZipSymlink(entry) {
   return unixMode === 0o120000
 }
 
+function diagnoseZipFile(archivePath, originalError) {
+  let stat = null
+  try { stat = fs.statSync(archivePath) } catch {}
+  const size = stat ? stat.size : -1
+  if (size === 0) {
+    return new Error(`Archivo .mrpack vacío (0 bytes). Descarga incompleta o corrupta: ${archivePath}. Re-descarga el modpack.`)
+  }
+  if (size > 0 && size < 22) {
+    return new Error(`Archivo .mrpack truncado (${size} bytes, mínimo 22). Re-descarga el modpack. Detalle: ${originalError.message}`)
+  }
+  let headerHex = '??'
+  let headerText = ''
+  let fd = null
+  try {
+    fd = fs.openSync(archivePath, 'r')
+    const head = Buffer.alloc(Math.min(16, size))
+    fs.readSync(fd, head, 0, head.length, 0)
+    headerHex = head.toString('hex')
+    headerText = head.toString('utf8', 0, Math.min(8, head.length)).replace(/[^\x20-\x7E]/g, '.')
+  } catch {} finally {
+    if (fd !== null) try { fs.closeSync(fd) } catch {}
+  }
+  const isHtml = headerText.trimStart().startsWith('<') || headerHex.startsWith('3c')
+  const isZip = headerHex.startsWith('504b0304') || headerHex.startsWith('504b0506') || headerHex.startsWith('504b0708')
+  if (isHtml) {
+    return new Error(`El archivo no es un ZIP válido (cabecera ${headerHex} = "${headerText}", ${size} bytes). Parece HTML (página de error/Cloudflare). Descarga el .mrpack directo de Modrinth con el navegador y reintenta.`)
+  }
+  if (!isZip) {
+    return new Error(`El archivo no es un ZIP válido (cabecera 0x${headerHex} "${headerText}", ${size} bytes). Archivo corrupto o formato incorrecto (¿es un .zip de CurseForge renombrado?). Detalle: ${originalError.message}`)
+  }
+  return new Error(`${originalError.message} (tamaño ${size} bytes, cabecera 0x${headerHex}). Archivo .mrpack corrupto o truncado. Re-descarga el modpack y verifica que abra con 7-Zip/WinRAR.`)
+}
+
 async function withZip(archivePath, callback) {
-  const zip = await open(archivePath, { lazyEntries: true, autoClose: false, strictFileNames: true })
+  let zip
+  try {
+    zip = await open(archivePath, { lazyEntries: true, autoClose: false, strictFileNames: true })
+  } catch (error) {
+    const msg = String(error && error.message || '')
+    const isEocd = /end of central directory/i.test(msg)
+    if (isEocd) {
+      const diagnosed = diagnoseZipFile(archivePath, error)
+      // Fallback: intenta leer como Buffer (evita bug de fd-slicer) — limitado a 100MiB para no OOM
+      let fallbackSucceeded = false
+      let fallbackResult
+      try {
+        const stat = fs.statSync(archivePath)
+        if (stat.size >= 22 && stat.size <= 100 * 1024 * 1024) {
+          const buffer = fs.readFileSync(archivePath)
+          if (buffer.length >= 22 && buffer[0] === 0x50 && buffer[1] === 0x4b) {
+            const fallbackZip = await open(buffer, { lazyEntries: true, autoClose: false, strictFileNames: true })
+            try {
+              fallbackResult = await callback(fallbackZip)
+              fallbackSucceeded = true
+            } finally {
+              try { fallbackZip.close() } catch {}
+            }
+          }
+        }
+      } catch {}
+      if (fallbackSucceeded) return fallbackResult
+      throw diagnosed
+    }
+    throw error
+  }
   try {
     return await callback(zip)
   } finally {
@@ -58,6 +144,7 @@ async function readZipEntryBuffer(archivePath, entryName, maxBytes = 10 * 1024 *
     let visited = 0
     for await (const entry of walkEntriesGenerator(zip)) {
       if (++visited > DEFAULT_MAX_ENTRIES) throw new Error('El ZIP contiene demasiadas entradas.')
+      if (entry.fileName.endsWith('/')) continue
       const name = normalizeZipPath(entry.fileName)
       if (name !== wanted) continue
       if (isZipSymlink(entry)) throw new Error(`La entrada ZIP no puede ser un enlace: ${name}`)
@@ -104,8 +191,8 @@ async function extractZipEntries(archivePath, destinationRoot, options = {}) {
     let visited = 0
     for await (const entry of walkEntriesGenerator(zip)) {
       if (++visited > maxEntries) throw new Error('El ZIP contiene demasiadas entradas.')
-      const sourceName = normalizeZipPath(entry.fileName)
       if (entry.fileName.endsWith('/')) continue
+      const sourceName = normalizeZipPath(entry.fileName)
       if (isZipSymlink(entry)) throw new Error(`El ZIP contiene un enlace no permitido: ${sourceName}`)
       const mapped = mapEntry(sourceName, entry)
       if (!mapped) continue
@@ -131,7 +218,8 @@ async function writeZip(destination, configure) {
     addBuffer: (buffer, name) => zip.addBuffer(Buffer.from(buffer), normalizeZipPath(name)),
     addFile: (filePath, name) => zip.addFile(filePath, normalizeZipPath(name))
   })
-  const temporaryPath = `${destination}.part-${process.pid}-${Date.now()}`
+  const randomSuffix = crypto.randomUUID ? crypto.randomUUID() : `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const temporaryPath = `${destination}.part-${randomSuffix}`
   fs.mkdirSync(path.dirname(destination), { recursive: true })
   try {
     const completed = pipeline(zip.outputStream, fs.createWriteStream(temporaryPath))
@@ -140,7 +228,12 @@ async function writeZip(destination, configure) {
     try {
       await fs.promises.rename(temporaryPath, destination)
     } catch (error) {
-      if (!['EEXIST', 'EPERM'].includes(error.code)) throw error
+      if (!['EEXIST', 'EPERM', 'EXDEV'].includes(error.code)) throw error
+      if (error.code === 'EXDEV') {
+        await fs.promises.copyFile(temporaryPath, destination)
+        await fs.promises.rm(temporaryPath, { force: true }).catch(() => {})
+        return
+      }
       await fs.promises.rm(destination, { force: true })
       await fs.promises.rename(temporaryPath, destination)
     }

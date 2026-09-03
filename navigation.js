@@ -103,7 +103,8 @@ async function loadSection(sectionName, navEl) {
   const targetView = activateSectionView(sectionName, navEl)
   if (!targetView) return
 
-  setTopbarMode('nav', navEl ? (navEl.dataset.viewTitle || navEl.textContent.trim()) : t('nav.home'))
+  const viewKey = navEl ? navEl.getAttribute('data-i18n-view-title') || navEl.dataset.viewTitle : null
+  setTopbarMode('nav', navEl ? (navEl.dataset.viewTitle || navEl.textContent.trim()) : t('nav.home'), viewKey || 'nav.home')
 
   if (loadedSections.has(sectionName)) {
     return
@@ -150,10 +151,10 @@ async function loadSection(sectionName, navEl) {
 
 function goHomeFromInstance() {
   activateSectionView('home', document.getElementById('nav-home'))
-  setTopbarMode('nav', t('nav.home'))
+  setTopbarMode('nav', t('nav.home'), 'nav.home')
 }
 
-const _setTopbarModeImpl = function(mode, title) {
+const _setTopbarModeImpl = function(mode, title, i18nKey) {
   const topbar = document.getElementById('subheader')
   const titleEl = document.getElementById('topbar-title')
   if (!topbar || !titleEl) return
@@ -163,8 +164,10 @@ const _setTopbarModeImpl = function(mode, title) {
     titleEl.textContent = title || t('instance.title.fallback')
   } else {
     topbar.classList.remove('instance-mode')
-    titleEl.dataset.i18nKey = 'nav.home'
-    titleEl.textContent = title || t('nav.home')
+    const key = i18nKey || (title ? null : 'nav.home')
+    if (key) titleEl.dataset.i18nKey = key
+    else delete titleEl.dataset.i18nKey
+    titleEl.textContent = title || t(i18nKey || 'nav.home')
   }
 }
 

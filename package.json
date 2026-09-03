@@ -1,6 +1,6 @@
 {
   "name": "kindyrlauncher",
-  "version": "1.2.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Kindyr Launcher - Tu launcher de Minecraft",
   "main": "main.js",
@@ -38,9 +38,9 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",
-    "@xmcl/core": "^2.15.1",
-    "@xmcl/file-transfer": "^2.0.3",
-    "@xmcl/installer": "^6.1.2",
+    "@xmcl/core": "2.15.1",
+    "@xmcl/file-transfer": "2.0.3",
+    "@xmcl/installer": "6.1.2",
     "@xmcl/unzip": "2.1.2",
     "electron-updater": "^6.8.9",
     "ffmpeg-static": "^5.3.0",
@@ -78,6 +78,8 @@
     "files": [
       "main.js",
       "account-storage.js",
+      "curseforge-store.js",
+      "curseforge-embedded.json",
       "archive-utils.js",
       "mrpack-utils.js",
       "skin-security.js",
@@ -88,6 +90,7 @@
       "navigation.js",
       "accounts.js",
       "instances.js",
+      "curseforge.js",
       "modrinth.js",
       "launcher.js",
       "index.html",
@@ -128,11 +131,11 @@
     }
   },
   "allowScripts": {
-    "electron@42.3.0": true,
-    "ffmpeg-static@5.3.0": true
+    "electron": true,
+    "ffmpeg-static": true
   },
   "overrides": {
-    "js-yaml": "^4.3.0",
+    "js-yaml": "^4.3.2",
     "undici": "^7.28.0"
   }
 }

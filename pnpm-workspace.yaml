@@ -1,0 +1,9 @@
+allowBuilds:
+  electron: true
+  ffmpeg-static: true
+  "@memlab/cli": false
+  electron-winstaller: false
+  es5-ext: false
+  memlab: false
+  puppeteer: false
+  sleep: false

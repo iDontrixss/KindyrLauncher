@@ -1,11 +1,24 @@
 <div class="page-head discover-page-head">
   <div>
     <div class="page-title" data-i18n="discover.title">Descubrir</div>
-    <div class="page-subtitle" data-i18n="discover.subtitle">Explorá proyectos reales publicados en Modrinth.</div>
+    <div class="page-subtitle" data-i18n="discover.subtitle">Explorá proyectos reales publicados en Modrinth y CurseForge.</div>
   </div>
-  <div class="discover-api-badge" aria-label="Modrinth API">
-    <span class="discover-api-mark"><i class="fa-solid fa-cube"></i></span>
-    <span><strong>MODRINTH</strong><small data-i18n="discover.api.live">API EN VIVO</small></span>
+  <div class="discover-provider-col">
+    <div class="discover-provider-switch" role="tablist" aria-label="Proveedor">
+      <button type="button" class="provider-chip active" data-provider="modrinth" onclick="selectDiscoverProvider('modrinth')" role="tab" aria-selected="true"><i class="fa-solid fa-cube"></i><span>Modrinth</span></button>
+      <button type="button" class="provider-chip" data-provider="curseforge" onclick="selectDiscoverProvider('curseforge')" role="tab" aria-selected="false"><i class="fa-solid fa-fire"></i><span>CurseForge</span></button>
+    </div>
+  </div>
+</div>
+<div class="discover-curseforge-setup" id="discover-curseforge-setup" hidden>
+  <div class="discover-curseforge-setup-icon"><i class="fa-solid fa-key"></i></div>
+  <div>
+    <strong>CurseForge requiere API key</strong>
+    <small>La key se guarda cifrada con safeStorage, nunca en texto plano. Pegala una vez.</small>
+  </div>
+  <div class="discover-curseforge-setup-actions">
+    <input class="setting-input" id="curseforge-key-input" type="password" placeholder="$2a$10$..." autocomplete="off" spellcheck="false" style="min-width:280px">
+    <button type="button" class="primary-btn" onclick="saveCurseForgeKey()"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
   </div>
 </div>
 
@@ -102,7 +115,6 @@
 
     <div class="discover-meta">
       <span id="discover-summary" data-i18n="discover.ready">Listo para buscar mods y contenido.</span>
-      <span class="discover-live-status"><i></i><span data-i18n="discover.source.live">Datos en vivo</span></span>
     </div>
 
     <div class="discover-results" id="discover-results"></div>
@@ -118,12 +130,74 @@
 </div>
 
 <script>
+let discoverProvider = 'modrinth'
 let discoverType = 'all'
 let discoverOffset = 0
 let discoverTotal = 0
 let discoverTimer = null
 let discoverLoading = false
 let discoverLimit = 18
+let discoverAbortController = null
+let discoverRequestId = 0
+
+function tDiscover(key, vars) {
+  const raw = t(key, vars)
+  if (discoverProvider === 'curseforge') {
+    return raw.replace(/Modrinth/g, 'CurseForge')
+  }
+  return raw
+}
+
+function updateDiscoverProviderTexts() {
+  const subtitle = document.querySelector('[data-i18n="discover.subtitle"]')
+  if (subtitle) {
+    const isCF = discoverProvider === 'curseforge'
+    subtitle.textContent = isCF
+      ? (settings.language === 'en' ? 'Explore real projects published on CurseForge.' : 'Explorá proyectos reales publicados en CurseForge.')
+      : t('discover.subtitle')
+  }
+  const q = document.getElementById('discover-query')
+  if (q) {
+    q.placeholder = tDiscover('discover.search')
+  }
+}
+
+function selectDiscoverProvider(provider) {
+  discoverProvider = provider === 'curseforge' ? 'curseforge' : 'modrinth'
+  try { localStorage.setItem('kindyr-discover-provider', discoverProvider) } catch {}
+  document.querySelectorAll('.provider-chip').forEach(btn => {
+    const isActive = btn.dataset.provider === discoverProvider
+    btn.classList.toggle('active', isActive)
+    btn.setAttribute('aria-selected', String(isActive))
+  })
+  updateDiscoverProviderTexts()
+  checkCurseForgeStatus()
+  searchModrinth(true)
+}
+
+async function checkCurseForgeStatus() {
+  const setup = document.getElementById('discover-curseforge-setup')
+  if (!setup) return
+  if (discoverProvider !== 'curseforge') { setup.hidden = true; return }
+  try {
+    const r = await window.kindyrAPI?.curseforge?.status?.()
+    setup.hidden = Boolean(r && r.hasKey)
+  } catch { setup.hidden = true }
+}
+
+async function saveCurseForgeKey() {
+  const input = document.getElementById('curseforge-key-input')
+  const key = input ? String(input.value || '').trim() : ''
+  if (!key || key.length < 10) { setStatus('API key inválida'); return }
+  try {
+    const r = await window.kindyrAPI.curseforge.setKey(key)
+    if (!r.ok) { setStatus(r.error || 'No se pudo guardar'); return }
+    if (input) input.value = ''
+    document.getElementById('discover-curseforge-setup').hidden = true
+    setStatus('CurseForge configurado ✓')
+    searchModrinth(true)
+  } catch (e) { setStatus(e.message || String(e)) }
+}
 
 function getDiscoverUI() {
   const ui = {
@@ -258,7 +332,13 @@ function scheduleModrinthSearch() {
   discoverTimer = setTimeout(() => searchModrinth(true), 450)
 }
 
-function getProjectTypeLabel(type) {
+function getProjectTypeLabel(type, project) {
+  // Para Modrinth, datapack/plugin vienen como project_type=mod + categories
+  if (type === 'mod' && project) {
+    const cats = (project.categories || []).concat(project.display_categories || [])
+    if (cats.includes('datapack')) return t('discover.type.datapack')
+    if (cats.some(c => ['bukkit','spigot','paper','purpur','folia','velocity','waterfall','sponge'].includes(c))) return t('discover.type.plugin')
+  }
   const labels = {
     mod: t('discover.type.modSingle'),
     modpack: t('discover.type.modpackSingle'),
@@ -271,6 +351,7 @@ function getProjectTypeLabel(type) {
 }
 
 function getProjectUrl(project) {
+  if (project._curseForge) return project._curseUrl || ('https://www.curseforge.com/minecraft/mc-mods/' + encodeURIComponent(project.slug))
   return 'https://modrinth.com/' + encodeURIComponent(project.project_type || 'mod') + '/' + encodeURIComponent(project.slug)
 }
 
@@ -328,20 +409,21 @@ function renderDiscoverResults(projects, ui = getDiscoverUI()) {
     const encodedProject = escapeHtml(JSON.stringify(project))
     const encodedUrl = escapeHtml(JSON.stringify(getProjectUrl(project)))
     const updated = formatDiscoverDate(project.date_modified)
+    const isCF = Boolean(project._curseForge)
     return '<article class="project-card">' +
       '<div class="project-card-top">' +
         '<div class="project-icon">' + icon + '</div>' +
         '<div class="project-identity">' +
-          '<span class="project-kind">' + escapeHtml(getProjectTypeLabel(project.project_type)) + '</span>' +
+          '<span class="project-kind">' + escapeHtml(getProjectTypeLabel(project.project_type, project)) + (isCF ? ' · CurseForge' : '') + '</span>' +
           '<div class="project-title" title="' + escapeHtml(project.title) + '">' + escapeHtml(project.title) + '</div>' +
-          '<div class="project-author">' + t('discover.by', { author: escapeHtml(project.author || 'Modrinth') }) + '</div>' +
+          '<div class="project-author">' + t('discover.by', { author: escapeHtml(project.author || (isCF ? 'CurseForge' : 'Modrinth')) }) + '</div>' +
         '</div>' +
       '</div>' +
       '<div class="project-desc">' + escapeHtml(project.description || t('discover.noDescription')) + '</div>' +
       '<div class="project-tags">' + categories.map(tag => '<span class="project-tag">' + escapeHtml(tag) + '</span>').join('') + (version ? '<span class="project-tag">' + escapeHtml(version) + '</span>' : '') + '</div>' +
       '<div class="project-stats">' +
         '<span><i class="fa-solid fa-download"></i><strong>' + formatCompactNumber(project.downloads) + '</strong><small>' + t('discover.downloads') + '</small></span>' +
-        '<span><i class="fa-solid fa-heart"></i><strong>' + formatCompactNumber(project.follows) + '</strong><small>' + t('discover.followers') + '</small></span>' +
+        (isCF ? '' : '<span><i class="fa-solid fa-heart"></i><strong>' + formatCompactNumber(project.follows) + '</strong><small>' + t('discover.followers') + '</small></span>') +
         (updated ? '<span class="project-updated"><i class="fa-solid fa-clock"></i><small>' + escapeHtml(updated) + '</small></span>' : '') +
       '</div>' +
       '<div class="project-actions">' +
@@ -406,12 +488,22 @@ async function installDiscoverProjectDirect(project, button) {
 async function installProjectIntoInstance(project, instanceId) {
   const instance = launcherInstances.find(item => item.id === instanceId)
   if (!instance) return { ok: false, error: t('settings.validation.error') }
+  const categories = project.display_categories || project.categories || []
+  const installKind = categories.includes('datapack') ? 'datapack' : (project.project_type || 'mod')
+  const isCF = Boolean(project._curseForge)
+  if (isCF) {
+    if (!window.kindyrAPI?.curseforge?.installLatestRelease) return { ok: false, error: t('home.searchFailed') }
+    return window.kindyrAPI.curseforge.installLatestRelease({
+      project,
+      instanceId: instance.id,
+      gameVersion: instance.version,
+      loader: instance.loader || 'vanilla',
+      installKind
+    })
+  }
   if (!window.kindyrAPI?.modrinth?.installLatestRelease) {
     return { ok: false, error: t('home.searchFailed') }
   }
-
-  const categories = project.display_categories || project.categories || []
-  const installKind = categories.includes('datapack') ? 'datapack' : (project.project_type || 'mod')
   return window.kindyrAPI.modrinth.installLatestRelease({
     project,
     instanceId: instance.id,
@@ -422,32 +514,78 @@ async function installProjectIntoInstance(project, instanceId) {
 }
 
 async function searchModrinth(resetPage = false) {
-  if (discoverLoading) return
   const ui = getDiscoverUI()
   if (!ui) return
   if (resetPage) discoverOffset = 0
+
+  // P1-3: AbortController + request ID — cancela request anterior y evita que respuesta vieja pise B
+  if (discoverAbortController) {
+    try { discoverAbortController.abort() } catch {}
+  }
+  const abortController = new AbortController()
+  discoverAbortController = abortController
+  const myRequestId = ++discoverRequestId
+  const requestContextId = getDiscoverInstanceContext()?.id || null
   discoverLoading = true
+  updateDiscoverPager(ui)
 
   const query = ui.query.value
   const version = ui.version.value
   const loader = ui.loader.value
   const sort = ui.sort.value
-  const requestContextId = getDiscoverInstanceContext()?.id || null
-  ui.summary.textContent = t('discover.loading')
+  ui.summary.textContent = tDiscover('discover.loading')
   renderDiscoverMessage(t('discover.loadingResults'), ui)
 
-  const result = await window.kindyrAPI.modrinth.search({ query, version, loader, sort, type: discoverType, offset: discoverOffset, limit: discoverLimit })
+  let result
+  try {
+    const searchPromise = discoverProvider === 'curseforge'
+      ? window.kindyrAPI.curseforge.search({ query, version, loader, sort, type: discoverType, offset: discoverOffset, limit: discoverLimit })
+      : window.kindyrAPI.modrinth.search({ query, version, loader, sort, type: discoverType, offset: discoverOffset, limit: discoverLimit })
+    const abortPromise = new Promise((_, reject) => {
+      abortController.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+    })
+    result = await Promise.race([searchPromise, abortPromise])
+  } catch (e) {
+    if (e && (e.name === 'AbortError' || abortController.signal.aborted)) {
+      // No mostrar error para abortada, solo limpiar loading si es la última
+      if (myRequestId === discoverRequestId) {
+        discoverLoading = false
+        updateDiscoverPager(ui)
+      }
+      return
+    }
+    // Error real
+    if (myRequestId !== discoverRequestId) return
+    if (abortController.signal.aborted) return
+    discoverLoading = false
+    updateDiscoverPager(ui)
+    if (!ui.query.isConnected || getDiscoverUI()?.query !== ui.query) return
+    if ((getDiscoverInstanceContext()?.id || null) !== requestContextId) {
+      searchModrinth(true)
+      return
+    }
+    ui.summary.textContent = tDiscover('discover.error')
+    renderDiscoverMessage(e.message || tDiscover('discover.searchFailed'), ui)
+    setStatus(e.message || tDiscover('discover.searchFailed'))
+    return
+  }
 
+  // Protección request ID: si llegó una nueva búsqueda mientras esta estaba en vuelo, ignorar resultado viejo
+  if (myRequestId !== discoverRequestId) return
+  if (abortController.signal.aborted) return
   discoverLoading = false
+  updateDiscoverPager(ui)
   if (!ui.query.isConnected || getDiscoverUI()?.query !== ui.query) return
   if ((getDiscoverInstanceContext()?.id || null) !== requestContextId) {
     searchModrinth(true)
     return
   }
   if (!result.ok) {
-    ui.summary.textContent = t('discover.error')
-    renderDiscoverMessage(result.error || t('discover.searchFailed'), ui)
-    setStatus(result.error || t('discover.searchFailed'))
+    // Si fue abortada en main (error AbortError), no mostrar
+    if (result.error && String(result.error).toLowerCase().includes('abort')) return
+    ui.summary.textContent = tDiscover('discover.error')
+    renderDiscoverMessage(result.error || tDiscover('discover.searchFailed'), ui)
+    setStatus(result.error || tDiscover('discover.searchFailed'))
     return
   }
 
@@ -462,20 +600,42 @@ async function searchModrinth(resetPage = false) {
 
 function changeDiscoverPage(direction) {
   const nextOffset = discoverOffset + direction * discoverLimit
-  discoverOffset = Math.max(0, Math.min(nextOffset, Math.max(0, discoverTotal - discoverLimit)))
+  const maxOffset = Math.max(0, Math.ceil(discoverTotal / discoverLimit) * discoverLimit - discoverLimit)
+  discoverOffset = Math.max(0, Math.min(nextOffset, maxOffset))
   searchModrinth(false)
 }
 
 async function openModrinthProject(url) {
-  const result = await window.kindyrAPI.modrinth.openProject(url)
-  setStatus(result.ok ? t('discover.openingProject') : result.error)
+  const api = discoverProvider === 'curseforge' ? window.kindyrAPI.curseforge : window.kindyrAPI.modrinth
+  const result = await api.openProject(url)
+  setStatus(result.ok ? tDiscover('discover.openingProject') : result.error)
 }
 
 async function initializeDiscover() {
   renderDiscoverTypes()
   await loadDiscoverVersions()
   syncDiscoverContextView(false)
+  try {
+    const saved = localStorage.getItem('kindyr-discover-provider')
+    if (saved === 'curseforge' || saved === 'modrinth') discoverProvider = saved
+  } catch {}
+  document.querySelectorAll('.provider-chip').forEach(btn => btn.classList.toggle('active', btn.dataset.provider === discoverProvider))
+  updateDiscoverProviderTexts()
+  checkCurseForgeStatus()
   searchModrinth(true)
+  // Mantener textos de provider tras cambio de idioma
+  try {
+    const _origApply = window.applyLanguage
+    if (_origApply && !_origApply.__kindyrPatched) {
+      const patched = function() {
+        const r = _origApply.apply(this, arguments)
+        try { updateDiscoverProviderTexts() } catch {}
+        return r
+      }
+      patched.__kindyrPatched = true
+      window.applyLanguage = patched
+    }
+  } catch {}
 }
 
 initializeDiscover()

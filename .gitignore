@@ -23,6 +23,11 @@ yarn-error.log*
 # Environment variables
 .env*
 !.env.example
+# CurseForge embedded key (obfuscated, contiene secret compartido)
+curseforge-embedded.json
+# Prototipos — no commitear, solo código (ver petición usuario)
+update-notice-prototype.html
+*.prototype.html
 
 # Logs
 *.log
