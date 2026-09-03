@@ -1,4 +1,11 @@
 #!/usr/bin/env node
+// Kindyr Launcher - Copyright (C) 2026 iDontrixss
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 // Genera curseforge-embedded.json obfuscado desde CURSEFORGE_API_KEY env
 // Uso: CURSEFORGE_API_KEY="$2a$10$..." node scripts/obfuscate-curseforge-key.js
 // Resultado: curseforge-embedded.json {k:"base64..."} gitignored, nunca plaintext en repo

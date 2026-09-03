@@ -1,6 +1,8 @@
 # Avisos de terceros
 
-Kindyr incorpora software de terceros. Sus licencias prevalecen para esos componentes.
+Kindyr Launcher es software libre bajo **GPL-3.0-or-later** (ver [LICENSE](../LICENSE)). Podés usarlo, modificarlo y compartirlo, siempre que mantengas la misma licencia y entregues el código fuente.
+
+Kindyr incorpora software de terceros. Sus licencias prevalecen para esos componentes y son compatibles con GPL-3.0-or-later:
 
 - Electron — MIT.
 - XMCL (`@xmcl/core`, `@xmcl/file-transfer`, `@xmcl/installer`, `@xmcl/unzip`) — MIT.

@@ -31,7 +31,7 @@ Los artefactos se crean en `dist/`. Las credenciales de Microsoft se cifran con 
 
 ## Estado de lanzamiento
 
-La versión declarada es `1.2.0`. Antes de publicar, debe completarse [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), incluida la validación en una instalación limpia, la firma de artefactos y la configuración del repositorio remoto.
+La versión declarada es `0.1.0` (beta). Antes de publicar, debe completarse [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), incluida la validación en una instalación limpia, la firma de artefactos y la configuración del repositorio remoto. El changelog es local (`CHANGELOG.md` ignorado en git) — no se commitea.
 
 ## Seguridad y privacidad
 
@@ -39,4 +39,4 @@ Consulta [SECURITY.md](SECURITY.md), [PRIVACY.md](PRIVACY.md) y [THIRD_PARTY_NOT
 
 ## Licencia
 
-El código propio se distribuye bajo la licencia ISC incluida en [LICENSE](LICENSE). Los componentes de terceros mantienen sus propias licencias.
+El código propio se distribuye bajo **GPL-3.0-or-later** — ver [LICENSE](LICENSE). Sos libre de usar, modificar y compartir el programa siempre que mantengas la misma licencia y compartas el código fuente. Los componentes de terceros mantienen sus propias licencias (ver [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).

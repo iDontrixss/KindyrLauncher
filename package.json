@@ -24,7 +24,7 @@
   },
   "keywords": [],
   "author": "iDontrixss",
-  "license": "ISC",
+  "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
     "url": "https://github.com/iDontrixss/KindyrLauncher.git"
@@ -99,6 +99,8 @@
       "update-confirmation.html",
       "styles.css",
       "package.json",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
       "icon.ico",
       "assets/**/*",
       "sections/**/*",

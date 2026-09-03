@@ -6,7 +6,7 @@
 - [ ] `npm ci --include=dev`, `npm run check:syntax`, `npm test` y `npm ls --include=dev` pasan.
 - [ ] `npm audit --omit=dev` informa cero vulnerabilidades.
 - [ ] MCLC, herramientas de diagnóstico y archivos de respaldo no aparecen en el ASAR.
-- [ ] La versión coincide en `package.json`, changelog, nombres de artefactos y etiqueta Git.
+- [ ] La versión coincide en `package.json`, nombres de artefactos y etiqueta Git (changelog es local, no se commitea — ver `CHANGELOG.md` ignorado).
 
 ## Pruebas funcionales
 
@@ -26,8 +26,9 @@
 - [ ] Activar protección de rama y CI.
 - [ ] Configurar y verificar firma de código de Windows.
 - [ ] Definir firma o checksums verificables para AppImage.
-- [ ] Confirmar obligaciones de redistribución de FFmpeg y avisos de terceros.
-- [ ] Crear una etiqueta firmada `v1.2.0`.
+- [ ] Confirmar obligaciones de redistribución GPL-3.0-or-later: `LICENSE` incluida en el artefacto, `THIRD_PARTY_NOTICES.md` al día y cabeceras `SPDX` en cada fuente.
+- [ ] Confirmar obligaciones de redistribución de FFmpeg (GPL-3.0-or-later) y avisos de terceros.
+- [ ] Crear una etiqueta firmada `v0.1.0` (o siguiente beta).
 - [ ] Publicar checksums SHA-256 y probar cada artefacto descargado.
 - [ ] Comprobar que electron-updater encuentra y valida la nueva versión.
 - [ ] Mantener un canal privado para reportes de seguridad.

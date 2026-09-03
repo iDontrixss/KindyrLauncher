@@ -51,5 +51,8 @@ audit-*.txt
 # Coverage
 coverage/
 
+# Changelog local — no va al repo (fácil de leer, se genera en local)
+CHANGELOG.md
+
 # Loryq specific
 audit-loryq.txt

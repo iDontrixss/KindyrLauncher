@@ -1,3 +1,10 @@
+// Kindyr Launcher - Copyright (C) 2026 iDontrixss
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 const fs = require('fs')
 const path = require('path')
 
@@ -21,7 +28,9 @@ const REQUIRED_ASAR_FILES = [
   'skin-security.js',
   'main.js',
   'preload.js',
-  'curseforge-embedded.json'
+  'curseforge-embedded.json',
+  'LICENSE',
+  'THIRD_PARTY_NOTICES.md'
 ]
 
 module.exports = async function afterPack(context) {
