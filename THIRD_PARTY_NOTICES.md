@@ -33,10 +33,13 @@ Extraído de `package.json:39` y verificado contra `package-lock.json` y `pnpm-l
 - **XMCL** (`@xmcl/core` 2.15.1, `@xmcl/file-transfer` 2.0.3, `@xmcl/installer` 6.1.2, `@xmcl/unzip` 2.1.2) — MIT. Motor único de instalación/lanzamiento de Minecraft (reemplaza MCLC).
 - **electron-updater / electron-builder 26** — MIT. Actualización y empaquetado NSIS/AppImage.
 - **Font Awesome Free 6.7.2** — Iconos CC BY 4.0, fuentes SIL OFL 1.1, código MIT.
-- **ffmpeg-static 5.3.0** — distribuye un binario de FFmpeg. FFmpeg puede distribuirse bajo LGPL o GPL según cómo esté configurado y compilado, por lo que es necesario verificar el build que se incluye y cumplir con su licencia. Código fuente e instrucciones en `https://github.com/eugeneware/ffmpeg-static` y `https://ffmpeg.org/legal.html`.
-- **msmc 5.0.5** — MIT/ISC. Flujo Microsoft/Xbox.
-- **semver 7.8.4**, **tar 7.5.22**, **yazl 2.5.1** — según licencia de cada paquete (ISC/MIT). Utilidades de versiones y ZIP.
-- **Transitivas relevantes fijadas por `overrides`:** `js-yaml` ^4.3.2, `undici` ^7.28.0 (actualizadas vía `package-lock.json`/`pnpm-lock.yaml` para corregir vulnerabilidades).
+- **ffmpeg-static 5.3.0** — paquete bajo GPL-3.0-or-later que descarga binarios estáticos de FFmpeg. **Binario distribuido por Kindyr en Windows: `ffmpeg.exe` 64-bit `6.1.1-essentials_build-www.gyan.dev` desde `www.gyan.dev`, con licencia `GPL v3` (ver `node_modules/ffmpeg-static/ffmpeg.exe.LICENSE` y `ffmpeg.exe.README`).** Código fuente FFmpeg correspondiente: `https://github.com/FFmpeg/FFmpeg/commit/e38092ef93` y configuración `release-essentials`. Cualquier redistribución debe acompañarse del aviso GPL v3 y acceso al fuente. Referencias: `https://github.com/eugeneware/ffmpeg-static/releases/tag/b6.1.1`, `https://www.gyan.dev/ffmpeg/builds/`, `https://ffmpeg.org/legal.html`.
+- **msmc 5.0.5** — MIT (`package.json:license MIT`, repo `https://github.com/Hanro50/MSMC`). Flujo Microsoft/Xbox/Microsoft Authentication Library.
+- **semver 7.8.4** — ISC (`node_modules/semver/package.json:license ISC`, GitHub Inc.).
+- **tar 7.5.22** — BlueOak-1.0.0 (`node_modules/tar/package.json:license BlueOak-1.0.0`, autor Isaac Z. Schlueter). Implementación `tar` para `mrpack` y backups.
+- **yazl 2.5.1** — MIT (`node_modules/yazl/package.json:license MIT`, autor Josh Wolfe). Creación ZIP.
+- **skinview3d 3.4.1** (vía `https://cdn.jsdelivr.net/npm/skinview3d@3.4.1`) — MIT (`https://cdn.jsdelivr.net/npm/skinview3d@3.4.1/package.json:license MIT`, autor Haowei Wen, repo `https://github.com/bs-community/skinview3d`). No está en `package.json`, se carga bajo demanda en `sections/skins.html:5` y solo contacta jsDelivr.
+- **Transitivas relevantes fijadas por `overrides`:** `js-yaml` ^4.3.2 (MIT), `undici` ^7.28.0 (MIT) — actualizadas vía `package-lock.json`/`pnpm-lock.yaml` para corregir vulnerabilidades.
 
 ## 3. Herramientas de desarrollo (no se empaquetan)
 
