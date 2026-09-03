@@ -3039,21 +3039,47 @@ ipcMain.handle('get-last-update-info', () => {
   return candidate
 })
 
+async function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+
+async function fetchWithRetry(url, options, label) {
+  // Ciclo 5s -> espera 3s -> 5s con logs en tiempo real
+  for (let intento = 1; intento <= 2; intento++) {
+    const ctrl = new AbortController()
+    const timeout = setTimeout(() => ctrl.abort(), 5000)
+    console.log(`[Kindyr][${label}] Intento ${intento}/2 — GET ${url} (timeout 5s)`)
+    try {
+      const res = await fetch(url, { ...options, signal: ctrl.signal })
+      clearTimeout(timeout)
+      console.log(`[Kindyr][${label}] Respuesta ${res.status} en intento ${intento}`)
+      return res
+    } catch (e) {
+      clearTimeout(timeout)
+      const isTimeout = e.name === 'AbortError' || String(e.message).includes('aborted')
+      console.warn(`[Kindyr][${label}] ${isTimeout ? 'Timeout 5s' : 'Error'} en intento ${intento}/2: ${e.message || e}`)
+      if (intento === 1) {
+        console.log(`[Kindyr][${label}] Esperando 3s antes de reintento...`)
+        await sleep(3000)
+      } else {
+        throw e
+      }
+    }
+  }
+}
+
 async function fetchUpdateApproval() {
-  // Puerta manual: pnpm update-kindyr actualiza update.json en main. Solo entonces se habilita UN chequeo.
-  // update.json = { updatesEnabled: true, approvedAt: "2026-09-03T..." } — no es whitelist de versión.
   const url = `https://raw.githubusercontent.com/iDontrixss/KindyrLauncher/main/update.json?t=${Date.now()}`
-  const res = await fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', Accept: 'application/json', 'User-Agent': 'KindyrLauncher/' + app.getVersion() } })
+  console.log(`[Kindyr] Iniciando UN ciclo de update (pnpm update-kindyr habilitó check)`)
+  console.log(`[Kindyr][update.json] Verificando si el ciclo está autorizado...`)
+  const res = await fetchWithRetry(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', Accept: 'application/json', 'User-Agent': 'KindyrLauncher/' + app.getVersion() } }, 'update.json')
   if (!res.ok) throw new Error(`update.json fetch failed: HTTP ${res.status}`)
   const data = await res.json()
+  console.log(`[Kindyr][update.json] OK: updatesEnabled=${data.updatesEnabled}, approvedAt=${data.approvedAt}`)
   return data
 }
 
 async function hasNewerGitHubRelease() {
-  // Circuito correcto:
-  // Vos subís v0.0.1 / v0.1.0-beta / v1.0.0 a GitHub -> Kindyr NO SABE -> pnpm update-kindyr (actualiza update.json approvedAt) -> "Habilitar updater" -> Kindyr revisa UNA vez GitHub -> ¿hay mayor? -> diálogo
-  // update.json NO es whitelist de versión, es solo "updater autorizado a consultar GitHub" y se consume en un solo check.
   let approval = null
+  // Recurso 1: update.json — ¿el ciclo está autorizado?
   try {
     approval = await fetchUpdateApproval()
     if (!approval || approval.updatesEnabled !== true || !approval.approvedAt) {
@@ -3062,26 +3088,51 @@ async function hasNewerGitHubRelease() {
     }
     const lastSeen = loadLastApprovedAt()
     if (lastSeen && String(approval.approvedAt) === String(lastSeen)) {
-      console.log(`[Kindyr] update.json ya fue chequeado una vez (approvedAt=${approval.approvedAt}), no se vuelve a consultar hasta próximo pnpm update-kindyr`)
+      console.log(`[Kindyr] Ciclo ya consumido (approvedAt=${approval.approvedAt} == lastSeen), updater DESACTIVADO hasta próximo pnpm update-kindyr`)
       return false
     }
-    console.log(`[Kindyr] pnpm update-kindyr habilitó UN chequeo (approvedAt=${approval.approvedAt}), revisando GitHub por cualquier versión mayor...`)
+    console.log(`[Kindyr] Ciclo autorizado (approvedAt=${approval.approvedAt} nuevo), pasando a GitHub Releases...`)
   } catch (e) {
-    console.warn('[Kindyr] No se pudo leer update.json, no se chequeará GitHub por seguridad:', e.message || e)
+    const isTimeout = String(e.message).includes('aborted') || e.name === 'AbortError'
+    if (isTimeout || String(e.message).includes('fetch failed')) {
+      console.warn(`[Kindyr] CHECK_FAILED en update.json tras 2 intentos (5s+3s+5s). Guardando ciclo como consumido y DESACTIVANDO updater hasta próximo pnpm update-kindyr.`)
+      try { if (approval && approval.approvedAt) saveLastApprovedAt(approval.approvedAt) } catch {}
+      // También si no pudimos leer approval, intentamos guardar el approvedAt si lo teníamos, sino no
+    } else {
+      console.warn('[Kindyr] No se pudo leer update.json, no se chequeará GitHub por seguridad:', e.message || e)
+    }
+    // En CHECK_FAILED igual se desactiva (consume el ciclo) si teníamos approvedAt
+    if (approval && approval.approvedAt) { try { saveLastApprovedAt(approval.approvedAt) } catch {} }
+    console.log('[Kindyr] Updater DESACTIVADO (CHECK_FAILED en update.json). Próximo check solo tras pnpm update-kindyr.')
     return false
   }
 
-  // Revisa GitHub por CUALQUIER versión mayor (fix 0.0.1, beta 0.1.0, release 1.0.0) — semver.gt
-  const response = await fetch('https://api.github.com/repos/iDontrixss/KindyrLauncher/releases?per_page=20', {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'User-Agent': 'KindyrLauncher/' + app.getVersion()
-    }
-  })
-  if (!response.ok) throw new Error(`GitHub releases preflight failed: HTTP ${response.status}`)
+  // Recurso 2: GitHub Releases API — ¿existe versión mayor? (con su propio ciclo 5+3+5)
+  let response
+  try {
+    response = await fetchWithRetry('https://api.github.com/repos/iDontrixss/KindyrLauncher/releases?per_page=20', {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'KindyrLauncher/' + app.getVersion() }
+    }, 'GitHub Releases')
+  } catch (e) {
+    console.warn(`[Kindyr] CHECK_FAILED en GitHub Releases tras 2 intentos (5s+3s+5s): ${e.message || e}`)
+    console.log('[Kindyr] Ciclo terminado con CHECK_FAILED. Guardando lastApprovedAt y DESACTIVANDO updater hasta próximo pnpm update-kindyr.')
+    try { saveLastApprovedAt(approval.approvedAt) } catch {}
+    return false
+  }
+
+  if (!response.ok) {
+    console.warn(`[Kindyr] GitHub Releases HTTP ${response.status} — se considera CHECK_FAILED`)
+    try { saveLastApprovedAt(approval.approvedAt) } catch {}
+    console.log('[Kindyr] Updater DESACTIVADO (CHECK_FAILED).')
+    return false
+  }
 
   const releases = await response.json()
-  if (!Array.isArray(releases)) throw new Error('GitHub releases preflight returned invalid data')
+  if (!Array.isArray(releases)) {
+    console.warn('[Kindyr] GitHub Releases data inválida — CHECK_FAILED')
+    try { saveLastApprovedAt(approval.approvedAt) } catch {}
+    return false
+  }
 
   const semver = getSemver()
   const currentVersion = semver.valid(String(app.getVersion()).replace(/^[vV]/, ''), { loose: true })
@@ -3091,8 +3142,13 @@ async function hasNewerGitHubRelease() {
     return Boolean(releaseVersion && currentVersion && semver.gt(releaseVersion, currentVersion))
   })
 
-  // Consumir el check: se marca como visto aunque no haya update, para no volver a consultar hasta próximo pnpm update-kindyr
+  // Fin de ciclo: se consume el approvedAt tanto si hay update como si no
   try { saveLastApprovedAt(approval.approvedAt) } catch {}
+  if (hasNewer) {
+    console.log(`[Kindyr] UPDATE_AVAILABLE: hay versión mayor que ${currentVersion} — mostrando diálogo y luego DESACTIVANDO updater`)
+  } else {
+    console.log(`[Kindyr] NO_UPDATE: no hay versión mayor que ${currentVersion} — ciclo terminado, updater DESACTIVADO hasta próximo pnpm update-kindyr`)
+  }
   return hasNewer
 }
 

@@ -61,6 +61,12 @@ async function main() {
   updateJson.notes = `Habilitado via pnpm update-kindyr ${new Date().toISOString().slice(0,10)} — autoriza UN chequeo a GitHub`
   fs.writeFileSync(updateJsonPath, JSON.stringify(updateJson, null, 2) + '\n')
   console.log(`update.json habilitado (approvedAt=${updateJson.approvedAt}) — autoriza UN chequeo a GitHub para cualquier versión mayor (fix/beta/release)`)
+  console.log('[Kindyr] Lo que hará cada launcher en su próximo inicio (visible en su terminal con --enable-logging):')
+  console.log('  [Kindyr] Iniciando UN ciclo de update (pnpm update-kindyr habilitó check)')
+  console.log('  [Kindyr][update.json] Intento 1/2 — GET https://raw.githubusercontent.com/.../update.json (timeout 5s)')
+  console.log('  [Kindyr][update.json] Si timeout/error → espera 3s → Intento 2/2 (5s)')
+  console.log('  [Kindyr][GitHub Releases] Intento 1/2 — GET https://api.github.com/.../releases (timeout 5s) → espera 3s → Intento 2/2')
+  console.log('  [Kindyr] Si hay versión mayor → diálogo al usuario (aceptar/cancelar) → si acepta descarga, sino nada. En cualquier caso, ciclo terminado y updater DESACTIVADO hasta próximo pnpm update-kindyr.')
 
   if (versionChanged) {
     run(`git add package.json update.json`)
@@ -83,15 +89,20 @@ async function main() {
     if (pushAll.toLowerCase() === 's' || pushAll.toLowerCase() === 'y') {
       run('git push --follow-tags')
       run('git push')
-      console.log('Publicado. Ahora los launchers que hagan check verán update.json y ofrecerán el diálogo.')
-      console.log('Si subís una release a GitHub SIN ejecutar pnpm update-kindyr, los launchers NO la verán (medida de seguridad).')
+      console.log('\n=== PUBLICADO ===')
+      console.log('En tiempo real, cada launcher que se abra ahora hará (visible en su terminal):')
+      console.log('  [Kindyr] Iniciando UN ciclo...')
+      console.log('  [Kindyr][update.json] Intento 1/2 (5s) -> si timeout espera 3s -> Intento 2/2 (5s)')
+      console.log('  [Kindyr][GitHub Releases] Intento 1/2 (5s) -> espera 3s -> Intento 2/2 (5s)')
+      console.log('  [Kindyr] UPDATE_AVAILABLE / NO_UPDATE / CHECK_FAILED -> guarda lastApprovedAt y DESACTIVA updater')
+      console.log('Si subiste una release vulnerada a GitHub SIN este push, los launchers NO la vieron.')
     }
   } else {
     console.log('No se publicó. Recordá: sin git push de update.json, el auto-update no se activa aunque haya release en GitHub.')
-    console.log('Cuando quieras habilitarla, ejecutá de nuevo pnpm update-kindyr y hacé push.')
+    console.log('Cuando quieras habilitarla, ejecutá de nuevo pnpm update-kindyr y hacé push. El ciclo 5s→3s→5s se verá en la terminal del launcher.')
   }
 
-  console.log('Listo. Flujo: abrir launcher -> chequea update.json (raw.githubusercontent) -> si hay versión mayor aprobada, muestra diálogo -> si acepta, descarga; si no, no pasa nada.')
+  console.log('\nFlujo final: pnpm update-kindyr → update.json (approvedAt nuevo) → Kindyr inicia UN ciclo 5s→3s→5s por recurso → guarda lastApprovedAt → OFF hasta próximo pnpm update-kindyr')
 }
 
 main().catch(e => { console.error(e); process.exit(1) })
