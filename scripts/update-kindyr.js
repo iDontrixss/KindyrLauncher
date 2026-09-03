@@ -50,31 +50,25 @@ async function main() {
     versionChanged = true
   }
 
-  // Actualizar update.json — ESTA es la aprobación que ve el launcher
-  let updateJson = { version: current, notes: '', approvedAt: new Date().toISOString() }
+  // Actualizar update.json — habilita UN chequeo. No es whitelist de versión.
+  // update.json = { updatesEnabled: true, approvedAt: "ISO", version: "0.1.0" }
+  // El launcher lo lee una vez, lo marca como visto (last-update-check.json) y no vuelve a chequear hasta próximo pnpm update-kindyr.
+  let updateJson = {}
   try { updateJson = JSON.parse(fs.readFileSync(updateJsonPath, 'utf8')) } catch {}
-  if (next !== updateJson.version) {
-    updateJson.version = next
-    updateJson.approvedAt = new Date().toISOString()
-    updateJson.notes = `Aprobada via pnpm update-kindyr ${new Date().toISOString().slice(0,10)}`
-    fs.writeFileSync(updateJsonPath, JSON.stringify(updateJson, null, 2) + '\n')
-    console.log(`update.json actualizado a ${next} — esta es la señal que habilita el auto-update en los launchers`)
-    versionChanged = true
-  }
+  updateJson.updatesEnabled = true
+  updateJson.approvedAt = new Date().toISOString()
+  updateJson.version = next
+  updateJson.notes = `Habilitado via pnpm update-kindyr ${new Date().toISOString().slice(0,10)} — autoriza UN chequeo a GitHub`
+  fs.writeFileSync(updateJsonPath, JSON.stringify(updateJson, null, 2) + '\n')
+  console.log(`update.json habilitado (approvedAt=${updateJson.approvedAt}) — autoriza UN chequeo a GitHub para cualquier versión mayor (fix/beta/release)`)
 
   if (versionChanged) {
     run(`git add package.json update.json`)
-    run(`git commit -m "release: v${next} (update.json aprobado)"`)
+    run(`git commit -m "release: v${next} (update.json habilitado para un chequeo)"`)
     run(`git tag v${next}`)
   } else {
-    console.log('Sin cambios de versión. Si solo querés aprobar la versión actual para que se ofrezca, se actualizará update.json igual.')
-    const forceApprove = await ask('¿Forzar aprobación de update.json con la versión actual? (s/N): ')
-    if (forceApprove.toLowerCase() === 's' || forceApprove.toLowerCase() === 'y') {
-      updateJson.approvedAt = new Date().toISOString()
-      fs.writeFileSync(updateJsonPath, JSON.stringify(updateJson, null, 2) + '\n')
-      run(`git add update.json`)
-      run(`git commit -m "chore: aprueba v${current} para auto-update"`)
-    }
+    run(`git add update.json`)
+    run(`git commit -m "chore: habilita updater para un chequeo (update.json ${updateJson.approvedAt})"`)
   }
 
   const publish = await ask('¿Publicar ahora con electron-builder? (s/N): ')
