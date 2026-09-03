@@ -3001,8 +3001,14 @@ ipcMain.handle('show-update-notice', () => {
   return { ok: false, error: 'No hay actualización pendiente' }
 })
 ipcMain.handle('check-for-updates', async () => {
-  try { await getAutoUpdater().checkForUpdates(); return { ok: true } }
-  catch (e) { return { ok: false, error: e.message || String(e) } }
+  try {
+    // Respeta la puerta de seguridad de update.json
+    if (!await hasNewerGitHubRelease()) {
+      return { ok: false, error: 'No hay actualización aprobada via pnpm update-kindyr' }
+    }
+    await getAutoUpdater().checkForUpdates()
+    return { ok: true }
+  } catch (e) { return { ok: false, error: e.message || String(e) } }
 })
 ipcMain.handle('get-last-update-info', () => {
   const candidate = lastUpdateInfo || pendingUpdateInfo || null
@@ -3016,7 +3022,38 @@ ipcMain.handle('get-last-update-info', () => {
   return candidate
 })
 
+async function fetchApprovedUpdateVersion() {
+  // Fuente de verdad manual: solo si vos ejecutaste `pnpm update-kindyr` se actualiza este archivo.
+  // Así, aunque alguien suba una release vulnerada a GitHub, no se ofrece hasta que vos lo apruebes.
+  const url = `https://raw.githubusercontent.com/iDontrixss/KindyrLauncher/main/update.json?t=${Date.now()}`
+  const res = await fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', Accept: 'application/json', 'User-Agent': 'KindyrLauncher/' + app.getVersion() } })
+  if (!res.ok) throw new Error(`update.json fetch failed: HTTP ${res.status}`)
+  const data = await res.json()
+  const v = String(data.version || '').trim().replace(/^[vV]/, '')
+  const semver = getSemver()
+  const valid = semver.valid(v, { loose: true })
+  if (!valid) throw new Error(`update.json version inválida: ${data.version}`)
+  return valid
+}
+
 async function hasNewerGitHubRelease() {
+  // 1. Puerta de seguridad: ¿hay versión aprobada en update.json mayor que la actual?
+  let approvedVersion = null
+  try {
+    approvedVersion = await fetchApprovedUpdateVersion()
+    const semver = getSemver()
+    const cur = semver.valid(String(app.getVersion()).replace(/^[vV]/, ''), { loose: true })
+    if (!cur || !semver.gt(approvedVersion, cur)) {
+      console.log(`[Kindyr] update.json no requiere update (approved=${approvedVersion}, current=${cur})`)
+      return false
+    }
+    console.log(`[Kindyr] update.json aprueba v${approvedVersion}, verificando que exista release en GitHub...`)
+  } catch (e) {
+    console.warn('[Kindyr] No se pudo leer update.json, no se ofrecerá update por seguridad:', e.message || e)
+    return false
+  }
+
+  // 2. Verificar que esa versión aprobada realmente exista como release no-draft en GitHub
   const response = await fetch('https://api.github.com/repos/iDontrixss/KindyrLauncher/releases?per_page=20', {
     headers: {
       Accept: 'application/vnd.github+json',
@@ -3029,13 +3066,10 @@ async function hasNewerGitHubRelease() {
   if (!Array.isArray(releases)) throw new Error('GitHub releases preflight returned invalid data')
 
   const semver = getSemver()
-  const currentVersion = semver.valid(String(app.getVersion()).replace(/^[vV]/, ''), { loose: true })
-  if (!currentVersion) throw new Error(`Invalid current version: ${app.getVersion()}`)
-
   return releases.some(release => {
     if (!release || release.draft) return false
     const releaseVersion = semver.valid(String(release.tag_name || '').replace(/^[vV]/, ''), { loose: true })
-    return Boolean(releaseVersion && semver.gt(releaseVersion, currentVersion))
+    return releaseVersion === approvedVersion
   })
 }
 
@@ -3047,11 +3081,12 @@ async function checkForUpdatesOnStartup() {
 
   try {
     if (!await hasNewerGitHubRelease()) {
-      console.log('[Kindyr] No newer GitHub release; updater remains unloaded')
+      console.log('[Kindyr] No hay update aprobado via pnpm update-kindyr; updater permanece inactivo')
       return
     }
   } catch (error) {
-    console.warn('[Kindyr] Update preflight failed; falling back to electron-updater:', error.message || error)
+    console.warn('[Kindyr] Update preflight falló, no se activa updater por seguridad:', error.message || error)
+    return
   }
 
   await getAutoUpdater().checkForUpdates()
