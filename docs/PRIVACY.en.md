@@ -10,15 +10,17 @@ Everything is stored in the user data folder (`getKindyrDataRoot()` — `%APPDAT
 - **Instances** (`instances.json` + `instances/<id>/`): list of instances, Minecraft version, loader and files for each instance.
 - **Microsoft accounts** (`ms-accounts.json`): list of accounts with tokens. **Encrypted with system `safeStorage`** (Keychain on macOS, Credential Manager on Windows, Secret Service/KWallet on Linux). If Linux only offers the insecure `basic_text` backend, Kindyr refuses to save and shows an error. The renderer never receives tokens (`account-storage.js` sanitizes).
 - **CurseForge key** (`curseforge.key`): if manually configured, stored **encrypted with `safeStorage`**; if using the embedded obfuscated key, it is not written to disk (only decrypted in RAM when entering Discover → CurseForge).
-- **Cache and runtime**: `cache/`, `storage-cache.json`, `runtime/java-*` (Adoptium Java) and Minecraft execution logs. No personal data.
+- **Cache and runtime** (`cache/`, `storage-cache.json`, `runtime/java-*`) and launcher/Minecraft execution logs. These files may contain technical information and, depending on the operation performed, may include usernames, local file paths, server addresses, JVM arguments, or other diagnostic information. They are stored locally and are not sent to Kindyr.
 
 None of these files are sent to Kindyr; they are only read/written locally. The launcher does not send tokens to the renderer.
 
 ## External services
 
-Depending on the features used, Kindyr communicates directly with Microsoft/Xbox/Minecraft services for authentication, profiles, versions and skins; Modrinth for searching and downloading content; CurseForge for searching content; Adoptium for Java distributions; Mojang for game resources; and official loader repositories such as Fabric, Quilt, Forge and NeoForge, as well as GitHub for update checks and cdn.jsdelivr.net for the skin preview library (skinview3d) and mc-heads.net for avatar previews.
+Depending on the features used, Kindyr communicates directly with Microsoft/Xbox/Minecraft services for authentication, profiles, versions and skins; Modrinth and CurseForge for searching and retrieving available content; Adoptium for Java distributions; Mojang for game resources; and official loader repositories such as Fabric, Quilt, Forge and NeoForge, as well as GitHub for update checks and cdn.jsdelivr.net for the skin preview library (skinview3d) and mc-heads.net for avatar previews.
 
-These services receive the normal technical information of a network connection, such as the IP address and user agent, and apply their own privacy policies.
+These services receive the technical information normally required for a network connection, such as IP address and user agent. Depending on the feature being used, additional information may also be transmitted, such as search queries, requested content identifiers, authentication tokens, account or profile information, skin data, or other information required to perform the requested operation.
+
+Kindyr does not send this information to its own servers. The relevant third-party service receives it directly from the launcher and processes it according to its own terms and privacy policies.
 
 ## Data removal
 

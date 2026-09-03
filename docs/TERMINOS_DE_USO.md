@@ -1,22 +1,22 @@
-# KINDYR LAUNCHER â€” TÃ‰RMINOS DE USO
+# KINDYR LAUNCHER — TÉRMINOS DE USO
 
-**Ãšltima actualizaciÃ³n:** 2 de septiembre de 2026  
-**VersiÃ³n:** Beta
+**Última actualización:** 2 de septiembre de 2026  
+**Versión:** Beta
 
-Estos TÃ©rminos de Uso regulan el uso de Kindyr Launcher ("Kindyr"), un launcher gratuito y de cÃ³digo abierto para Minecraft: Java Edition.
+Estos Términos de Uso regulan el uso de Kindyr Launcher ("Kindyr"), un launcher gratuito y de código abierto para Minecraft: Java Edition.
 
-Al instalar o utilizar Kindyr, aceptÃ¡s estos TÃ©rminos. Si no estÃ¡s de acuerdo con ellos, no utilices el software.
+Al instalar o utilizar Kindyr, aceptás estos Términos. Si no estás de acuerdo con ellos, no utilices el software.
 
 ---
 
 ## 1. Responsable del proyecto
 
-Kindyr Launcher es desarrollado y mantenido por **Lautaro Nadruz Cima**, una persona fÃ­sica establecida en Uruguay, que desarrolla pÃºblicamente el proyecto bajo el nombre **Loryq** y el identificador **iDontrixss**.
+Kindyr Launcher es desarrollado y mantenido por **Lautaro Nadruz Cima**, una persona física establecida en Uruguay, que desarrolla públicamente el proyecto bajo el nombre **Loryq** y el identificador **iDontrixss**.
 
 - **Contacto general:** **KindyrSupport@gmail.com**
 - **Contacto de seguridad:** **KindyrSupport@gmail.com**
 
-**Loryq** es el nombre pÃºblico bajo el cual se desarrolla y mantiene Kindyr Launcher y, por sÃ­ mismo, no constituye una entidad jurÃ­dica independiente.
+**Loryq** es el nombre público bajo el cual se desarrolla y mantiene Kindyr Launcher y, por sí mismo, no constituye una entidad jurídica independiente.
 
 ---
 
@@ -25,15 +25,15 @@ Kindyr Launcher es desarrollado y mantenido por **Lautaro Nadruz Cima**, una per
 Actualmente, Kindyr es un proyecto:
 
 - gratuito;
-- de cÃ³digo abierto;
+- de código abierto;
 - en estado beta;
 - sin funciones de pago;
 - sin suscripciones;
 - sin publicidad integrada;
 - sin cuentas propias de Kindyr;
-- sin servicios propios de almacenamiento o sincronizaciÃ³n en la nube.
+- sin servicios propios de almacenamiento o sincronización en la nube.
 
-Kindyr funciona principalmente como una aplicaciÃ³n local y puede conectarse directamente con servicios de terceros para determinadas funciones, incluyendo autenticaciÃ³n, bÃºsqueda de contenido, descarga de contenido, obtenciÃ³n de metadatos, actualizaciones y otras funciones solicitadas por el usuario.
+Kindyr funciona principalmente como una aplicación local y puede conectarse directamente con servicios de terceros para determinadas funciones, incluyendo autenticación, búsqueda de contenido, descarga de contenido, obtención de metadatos, actualizaciones y otras funciones solicitadas por el usuario.
 
 ---
 
@@ -50,9 +50,9 @@ Esto significa que determinadas funciones pueden:
 - presentar incompatibilidades con determinados sistemas, versiones o configuraciones;
 - requerir actualizaciones posteriores.
 
-No se garantiza que todas las funciones estÃ©n disponibles permanentemente ni que Kindyr sea compatible con cualquier configuraciÃ³n de hardware, sistema operativo, versiÃ³n de Java, versiÃ³n de Minecraft o contenido de terceros.
+No se garantiza que todas las funciones estén disponibles permanentemente ni que Kindyr sea compatible con cualquier configuración de hardware, sistema operativo, versión de Java, versión de Minecraft o contenido de terceros.
 
-Se recomienda mantener copias de seguridad de los mundos, configuraciones y demÃ¡s archivos importantes.
+Se recomienda mantener copias de seguridad de los mundos, configuraciones y demás archivos importantes.
 
 ---
 
@@ -60,23 +60,23 @@ Se recomienda mantener copias de seguridad de los mundos, configuraciones y dem�
 
 Kindyr **no proporciona** una licencia de Minecraft.
 
-Para utilizar funciones que requieran una cuenta de Microsoft, debÃ©s disponer de una **licencia vÃ¡lida de Minecraft: Java Edition** y cumplir con los tÃ©rminos aplicables de Microsoft y Minecraft.
+Para utilizar funciones que requieran una cuenta de Microsoft, debés disponer de una **licencia válida de Minecraft: Java Edition** y cumplir con los términos aplicables de Microsoft y Minecraft.
 
-Kindyr puede utilizar servicios de Microsoft, Xbox y Minecraft para realizar la autenticaciÃ³n y las operaciones necesarias para ejecutar Minecraft.
+Kindyr puede utilizar servicios de Microsoft, Xbox y Minecraft para realizar la autenticación y las operaciones necesarias para ejecutar Minecraft.
 
-Kindyr **no solicita ni almacena deliberadamente la contraseÃ±a de tu cuenta de Microsoft**. Las credenciales y los tokens utilizados para la autenticaciÃ³n son gestionados mediante los mecanismos correspondientes de la aplicaciÃ³n.
+Kindyr **no solicita ni almacena deliberadamente la contraseña de tu cuenta de Microsoft**. Las credenciales y los tokens utilizados para la autenticación son gestionados mediante los mecanismos correspondientes de la aplicación.
 
-El uso de Minecraft y de una cuenta de Microsoft continÃºa estando sujeto a los tÃ©rminos y condiciones de sus respectivos propietarios.
+El uso de Minecraft y de una cuenta de Microsoft continúa estando sujeto a los términos y condiciones de sus respectivos propietarios.
 
 ---
 
 ## 5. Modo offline
 
-Kindyr puede permitir la creaciÃ³n y utilizaciÃ³n de perfiles **offline**.
+Kindyr puede permitir la creación y utilización de perfiles **offline**.
 
-El modo offline no constituye una autenticaciÃ³n frente a los servicios oficiales de Minecraft y puede no ser compatible con servidores que requieran autenticaciÃ³n oficial.
+El modo offline no constituye una autenticación frente a los servicios oficiales de Minecraft y puede no ser compatible con servidores que requieran autenticación oficial.
 
-El usuario es responsable de utilizar esta funciÃ³n Ãºnicamente de manera legÃ­tima y de acuerdo con los tÃ©rminos aplicables.
+El usuario es responsable de utilizar esta función únicamente de manera legítima y de acuerdo con los términos aplicables.
 
 ---
 
@@ -95,7 +95,7 @@ Kindyr permite buscar, descargar e instalar contenido proporcionado por terceros
 
 Este contenido **no es creado, controlado ni garantizado por Kindyr**.
 
-Los mods, modpacks, loaders y demÃ¡s contenidos pueden contener errores, incompatibilidades o comportamientos inesperados. El usuario es responsable de revisar y aceptar las licencias y tÃ©rminos aplicables al contenido que decida instalar.
+Los mods, modpacks, loaders y demás contenidos pueden contener errores, incompatibilidades o comportamientos inesperados. El usuario es responsable de revisar y aceptar las licencias y términos aplicables al contenido que decida instalar.
 
 Kindyr no garantiza la seguridad, disponibilidad, compatibilidad o legalidad del contenido proporcionado por terceros.
 
@@ -107,8 +107,7 @@ Kindyr puede comunicarse directamente con servicios externos, incluyendo servici
 
 - Microsoft y Xbox;
 - Minecraft y Mojang;
-- Modrinth;
-- CurseForge;
+- Modrinth y CurseForge;
 - Adoptium;
 - GitHub;
 - Fabric;
@@ -117,39 +116,39 @@ Kindyr puede comunicarse directamente con servicios externos, incluyendo servici
 - Quilt;
 - otros repositorios o servicios necesarios para determinadas funciones.
 
-El uso de estos servicios puede estar sujeto a sus propios tÃ©rminos, polÃ­ticas, licencias y condiciones.
+El uso de estos servicios puede estar sujeto a sus propios términos, políticas, licencias y condiciones.
 
-Kindyr no controla la disponibilidad, funcionalidad, contenido, polÃ­ticas o cambios realizados por estos servicios.
+Kindyr no controla la disponibilidad, funcionalidad, contenido, políticas o cambios realizados por estos servicios.
 
-Una interrupciÃ³n, modificaciÃ³n o eliminaciÃ³n de un servicio de terceros puede afectar determinadas funciones de Kindyr.
+Una interrupción, modificación o eliminación de un servicio de terceros puede afectar determinadas funciones de Kindyr.
 
 ---
 
-## 8. Descarga y ejecuciÃ³n de software
+## 8. Descarga y ejecución de software
 
 Kindyr puede descargar y ejecutar componentes necesarios para proporcionar sus funciones, incluyendo versiones de Java, Minecraft, loaders y contenido de terceros.
 
-Al instalar contenido de terceros, el usuario reconoce que dicho contenido puede ejecutar cÃ³digo en su sistema como parte del funcionamiento de Minecraft.
+Al instalar contenido de terceros, el usuario reconoce que dicho contenido puede ejecutar código en su sistema como parte del funcionamiento de Minecraft.
 
-El usuario deberÃ­a instalar Ãºnicamente contenido en el que confÃ­e y mantener copias de seguridad de sus datos importantes.
+El usuario debería instalar únicamente contenido en el que confíe y mantener copias de seguridad de sus datos importantes.
 
 ---
 
 ## 9. Actualizaciones
 
-Kindyr puede comprobar y descargar actualizaciones de la aplicaciÃ³n desde los canales de distribuciÃ³n correspondientes.
+Kindyr puede comprobar y descargar actualizaciones de la aplicación desde los canales de distribución correspondientes.
 
-Las actualizaciones pueden incluir correcciones, nuevas funciones, cambios operativos o modificaciones necesarias para mantener la compatibilidad y seguridad de la aplicaciÃ³n.
+Las actualizaciones pueden incluir correcciones, nuevas funciones, cambios operativos o modificaciones necesarias para mantener la compatibilidad y seguridad de la aplicación.
 
-La versiÃ³n beta puede recibir cambios frecuentes.
+La versión beta puede recibir cambios frecuentes.
 
 ---
 
 ## 10. Uso permitido
 
-PodÃ©s utilizar, copiar, modificar y redistribuir el cÃ³digo de Kindyr de acuerdo con la licencia de software aplicable al proyecto.
+Podés utilizar, copiar, modificar y redistribuir el código de Kindyr de acuerdo con la licencia de software aplicable al proyecto.
 
-No debÃ©s utilizar Kindyr para:
+No debés utilizar Kindyr para:
 
 - actividades ilegales;
 - distribuir malware u otro software malicioso;
@@ -157,23 +156,23 @@ No debÃ©s utilizar Kindyr para:
 - abusar de APIs o servicios externos;
 - evadir medidas de seguridad de terceros;
 - presentar Kindyr como software oficial de Minecraft, Microsoft, Mojang, CurseForge, Modrinth u otros terceros;
-- utilizar marcas comerciales o logotipos de terceros de manera que sugiera una afiliaciÃ³n o aprobaciÃ³n inexistente.
+- utilizar marcas comerciales o logotipos de terceros de manera que sugiera una afiliación o aprobación inexistente.
 
 ---
 
-## 11. CÃ³digo abierto y licencia
+## 11. Código abierto y licencia
 
-El cÃ³digo fuente de Kindyr se distribuye bajo la licencia indicada en el archivo **LICENSE** del proyecto.
+El código fuente de Kindyr se distribuye bajo la licencia indicada en el archivo **LICENSE** del proyecto.
 
-Las dependencias, bibliotecas, fuentes, iconos, componentes y demÃ¡s materiales de terceros pueden estar sujetos a licencias diferentes. Dichas licencias conservan sus propios tÃ©rminos.
+Las dependencias, bibliotecas, fuentes, iconos, componentes y demás materiales de terceros pueden estar sujetos a licencias diferentes. Dichas licencias conservan sus propios términos.
 
-La licencia del cÃ³digo de Kindyr no concede derechos sobre Minecraft, Microsoft, Mojang, CurseForge, Modrinth ni sobre ningÃºn otro contenido o marca perteneciente a terceros.
+La licencia del código de Kindyr no concede derechos sobre Minecraft, Microsoft, Mojang, CurseForge, Modrinth ni sobre ningún otro contenido o marca perteneciente a terceros.
 
 ---
 
-## 12. Marcas comerciales y ausencia de afiliaciÃ³n
+## 12. Marcas comerciales y ausencia de afiliación
 
-Kindyr Launcher no es un producto oficial de Minecraft, Mojang, Microsoft, Xbox, CurseForge, Modrinth, Fabric, Forge, NeoForge, Quilt, Adoptium, GitHub ni de ninguna otra organizaciÃ³n mencionada en estos TÃ©rminos.
+Kindyr Launcher no es un producto oficial de Minecraft, Mojang, Microsoft, Xbox, CurseForge, Modrinth, Fabric, Forge, NeoForge, Quilt, Adoptium, GitHub ni de ninguna otra organización mencionada en estos Términos.
 
 Las marcas comerciales y nombres de terceros pertenecen a sus respectivos propietarios.
 
@@ -183,77 +182,77 @@ Kindyr se proporciona como un proyecto independiente y no debe interpretarse com
 
 ## 13. Privacidad
 
-Kindyr **actualmente no opera sistemas propios de telemetrÃ­a, anÃ¡lisis, publicidad, seguimiento, cuentas o sincronizaciÃ³n en la nube**.
+Kindyr **actualmente no opera sistemas propios de telemetría, análisis, publicidad, seguimiento, cuentas o sincronización en la nube**.
 
-Sin embargo, determinadas funciones requieren comunicaciÃ³n con servicios de terceros y pueden implicar el envÃ­o o recepciÃ³n de informaciÃ³n necesaria para proporcionar dichas funciones.
+Sin embargo, determinadas funciones requieren comunicación con servicios de terceros y pueden implicar el envío o recepción de información necesaria para proporcionar dichas funciones.
 
-Los servicios de terceros pueden procesar informaciÃ³n de acuerdo con sus propias polÃ­ticas de privacidad, tÃ©rminos y prÃ¡cticas aplicables.
+Los servicios de terceros pueden procesar información de acuerdo con sus propias políticas de privacidad, términos y prácticas aplicables.
 
-El procesamiento de datos y la informaciÃ³n almacenada localmente se explican con mayor detalle en la **PolÃ­tica de Privacidad** de Kindyr.
+El procesamiento de datos y la información almacenada localmente se explican con mayor detalle en la **Política de Privacidad** de Kindyr.
 
-La PolÃ­tica de Privacidad forma parte de la documentaciÃ³n del proyecto, pero constituye un documento separado de estos TÃ©rminos.
+La Política de Privacidad forma parte de la documentación del proyecto, pero constituye un documento separado de estos Términos.
 
 ---
 
 ## 14. Disponibilidad y responsabilidad
 
-Kindyr se proporciona durante su etapa beta **sin garantÃ­a de disponibilidad continua, ausencia de errores o compatibilidad universal**.
+Kindyr se proporciona durante su etapa beta **sin garantía de disponibilidad continua, ausencia de errores o compatibilidad universal**.
 
-En la mÃ¡xima medida permitida por la legislaciÃ³n aplicable, no se garantiza que Kindyr funcione sin interrupciones, pÃ©rdida de datos, errores, incompatibilidades o cambios derivados de servicios externos.
+En la máxima medida permitida por la legislación aplicable, no se garantiza que Kindyr funcione sin interrupciones, pérdida de datos, errores, incompatibilidades o cambios derivados de servicios externos.
 
 El usuario es responsable de mantener copias de seguridad y de evaluar el contenido de terceros que decida instalar.
 
-Nada de lo establecido en estos TÃ©rminos pretende excluir o limitar los derechos de los consumidores ni las responsabilidades que no puedan excluirse o limitarse vÃ¡lidamente conforme a la legislaciÃ³n aplicable.
+Nada de lo establecido en estos Términos pretende excluir o limitar los derechos de los consumidores ni las responsabilidades que no puedan excluirse o limitarse válidamente conforme a la legislación aplicable.
 
-Kindyr no serÃ¡ responsable, en la medida permitida por la ley, por problemas causados exclusivamente por:
+Kindyr no será responsable, en la medida permitida por la ley, por problemas causados exclusivamente por:
 
 - modificaciones realizadas por el usuario;
 - contenido de terceros;
 - mods o loaders incompatibles;
 - configuraciones personalizadas;
-- pÃ©rdida de archivos sin copia de seguridad;
+- pérdida de archivos sin copia de seguridad;
 - fallos de hardware o del sistema operativo;
 - interrupciones o cambios en servicios de terceros;
-- problemas de conexiÃ³n a Internet;
+- problemas de conexión a Internet;
 - incompatibilidades entre versiones.
 
 ---
 
-## 15. Cambios en Kindyr y en estos TÃ©rminos
+## 15. Cambios en Kindyr y en estos Términos
 
 Kindyr puede evolucionar durante su desarrollo beta.
 
-Podemos modificar las funciones, la documentaciÃ³n y estos TÃ©rminos para reflejar cambios en el proyecto, sus servicios o la legislaciÃ³n aplicable.
+Podemos modificar las funciones, la documentación y estos Términos para reflejar cambios en el proyecto, sus servicios o la legislación aplicable.
 
-Los cambios menores o editoriales podrÃ¡n publicarse junto con una nueva versiÃ³n de estos TÃ©rminos.
+Los cambios menores o editoriales podrán publicarse junto con una nueva versión de estos Términos.
 
-Cuando un cambio sea sustancial y sea legalmente necesario obtener una nueva aceptaciÃ³n, dicha aceptaciÃ³n serÃ¡ solicitada antes de continuar utilizando las funciones correspondientes.
+Cuando un cambio sea sustancial y sea legalmente necesario obtener una nueva aceptación, dicha aceptación será solicitada antes de continuar utilizando las funciones correspondientes.
 
-La versiÃ³n vigente de estos TÃ©rminos estarÃ¡ disponible junto con la documentaciÃ³n oficial del proyecto.
-
----
-
-## 16. FinalizaciÃ³n del uso
-
-PodÃ©s dejar de utilizar Kindyr en cualquier momento.
-
-Kindyr tambiÃ©n puede dejar de distribuir o proporcionar soporte para determinadas versiones o plataformas.
-
-La finalizaciÃ³n del uso de Kindyr no afecta los derechos que correspondan al usuario en virtud de las licencias de software aplicables ni aquellos derechos que no puedan limitarse legalmente.
+La versión vigente de estos Términos estará disponible junto con la documentación oficial del proyecto.
 
 ---
 
-## 17. LegislaciÃ³n aplicable
+## 16. Finalización del uso
 
-Estos TÃ©rminos se interpretarÃ¡n de acuerdo con las leyes de la **RepÃºblica Oriental del Uruguay**, sin perjuicio de las normas obligatorias de protecciÃ³n al consumidor u otras disposiciones imperativas que puedan resultar aplicables al usuario en funciÃ³n de su jurisdicciÃ³n.
+Podés dejar de utilizar Kindyr en cualquier momento.
 
-Cualquier controversia estarÃ¡ sujeta a los tribunales competentes de acuerdo con la legislaciÃ³n aplicable, sin perjuicio de los derechos que correspondan al usuario en virtud de normas obligatorias.
+Kindyr también puede dejar de distribuir o proporcionar soporte para determinadas versiones o plataformas.
+
+La finalización del uso de Kindyr no afecta los derechos que correspondan al usuario en virtud de las licencias de software aplicables ni aquellos derechos que no puedan limitarse legalmente.
+
+---
+
+## 17. Legislación aplicable
+
+Estos Términos se interpretarán de acuerdo con las leyes de la **República Oriental del Uruguay**, sin perjuicio de las normas obligatorias de protección al consumidor u otras disposiciones imperativas que puedan resultar aplicables al usuario en función de su jurisdicción.
+
+Cualquier controversia estará sujeta a los tribunales competentes de acuerdo con la legislación aplicable, sin perjuicio de los derechos que correspondan al usuario en virtud de normas obligatorias.
 
 ---
 
 ## 18. Divisibilidad
 
-Si alguna disposiciÃ³n de estos TÃ©rminos fuera considerada invÃ¡lida o inaplicable, las disposiciones restantes continuarÃ¡n vigentes en la medida permitida por la legislaciÃ³n aplicable.
+Si alguna disposición de estos Términos fuera considerada inválida o inaplicable, las disposiciones restantes continuarán vigentes en la medida permitida por la legislación aplicable.
 
 ---
 
@@ -269,4 +268,4 @@ Kindyr Launcher
 Loryq / iDontrixss  
 Uruguay
 
-**VersiÃ³n beta â€” 2026**
+**Versión beta — 2026**

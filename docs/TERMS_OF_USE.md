@@ -1,4 +1,4 @@
-# KINDYR LAUNCHER â€” TERMS OF USE
+# KINDYR LAUNCHER — TERMS OF USE
 
 **Last updated:** September 2, 2026  
 **Version:** Beta
@@ -107,8 +107,7 @@ Kindyr may communicate directly with external services, including services relat
 
 - Microsoft and Xbox;
 - Minecraft and Mojang;
-- Modrinth;
-- CurseForge;
+- Modrinth and CurseForge;
 - Adoptium;
 - GitHub;
 - Fabric;
@@ -269,4 +268,4 @@ Kindyr Launcher
 Loryq / iDontrixss  
 Uruguay
 
-**Beta version â€” 2026**
+**Beta version — 2026**
