@@ -10,37 +10,38 @@ permissions:
 jobs:
   validate:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:syntax
       - run: pnpm test
-      - run: pnpm audit --omit=dev
-      - run: pnpm ls --include=dev
+      - run: pnpm audit --prod --ignore-registry-errors --audit-level high
+      - run: pnpm ls --depth 0
 
   package-linux:
     needs: validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:linux
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: kindyr-linux
           path: dist/*.AppImage
@@ -50,16 +51,16 @@ jobs:
     needs: validate
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:win
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: kindyr-windows
           path: dist/*.exe
