@@ -1,6 +1,7 @@
 {
   "updatesEnabled": true,
-  "approvedAt": "2026-09-04T01:24:21.708Z",
-  "version": "0.1.1",
-  "notes": "Habilitado via pnpm update-kindyr 2026-09-04 — autoriza UN chequeo a GitHub"
+  "approvedAt": "2026-09-04T01:28:40.925Z",
+  "version": "0.1.1-beta.1",
+  "notes": "Habilitado via pnpm update-kindyr 2026-09-04 — autoriza UN chequeo a GitHub para v0.1.1-beta.1",
+  "tag": "v0.1.1-beta.1"
 }
