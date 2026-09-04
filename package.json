@@ -1,6 +1,6 @@
 {
   "name": "kindyrlauncher",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Kindyr Launcher - Tu launcher de Minecraft",
   "main": "main.js",
