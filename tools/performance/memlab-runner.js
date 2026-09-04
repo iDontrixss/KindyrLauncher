@@ -11,7 +11,7 @@ if (!existsSync(resolve(chrome))) {
   process.exit(2);
 }
 
-const result = spawnSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', [
+const result = spawnSync(process.platform === 'win32' ? 'pnpm exec' : 'pnpm exec', [
   'exec', '--', 'memlab', 'run', '--scenario', 'tools/performance/memlab-scenario.js',
 ], { stdio: 'inherit', env: process.env });
 process.exit(result.status || 1);

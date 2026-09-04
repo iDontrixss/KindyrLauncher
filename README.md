@@ -5,17 +5,17 @@ Kindyr es un launcher de escritorio para Minecraft construido con Electron. Perm
 ## Requisitos de desarrollo
 
 - Node.js 24 LTS recomendado; se admiten versiones desde 22.12 y anteriores a 26.
-- npm.
+- **pnpm** (no npm).
 - Linux o Windows.
 - En Linux, un llavero compatible con Secret Service o KWallet para guardar credenciales Microsoft.
 
 ## Desarrollo
 
 ```bash
-npm ci --include=dev
-npm run check:syntax
-npm test
-npm start
+pnpm install
+pnpm check:syntax
+pnpm test
+pnpm start
 ```
 
 Electron 42 expone un instalador separado. El `postinstall` del proyecto lo ejecuta automáticamente cuando Electron está presente y muestra un error claro si el runtime de Node no es compatible.
@@ -23,8 +23,8 @@ Electron 42 expone un instalador separado. El `postinstall` del proyecto lo ejec
 ## Empaquetado
 
 ```bash
-npm run build:linux
-npm run build:win
+pnpm build:linux
+pnpm build:win
 ```
 
 Los artefactos se crean en `dist/`. Las credenciales de Microsoft se cifran con el almacenamiento seguro del sistema y nunca se exponen al renderer.

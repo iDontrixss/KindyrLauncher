@@ -26,16 +26,16 @@ El código queda considerablemente más cerca de una primera versión, pero toda
 
 ## Validación ejecutada
 
-- `npm run check:syntax`: 25 archivos JavaScript válidos.
-- `npm test`: 4 archivos de prueba, todos aprobados.
-- `npm run perf:knip`: sin hallazgos.
-- `npm audit --omit=dev`: 0 vulnerabilidades de producción.
-- `npm ls --omit=dev --all`: árbol válido; MCLC ausente.
-- `npm run build:linux`: AppImage creado correctamente.
+- `pnpm check:syntax`: 25 archivos JavaScript válidos.
+- `pnpm test`: 4 archivos de prueba, todos aprobados.
+- `pnpm perf:knip`: sin hallazgos.
+- `pnpm audit --omit=dev`: 0 vulnerabilidades de producción.
+- `pnpm ls --omit=dev --all`: árbol válido; MCLC ausente.
+- `pnpm build:linux`: AppImage creado correctamente.
 - AppImage: `Kindyr Launcher-1.2.0.AppImage`, 159.116.621 bytes, ejecutable.
 - Inspección de ASAR: helpers nuevos y scripts de UI presentes; MCLC, `adm-zip`, pruebas, documentación y herramientas de rendimiento ausentes.
 - Ejecución breve del AppImage: proceso principal, renderer, GPU y servicio de red creados; cierre limpio.
-- `npm run build:win`: el contenido Windows se empaquetó, pero NSIS no pudo completarse en Linux porque Wine no está instalado. La CI Windows añadida debe hacer esta validación en su plataforma nativa.
+- `pnpm build:win`: el contenido Windows se empaquetó, pero NSIS no pudo completarse en Linux porque Wine no está instalado. La CI Windows añadida debe hacer esta validación en su plataforma nativa.
 
 ## Entorno reproducible
 
@@ -67,11 +67,11 @@ Las 32 alertas del audit completo pertenecen a herramientas de desarrollo/perfil
 En una máquina Windows limpia con Node 24:
 
 ```bash
-npm ci --include=dev
-npm run check:syntax
-npm test
-npm audit --omit=dev
-npm run build:win
+pnpm install --include=dev
+pnpm check:syntax
+pnpm test
+pnpm audit --omit=dev
+pnpm build:win
 ```
 
 Después, completar las pruebas funcionales de [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md), configurar firma y remoto, y solo entonces crear la etiqueta `v1.2.0`.

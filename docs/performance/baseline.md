@@ -40,8 +40,8 @@ Comandos reproducibles principales:
 
 ```bash
 ./dist/Kindyr\ Launcher-1.2.0.AppImage --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222
-KINDYR_PROCESS_PATTERN='kindyrlauncher' npm run perf:pss
-KINDYR_PROCESS_PATTERN='kindyrlauncher' npm run perf:processes
+KINDYR_PROCESS_PATTERN='kindyrlauncher' pnpm perf:pss
+KINDYR_PROCESS_PATTERN='kindyrlauncher' pnpm perf:processes
 curl --fail --silent http://127.0.0.1:9222/json/list
 ```
 

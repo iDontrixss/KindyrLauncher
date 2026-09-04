@@ -25,7 +25,7 @@ No se tocaron `electron-updater`, `semver`, flags gráficos, renderer, cachés, 
 - `node --check main.js`: correcto.
 - Evaluación de `main.js` con un loader instrumentado: ninguna de las cuatro dependencias se requirió al cargar el módulo.
 - Prueba de concurrencia y error: XMCL core/file-transfer/installer se requirieron una vez para dos llamadas simultáneas; `adm-zip` falló una vez simulada, limpió su estado y cargó correctamente al reintentar.
-- `npm run perf:imports --silent`: las cuatro dependencias se cargan correctamente en el entorno local.
+- `pnpm perf:imports --silent`: las cuatro dependencias se cargan correctamente en el entorno local.
 
 ## Medición complementaria PSS (Node aislado)
 
@@ -66,7 +66,7 @@ Resultado:
 
 ## Build y AppImage
 
-`DEBUG=electron-builder npm run build:linux` terminó correctamente con Electron 42.3.0 y electron-builder 26.8.1. Generó `dist/Kindyr Launcher-1.2.0.AppImage` (124.991.157 bytes, 2026-07-23 15:15 -0300).
+`DEBUG=electron-builder pnpm build:linux` terminó correctamente con Electron 42.3.0 y electron-builder 26.8.1. Generó `dist/Kindyr Launcher-1.2.0.AppImage` (124.991.157 bytes, 2026-07-23 15:15 -0300).
 
 - `app.asar` contiene `main.js`, los preloads, los seis scripts requeridos por `index.html` y las cinco secciones funcionales.
 - No contiene `tools/performance`, MemLab, Clinic, Knip, Chrome DevTools ni Codebase Memory.
@@ -96,8 +96,8 @@ La mediana de Fase 1 fue 279.940 KiB (273,4 MiB). Esta campaña da una diferenci
 
 ```bash
 node node_modules/electron/install.js
-DEBUG=electron-builder npm run build:linux
-npx --no-install electron --version
+DEBUG=electron-builder pnpm build:linux
+pnpm exec electron --version
 node -e "console.log(require('electron'))"
 ```
 

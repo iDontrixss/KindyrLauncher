@@ -1,7 +1,7 @@
 // Kindyr Launcher - Copyright (C) 2026 iDontrixss
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Script manual para publicar una actualización. Vos controlás cuándo aparece.
-// Uso: pnpm update-kindyr  (o npm run update-kindyr)
+// Uso: pnpm update-kindyr
 // Hace: verifica que estés en main limpio, pide versión, crea tag y publica via electron-builder
 
 const { execSync } = require('child_process')
@@ -79,11 +79,11 @@ async function main() {
 
   const publish = await ask('¿Publicar ahora con electron-builder? (s/N): ')
   if (publish.toLowerCase() === 's' || publish.toLowerCase() === 'y') {
-    run('npm run build', { stdio: 'inherit' })
+    run('pnpm build', { stdio: 'inherit' })
     console.log('Si usás --publish, asegurate de tener GH_TOKEN configurado.')
     const doPublish = await ask('¿Ejecutar electron-builder --publish always? (s/N): ')
     if (doPublish.toLowerCase() === 's' || doPublish.toLowerCase() === 'y') {
-      run('npx electron-builder --publish always', { stdio: 'inherit' })
+      run('pnpm exec electron-builder --publish always', { stdio: 'inherit' })
     }
     const pushAll = await ask('¿Hacer git push (incluye update.json) + --follow-tags? (s/N): ')
     if (pushAll.toLowerCase() === 's' || pushAll.toLowerCase() === 'y') {

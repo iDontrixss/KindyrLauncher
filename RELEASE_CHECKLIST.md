@@ -3,8 +3,8 @@
 ## Código y dependencias
 
 - [ ] El árbol de trabajo contiene únicamente los cambios destinados a la versión.
-- [ ] `npm ci --include=dev`, `npm run check:syntax`, `npm test` y `npm ls --include=dev` pasan.
-- [ ] `npm audit --omit=dev` informa cero vulnerabilidades.
+- [ ] `pnpm install`, `pnpm check:syntax`, `pnpm test` y `pnpm ls --include=dev` pasan.
+- [ ] `pnpm audit --omit=dev` informa cero vulnerabilidades.
 - [ ] MCLC, herramientas de diagnóstico y archivos de respaldo no aparecen en el ASAR.
 - [ ] La versión coincide en `package.json`, nombres de artefactos y etiqueta Git (changelog es local, no se commitea — ver `CHANGELOG.md` ignorado).
 

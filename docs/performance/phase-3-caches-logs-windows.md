@@ -68,7 +68,7 @@ Los 44 handlers IPC permanecen registrados a nivel de módulo, no desde `createW
 
 ## Build, ASAR y AppImage
 
-- `npm run build:linux` falló dentro del sandbox con `No JSON content found in output`: electron-builder dejó vacío el archivo temporal de `npm list`, aunque el mismo `npm list -a --include prod --include optional --omit dev --json --long --silent --loglevel=error` produjo JSON válido de 503.343 bytes. No se modificaron dependencias ni configuración para sortearlo.
+- `pnpm build:linux` falló dentro del sandbox con `No JSON content found in output`: electron-builder dejó vacío el archivo temporal de `npm list`, aunque el mismo `npm list -a --include prod --include optional --omit dev --json --long --silent --loglevel=error` produjo JSON válido de 503.343 bytes. No se modificaron dependencias ni configuración para sortearlo.
 - El mismo build ejecutado fuera del sandbox terminó correctamente con electron-builder 26.8.1 y Electron 42.3.0. AppImage: `Kindyr Launcher-1.2.0.AppImage`, 124.991.173 bytes, ejecutable.
 - El ASAR contiene `main.js`, `common.js`, `navigation.js`, `launcher.js`, `index.html` y las cinco secciones. No contiene `tools/performance`, Clinic, MemLab ni Knip.
 - El AppImage se inició en las tres réplicas y las cinco vistas se recorrieron mediante CDP sólo en `127.0.0.1`. Cada réplica cerró con cero procesos de Kindyr restantes.

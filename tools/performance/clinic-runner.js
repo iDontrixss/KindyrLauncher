@@ -6,7 +6,7 @@ const { spawnSync } = require('node:child_process');
 
 const script = resolve(process.env.KINDYR_CLINIC_SCRIPT || 'tools/performance/imports.js');
 const mode = process.env.KINDYR_CLINIC_MODE || 'standard';
-const npmBin = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+const npmBin = process.platform === 'win32' ? 'pnpm exec' : 'pnpm exec';
 const commands = mode === 'heap'
   ? [['clinic', 'heapprofiler', '--', process.execPath, script]]
   : [
