@@ -31,7 +31,7 @@ Los artefactos se crean en `dist/`. Las credenciales de Microsoft se cifran con 
 
 ## Estado de lanzamiento
 
-La versión declarada es `0.1.1` (beta). Antes de publicar, debe completarse [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), incluida la validación en una instalación limpia, la firma de artefactos y la configuración del repositorio remoto. El changelog es local (`CHANGELOG.md` ignorado en git) — no se commitea.
+La versión declarada es `0.1.0` (beta). Antes de publicar, debe completarse [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), incluida la validación en una instalación limpia, la firma de artefactos y la configuración del repositorio remoto. El changelog es local (`CHANGELOG.md` ignorado en git) — no se commitea.
 
 ### Publicar una actualización (control manual)
 
