@@ -2907,19 +2907,40 @@ function showUpdateConfirmation(updateInfo) {
   const acceptText = language === 'es' ? 'Instalar' : 'Install'
   const cancelText = language === 'es' ? 'Cancelar' : 'Cancel'
 
+  // Si ya hay un aviso abierto, traerlo al frente en lugar de crear otro
+  if (updateConfirmationWindow && !updateConfirmationWindow.isDestroyed()) {
+    try { updateConfirmationWindow.show(); updateConfirmationWindow.focus(); updateConfirmationWindow.moveTop(); } catch {}
+    return
+  }
+
   updateConfirmationWindow = new BrowserWindow({
     width: 560,
     height: 420,
     frame: false,
     resizable: false,
     center: true,
-    show: true,
+    show: false,
+    alwaysOnTop: true,
     backgroundColor: '#030f2b',
     webPreferences: getRendererWebPreferences(path.join(__dirname, 'preload.js'))
   })
 
   updateConfirmationWindow.loadFile('update-confirmation.html', {
     query: { title, message, acceptText, cancelText, version: updateInfo.version }
+  })
+
+  updateConfirmationWindow.once('ready-to-show', () => {
+    try {
+      updateConfirmationWindow.show()
+      updateConfirmationWindow.focus()
+      updateConfirmationWindow.moveTop()
+      updateConfirmationWindow.setAlwaysOnTop(true)
+      // Asegurar que quede por encima incluso si el launcher estaba en segundo plano
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.focus()
+        updateConfirmationWindow.focus()
+      }
+    } catch {}
   })
 
   updateConfirmationWindow.on('closed', () => {
@@ -3209,6 +3230,24 @@ function createSplashWindow() {
   splashWindow.loadFile('splash.html', { query: { v: version } })
 }
 
+let updatePollInterval = null
+function startUpdatePolling() {
+  if (!app.isPackaged) return
+  if (updatePollInterval) clearInterval(updatePollInterval)
+  // Polling para usuarios con launcher ya abierto: cada 60s revisa si pnpm update-kindyr habilitó un nuevo ciclo
+  updatePollInterval = setInterval(() => {
+    // Solo chequea si no hay un diálogo ya abierto y no se está descargando
+    if (updateConfirmationWindow && !updateConfirmationWindow.isDestroyed()) return
+    hasNewerGitHubRelease().then(hasNewer => {
+      if (hasNewer) {
+        console.log('[Kindyr] Polling detectó update aprobado — lanzando checkForUpdates')
+        return getAutoUpdater().checkForUpdates()
+      }
+    }).catch(e => console.warn('[Kindyr] Polling update check failed:', e.message || e))
+  }, 60_000)
+  updatePollInterval.unref?.()
+}
+
 function closeSplashAndShowMain() {
   clearSplashCloseTimer()
   clearMainWindowLoadFallbackTimer()
@@ -3220,14 +3259,15 @@ function closeSplashAndShowMain() {
     splashWindow.close()
   }
   splashWindow = null
-  // Auto-updater: chequea al iniciar pero NUNCA descarga solo.
-  // Si hay actualización, solo muestra el diálogo. Si el usuario acepta, ahí descarga.
-  // Si no acepta, no pasa nada. Vos controlás cuándo se publica via `pnpm update-kindyr`.
+  // Auto-updater: chequea al iniciar pero NUNCA descarga solo. Si hay actualización, solo muestra el diálogo en primer plano.
+  // Si el usuario acepta, ahí descarga. Si no acepta, no pasa nada. Vos controlás cuándo se publica via `pnpm update-kindyr`.
+  // Además, polling cada 60s para que si hacés pnpm update-kindyr mientras el usuario ya tiene el launcher abierto, igual le aparezca el aviso.
   if (app.isPackaged) {
     setTimeout(() => {
       checkForUpdatesOnStartup().catch(error => {
         console.error('AutoUpdater error:', error.message || error)
       })
+      startUpdatePolling()
     }, 2500)
   }
 }
