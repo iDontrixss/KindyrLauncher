@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<!--
+ Kindyr Launcher - Copyright (C) 2026 iDontrixss
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
+<html lang="es" data-theme="midnight" style="background:#030f2b;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<title>Actualización Kindyr</title>
+<link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+<style>
+  :root{
+    --kindyr-bg:#030f2b;
+    --kindyr-surface:#0a2559;
+    --kindyr-surface-2:#12408a;
+    --kindyr-blue:#4c8dff;
+    --kindyr-blue-soft:#aacdff;
+    --kindyr-accent:#ff5a3c;
+    --kindyr-ink:#010712;
+    --kindyr-text:#f4f8ff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:var(--kindyr-bg); color:var(--kindyr-text);
+    font-family:'Space Grotesk','Segoe UI',system-ui,sans-serif;
+    background-image:
+      linear-gradient(rgba(76,141,255,0.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(76,141,255,0.055) 1px, transparent 1px);
+    background-size:28px 28px,28px 28px;
+    padding:16px;
+  }
+  .notice{
+    width:480px; background:var(--kindyr-surface); border:3px solid var(--kindyr-ink);
+    box-shadow:8px 8px 0 var(--kindyr-ink); overflow:hidden;
+  }
+  .notice-head{
+    display:flex; align-items:center; gap:12px; padding:14px 16px;
+    background:var(--kindyr-surface-2); border-bottom:3px solid var(--kindyr-ink);
+    position:relative;
+  }
+  .notice-icon{
+    width:40px; height:40px; flex-shrink:0; background:var(--kindyr-accent);
+    border:3px solid var(--kindyr-ink); box-shadow:2px 2px 0 var(--kindyr-ink);
+    display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--kindyr-ink);
+  }
+  .notice-kicker{
+    font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700;
+    letter-spacing:0.12em; text-transform:uppercase; color:var(--kindyr-blue-soft);
+    display:flex; align-items:center; gap:6px;
+  }
+  .notice-kicker i{color:var(--kindyr-accent)}
+  .notice-title{font-size:15px; font-weight:800; letter-spacing:-0.02em; text-transform:uppercase; margin-top:2px}
+  .notice-sub{font-size:10px; font-weight:600; color:var(--kindyr-blue-soft); margin-top:1px}
+  .btn-later{
+    position:absolute; top:12px; right:12px;
+    background:var(--kindyr-accent); color:var(--kindyr-ink);
+    border:3px solid var(--kindyr-ink); box-shadow:2px 2px 0 var(--kindyr-ink);
+    font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:800;
+    padding:6px 10px; cursor:pointer; display:flex; align-items:center; gap:6px;
+  }
+  .btn-later:hover{filter:brightness(1.08); transform:translate(-1px,-1px); box-shadow:3px 3px 0 var(--kindyr-ink)}
+  .notice-body{padding:16px; display:flex; flex-direction:column; gap:12px}
+  .ver-row{
+    display:flex; align-items:center; gap:8px; background:var(--kindyr-bg);
+    border:2px solid var(--kindyr-ink); box-shadow:2px 2px 0 var(--kindyr-ink);
+    padding:8px 10px; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700;
+  }
+  .ver-badge{background:var(--kindyr-blue); color:var(--kindyr-ink); border:2px solid var(--kindyr-ink); padding:2px 6px; font-size:9px; font-weight:800; letter-spacing:0.06em;}
+  .ver-current{color:var(--kindyr-blue-soft)}
+  .ver-arrow{color:var(--kindyr-accent)}
+  .ver-next{color:var(--kindyr-text); font-weight:800}
+  .beta-tag{background:#facc15; color:#010712; border:2px solid var(--kindyr-ink); font-size:9px; font-weight:800; padding:2px 6px; letter-spacing:0.06em; box-shadow:1px 1px 0 var(--kindyr-ink)}
+  .changelog{
+    background:#071c45; border:2px solid var(--kindyr-ink); box-shadow:2px 2px 0 var(--kindyr-ink);
+    padding:12px; font-size:11px; line-height:1.5; color:var(--kindyr-blue-soft); max-height:110px; overflow:auto;
+  }
+  .changelog strong{color:var(--kindyr-text)}
+  .notice-actions{display:flex; gap:8px; justify-content:flex-end; padding:0 16px 16px}
+  .btn{
+    min-height:36px; padding:8px 14px; border:3px solid var(--kindyr-ink); border-radius:0;
+    font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:800;
+    cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+    box-shadow:3px 3px 0 var(--kindyr-ink); transition:transform .1s, filter .12s;
+  }
+  .btn:active{transform:translate(1px,1px); box-shadow:2px 2px 0 var(--kindyr-ink)}
+  .btn-primary{background:var(--kindyr-accent); color:var(--kindyr-ink)}
+  .btn-primary:hover{filter:brightness(1.08); transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--kindyr-ink)}
+  .btn-secondary{background:var(--kindyr-surface-2); color:var(--kindyr-text)}
+</style>
+</head>
+<body>
+  <div class="notice" role="dialog" aria-labelledby="title">
+    <div class="notice-head">
+      <div class="notice-icon"><i class="fa-solid fa-rocket"></i></div>
+      <div style="flex:1">
+        <div class="notice-kicker"><i class="fa-solid fa-sparkles"></i> KINDYR • ACTUALIZACIÓN <span class="beta-tag">BETA</span></div>
+        <div id="title" class="notice-title">Nueva beta disponible</div>
+        <div class="notice-sub">Canal beta • Requiere reinicio</div>
+      </div>
+      <button class="btn-later" id="cancelButton"><i class="fa-solid fa-xmark"></i> Más tarde</button>
+    </div>
+    <div class="notice-body">
+      <div class="ver-row">
+        <span class="ver-badge">ACTUAL</span>
+        <span class="ver-current" id="currentVer">v0.1.0</span>
+        <i class="fa-solid fa-arrow-right ver-arrow"></i>
+        <span class="ver-next" id="nextVer">v0.1.1</span>
+        <span class="beta-tag" id="prereleaseTag" style="margin-left:auto; display:none">PRERELEASE</span>
+      </div>
+      <div class="changelog" id="changelog">
+        <strong id="changelogTitle">Notas</strong>
+        <div id="message" style="margin-top:6px"></div>
+      </div>
+    </div>
+    <div class="notice-actions">
+      <button class="btn btn-secondary" id="notesButton"><i class="fa-brands fa-github"></i> Notas</button>
+      <button class="btn btn-primary" id="acceptButton"><i class="fa-solid fa-download"></i> Actualizar ahora</button>
+    </div>
+  </div>
+<script>
+  const urlParams = new URLSearchParams(window.location.search)
+  const title = urlParams.get('title') || 'Nueva beta disponible'
+  const message = urlParams.get('message') || 'Hay una nueva actualización disponible.'
+  const version = urlParams.get('version') || ''
+  const acceptText = urlParams.get('acceptText') || 'Actualizar ahora'
+  const cancelText = 'Más tarde'
+  document.getElementById('title').textContent = title
+  document.getElementById('message').textContent = message
+  document.getElementById('nextVer').textContent = version ? 'v' + String(version).replace(/^[vV]/,'') : 'v0.1.1'
+  // Mostrar badge prerelease si version contiene -
+  if (String(version).includes('-')) document.getElementById('prereleaseTag').style.display = 'inline-block'
+  // Intentar obtener versión actual del launcher para mostrar
+  if (window.electronAPI) {
+    // No hay API directa, usar placeholder
+  }
+  document.getElementById('acceptButton').innerHTML = '<i class="fa-solid fa-download"></i> ' + acceptText
+  // Más tarde ya está arriba, pero mantener compatibilidad
+  document.getElementById('cancelButton').addEventListener('click', () => window.electronAPI.updateConfirm(false))
+  document.getElementById('acceptButton').addEventListener('click', () => window.electronAPI.updateConfirm(true))
+  const notesBtn = document.getElementById('notesButton')
+  if (notesBtn) notesBtn.addEventListener('click', () => {
+    try { window.kindyrAPI.modrinth.openProject('https://github.com/iDontrixss/KindyrLauncher/releases') } catch {}
+  })
+  // Versión actual (si está disponible vía query)
+  const currentVer = urlParams.get('currentVersion')
+  if (currentVer) document.getElementById('currentVer').textContent = 'v' + String(currentVer).replace(/^[vV]/,'')
+</script>
+</body>
+</html>

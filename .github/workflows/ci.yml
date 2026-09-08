@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:syntax
+      - run: pnpm test
+      - run: pnpm audit --omit=dev --ignore-registry-errors --audit-level high
+      - run: pnpm ls --depth 0
+
+  package-linux:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      # Key CurseForge embebida: genera curseforge-embedded.json (gitignored)
+      # dentro del ASAR. Requiere el secret CURSEFORGE_API_KEY en el repo.
+      # Sin secret, after-pack falla con mensaje claro (el build no es portable).
+      - run: node scripts/obfuscate-curseforge-key.js
+        env:
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+      # --publish never: electron-builder detecta CI e intenta publicar a GitHub
+      # Releases sin GH_TOKEN (falla). Los artefactos se suben con upload-artifact.
+      - run: pnpm build:linux -- --publish never
+      - uses: actions/upload-artifact@v5
+        with:
+          name: kindyr-linux
+          path: dist/*.AppImage
+          if-no-files-found: error
+
+  package-windows:
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      # Key CurseForge embebida (ver nota en package-linux).
+      - run: node scripts/obfuscate-curseforge-key.js
+        env:
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+      # --publish never: ver nota en package-linux (evita publish implícito sin GH_TOKEN).
+      - run: pnpm build:win -- --publish never
+      - uses: actions/upload-artifact@v5
+        with:
+          name: kindyr-windows
+          path: dist/*.exe
+          if-no-files-found: error

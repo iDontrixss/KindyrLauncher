@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<!--
+ Kindyr Launcher - Copyright (C) 2026 iDontrixss
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
+<html lang="es" data-theme="midnight">
+<head>
+  <meta charset="UTF-8">
+  <title>Bienvenido a Kindyr Launcher</title>
+  <style>
+    :root {
+      --kindyr-bg: #030f2b;
+      --kindyr-surface: #0a2559;
+      --kindyr-surface-2: #12408a;
+      --kindyr-blue: #4c8dff;
+      --kindyr-blue-soft: #aacdff;
+      --kindyr-accent: #ff5a3c;
+      --kindyr-ink: #010712;
+      --kindyr-text: #f4f8ff;
+      --kindyr-inset: #071c45;
+      --kindyr-shadow: 5px 5px 0 var(--kindyr-ink);
+    }
+
+    [data-theme="midnight"] {
+      --kindyr-bg: #030f2b;
+      --kindyr-surface: #0a2559;
+      --kindyr-surface-2: #12408a;
+      --kindyr-blue: #4c8dff;
+      --kindyr-blue-soft: #aacdff;
+      --kindyr-accent: #ff5a3c;
+      --kindyr-ink: #010712;
+      --kindyr-text: #f4f8ff;
+      --kindyr-inset: #071c45;
+    }
+
+    [data-theme="navy"] {
+      --kindyr-bg: #010718;
+      --kindyr-surface: #06183c;
+      --kindyr-surface-2: #0a2559;
+      --kindyr-blue: #356dd4;
+      --kindyr-blue-soft: #79b0ff;
+      --kindyr-accent: #ff5a3c;
+      --kindyr-ink: #00030a;
+      --kindyr-text: #eef5ff;
+      --kindyr-inset: #04102b;
+    }
+
+    [data-theme="azure"] {
+      --kindyr-bg: #08245b;
+      --kindyr-surface: #12408a;
+      --kindyr-surface-2: #1e56be;
+      --kindyr-blue: #79b0ff;
+      --kindyr-blue-soft: #d4e6ff;
+      --kindyr-accent: #ff5a3c;
+      --kindyr-ink: #010712;
+      --kindyr-text: #ffffff;
+      --kindyr-inset: #0a2a63;
+    }
+
+    [data-theme="steel"] {
+      --kindyr-bg: #dceaff;
+      --kindyr-surface: #f7fbff;
+      --kindyr-surface-2: #bcd8ff;
+      --kindyr-blue: #2867cc;
+      --kindyr-blue-soft: #16468f;
+      --kindyr-accent: #ff5a3c;
+      --kindyr-ink: #071a3d;
+      --kindyr-text: #071a3d;
+      --kindyr-inset: #d9e9ff;
+    }
+
+    [data-theme="forest"] {
+      --kindyr-bg: #04160e;
+      --kindyr-surface: #0a3520;
+      --kindyr-surface-2: #14532d;
+      --kindyr-blue: #34d399;
+      --kindyr-blue-soft: #a7f3d0;
+      --kindyr-accent: #ff5a3c;
+      --kindyr-ink: #010b06;
+      --kindyr-text: #f2fbf5;
+      --kindyr-inset: #062417;
+    }
+
+    [data-theme="crimson"] {
+      --kindyr-bg: #1c0509;
+      --kindyr-surface: #3d0a12;
+      --kindyr-surface-2: #6b1220;
+      --kindyr-blue: #ff5d5d;
+      --kindyr-blue-soft: #ffb3b3;
+      --kindyr-accent: #ff5a3c;
+      --kindyr-ink: #0d0204;
+      --kindyr-text: #fff3f3;
+      --kindyr-inset: #2a060d;
+    }
+
+    [data-theme="ember"] {
+      --kindyr-bg: #190c03;
+      --kindyr-surface: #3a2110;
+      --kindyr-surface-2: #5c3a1e;
+      --kindyr-blue: #ffa53c;
+      --kindyr-blue-soft: #ffd9a8;
+      --kindyr-accent: #ff5a3c;
+      --kindyr-ink: #0c0501;
+      --kindyr-text: #fff7ee;
+      --kindyr-inset: #281608;
+    }
+
+    [data-theme="grape"] {
+      --kindyr-bg: #120826;
+      --kindyr-surface: #241245;
+      --kindyr-surface-2: #3b1f6e;
+      --kindyr-blue: #a78bfa;
+      --kindyr-blue-soft: #d8ccff;
+      --kindyr-accent: #ff5a3c;
+      --kindyr-ink: #080312;
+      --kindyr-text: #f5f0ff;
+      --kindyr-inset: #180b30;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      color: var(--kindyr-text);
+      background: var(--kindyr-bg);
+      font-family: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+      font-weight: 700;
+      -webkit-app-region: drag;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(76, 141, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(76, 141, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(rgba(76, 141, 255, 0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(76, 141, 255, 0.12) 1px, transparent 1px);
+      background-size: 28px 28px, 28px 28px, 140px 140px, 140px 140px;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      right: -84px;
+      bottom: 54px;
+      z-index: 0;
+      width: 210px;
+      height: 74px;
+      background: var(--kindyr-accent);
+      border: 3px solid var(--kindyr-ink);
+      transform: rotate(-18deg);
+      pointer-events: none;
+    }
+
+    .header {
+      position: relative;
+      z-index: 2;
+      min-height: 58px;
+      padding: 16px 18px 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      -webkit-app-region: drag;
+    }
+
+    .brand-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      background: var(--kindyr-surface);
+      border: 2px solid var(--kindyr-ink);
+      box-shadow: 3px 3px 0 var(--kindyr-ink);
+      font: 800 10px/1 'Segoe UI', system-ui, sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      -webkit-app-region: no-drag;
+    }
+
+    .local-icon {
+      position: relative;
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+    }
+
+    .local-icon::before,
+    .local-icon::after {
+      content: '';
+      position: absolute;
+      box-sizing: border-box;
+    }
+
+    .local-icon.setup::before {
+      width: 14px;
+      height: 14px;
+      background:
+        linear-gradient(var(--kindyr-accent), var(--kindyr-accent)) 0 0 / 6px 6px no-repeat,
+        linear-gradient(var(--kindyr-accent), var(--kindyr-accent)) 8px 0 / 6px 6px no-repeat,
+        linear-gradient(var(--kindyr-accent), var(--kindyr-accent)) 0 8px / 6px 6px no-repeat,
+        linear-gradient(var(--kindyr-accent), var(--kindyr-accent)) 8px 8px / 6px 6px no-repeat;
+    }
+
+    .local-icon.lang::before,
+    .local-icon.account::before,
+    .local-icon.ms::before,
+    .local-icon.offline::before,
+    .local-icon.theme::before {
+      inset: 2px;
+      border: 3px solid currentColor;
+    }
+
+    .local-icon.lang::after {
+      inset: 7px 1px;
+      border-top: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+    }
+
+    .local-icon.account::before { border-radius: 50% 50% 35% 35%; }
+    .local-icon.account::after {
+      left: 4px;
+      right: 4px;
+      bottom: 2px;
+      height: 6px;
+      background: currentColor;
+    }
+
+    .local-icon.ms::before {
+      border: 0;
+      background:
+        linear-gradient(currentColor, currentColor) 0 0 / 7px 7px no-repeat,
+        linear-gradient(currentColor, currentColor) 9px 0 / 7px 7px no-repeat,
+        linear-gradient(currentColor, currentColor) 0 9px / 7px 7px no-repeat,
+        linear-gradient(currentColor, currentColor) 9px 9px / 7px 7px no-repeat;
+    }
+
+    .local-icon.offline::before {
+      top: 2px;
+      left: 6px;
+      width: 7px;
+      height: 7px;
+      background: currentColor;
+      border: 0;
+      border-radius: 50%;
+    }
+
+    .local-icon.offline::after {
+      left: 3px;
+      bottom: 3px;
+      width: 12px;
+      height: 7px;
+      background: currentColor;
+      border-radius: 7px 7px 1px 1px;
+    }
+
+    .local-icon.theme::before {
+      inset: 3px;
+      border: 0;
+      background: currentColor;
+      clip-path: polygon(50% 0, 62% 34%, 98% 35%, 69% 56%, 79% 91%, 50% 70%, 21% 91%, 31% 56%, 2% 35%, 38% 34%);
+    }
+
+    .win-close {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--kindyr-ink);
+      background: var(--kindyr-accent);
+      border: 2px solid var(--kindyr-ink);
+      border-radius: 0;
+      box-shadow: 2px 2px 0 var(--kindyr-ink);
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+    }
+
+    .win-close::before { content: 'x'; font: 900 16px/1 Arial, sans-serif; }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 34px 18px;
+      -webkit-app-region: no-drag;
+    }
+
+    .logo-wrap {
+      position: relative;
+      width: 100px;
+      height: 92px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-wrap::before {
+      content: '';
+      position: absolute;
+      inset: 18px 4px 7px;
+      background: var(--kindyr-blue);
+      border: 3px solid var(--kindyr-ink);
+      transform: rotate(-4deg);
+      box-shadow: var(--kindyr-shadow);
+    }
+
+    .logo {
+      position: relative;
+      width: 86px;
+      height: 86px;
+      object-fit: contain;
+      filter: drop-shadow(3px 3px 0 var(--kindyr-ink));
+    }
+
+    .step {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      text-align: center;
+    }
+
+    .step.active { display: flex; }
+
+    .step-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 9px;
+      color: var(--kindyr-accent);
+      font: 800 10px/1 'Courier New', monospace;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .step-label::before {
+      content: '';
+      width: 14px;
+      height: 3px;
+      background: var(--kindyr-accent);
+    }
+
+    h1 {
+      max-width: 390px;
+      margin-bottom: 7px;
+      color: var(--kindyr-text);
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 1.02;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.34);
+    }
+
+    p {
+      max-width: 350px;
+      margin-bottom: 20px;
+      color: var(--kindyr-blue-soft);
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 700;
+    }
+
+    .options {
+      width: 100%;
+      max-width: 370px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .option-btn {
+      position: relative;
+      width: 100%;
+      min-height: 64px;
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      color: inherit;
+      background: var(--kindyr-surface-2);
+      border: 3px solid var(--kindyr-ink);
+      border-radius: 0;
+      box-shadow: 3px 3px 0 var(--kindyr-ink);
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+
+    .option-btn:hover {
+      background: #123f92;
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0 var(--kindyr-ink);
+    }
+
+    .option-btn.selected {
+      color: var(--kindyr-text);
+      background: var(--kindyr-surface);
+      border-color: var(--kindyr-accent);
+      box-shadow: 4px 4px 0 var(--kindyr-accent);
+    }
+
+    .option-btn.selected::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(225deg, var(--kindyr-accent) 0 50%, transparent 51%);
+    }
+
+    .option-icon {
+      width: 46px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--kindyr-ink);
+      background: var(--kindyr-blue);
+      border: 2px solid var(--kindyr-ink);
+      border-radius: 0;
+      box-shadow: 2px 2px 0 var(--kindyr-ink);
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .option-icon.ms { background: #79b0ff; color: var(--kindyr-ink); }
+    .option-icon.offline { background: var(--kindyr-accent); color: var(--kindyr-ink); }
+    .option-icon.lang { background: var(--kindyr-blue); color: var(--kindyr-text); }
+    .option-icon.theme { background: #79b0ff; color: var(--kindyr-ink); }
+    .option-icon.midnight { background: #4c8dff; color: #010712; }
+    .option-icon.navy { background: #356dd4; color: #00030a; }
+    .option-icon.azure { background: #79b0ff; color: #010712; }
+    .option-icon.steel { background: #dceaff; color: #071a3d; }
+
+    .option-text { min-width: 0; }
+    .option-text strong {
+      display: block;
+      overflow: hidden;
+      color: var(--kindyr-text);
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.18;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .option-text span {
+      display: block;
+      margin-top: 3px;
+      overflow: hidden;
+      color: var(--kindyr-blue-soft);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .username-input {
+      width: 100%;
+      max-width: 370px;
+      padding: 12px 14px;
+      color: var(--kindyr-text);
+      background: var(--kindyr-bg);
+      border: 3px solid var(--kindyr-ink);
+      border-radius: 0;
+      box-shadow: 3px 3px 0 var(--kindyr-ink);
+      font: 800 13px/1 'Segoe UI', system-ui, sans-serif;
+      outline: none;
+    }
+
+    .username-input:focus { border-color: var(--kindyr-blue); }
+    .username-input::placeholder { color: #79b0ff; }
+
+    .username-error {
+      min-height: 16px;
+      margin-top: 8px;
+      color: var(--kindyr-accent);
+      font: 800 11px/1.3 'Segoe UI', system-ui, sans-serif;
+    }
+
+    .footer {
+      position: relative;
+      z-index: 2;
+      padding: 16px 22px 24px;
+      display: grid;
+      grid-template-columns: 118px 1fr 148px;
+      align-items: center;
+      gap: 12px;
+      -webkit-app-region: no-drag;
+    }
+
+    .dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 22px;
+      height: 8px;
+      background: var(--kindyr-surface-2);
+      border: 2px solid var(--kindyr-ink);
+      border-radius: 0;
+      box-shadow: 2px 2px 0 var(--kindyr-ink);
+      transition: background 120ms ease, width 120ms ease;
+    }
+
+    .dot.active {
+      width: 34px;
+      background: var(--kindyr-accent);
+    }
+
+    .btn-next,
+    .btn-back {
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid var(--kindyr-ink);
+      border-radius: 0;
+      box-shadow: 3px 3px 0 var(--kindyr-ink);
+      font: 900 12px/1 'Segoe UI', system-ui, sans-serif;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+    }
+
+    .btn-next {
+      color: var(--kindyr-ink);
+      background: var(--kindyr-accent);
+      padding: 0 16px;
+      text-transform: uppercase;
+    }
+
+    .btn-back {
+      color: var(--kindyr-text);
+      background: var(--kindyr-surface-2);
+      padding: 0 12px;
+    }
+
+    .btn-next:hover,
+    .btn-back:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0 var(--kindyr-ink);
+    }
+
+    .btn-next:disabled {
+      opacity: 1;
+      color: rgba(1, 7, 18, 0.72);
+      background: #b24b3d;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    @media (max-height: 570px) {
+      .header { min-height: 46px; padding-top: 12px; }
+      .content { padding-top: 0; padding-bottom: 10px; justify-content: flex-start; overflow-y: auto; }
+      .logo-wrap { width: 78px; height: 66px; margin-bottom: 8px; }
+      .logo { width: 64px; height: 64px; }
+      h1 { font-size: 23px; }
+      p { margin-bottom: 14px; }
+      .footer { padding-bottom: 16px; }
+    }
+
+    @media (max-width: 640px), (max-height: 720px) {
+      body::after { bottom: -42px; right: -118px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand-chip"><span class="local-icon setup" aria-hidden="true"></span> Setup Kindyr</div>
+  <button class="win-close" onclick="window.electronAPI.send('close')"></button>
+</div>
+
+<div class="content">
+  <div class="logo-wrap">
+    <img class="logo" src="assets/logo-dark.png" alt="Kindyr">
+  </div>
+
+  <div class="step active" id="step-1">
+    <div class="step-label">Paso 1 de 3</div>
+    <h1>Bienvenido a Kindyr</h1>
+    <p>Elegí el idioma antes de tocar cualquier otra cosa.</p>
+    <div class="options">
+      <button class="option-btn" id="opt-es" onclick="selectLang('es')">
+        <div class="option-icon lang"><span class="local-icon lang" aria-hidden="true"></span></div>
+        <div class="option-text">
+          <strong>Español</strong>
+          <span>Interfaz en español</span>
+        </div>
+      </button>
+      <button class="option-btn" id="opt-en" onclick="selectLang('en')">
+        <div class="option-icon lang"><span class="local-icon lang" aria-hidden="true"></span></div>
+        <div class="option-text">
+          <strong>English</strong>
+          <span>Interface in English</span>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <div class="step" id="step-2">
+    <div class="step-label">Paso 2 de 3</div>
+    <h1>Elegí tu cuenta</h1>
+    <p>Definí cómo querés jugar en este launcher.</p>
+    <div class="options">
+      <button class="option-btn" id="opt-ms" onclick="selectAccount('microsoft')">
+        <div class="option-icon ms"><span class="local-icon ms" aria-hidden="true"></span></div>
+        <div class="option-text">
+          <strong>Cuenta Microsoft</strong>
+          <span>Login oficial · Servidores premium</span>
+        </div>
+      </button>
+      <button class="option-btn" id="opt-offline" onclick="selectAccount('offline')">
+        <div class="option-icon offline"><span class="local-icon offline" aria-hidden="true"></span></div>
+        <div class="option-text">
+          <strong>Modo offline</strong>
+          <span>Sin cuenta · Solo servidores sin verificación</span>
+        </div>
+      </button>
+    </div>
+    <div id="offline-name-wrap" style="display:none;margin-top:14px;width:100%;max-width:370px;">
+      <input class="username-input" id="offline-name" placeholder="Tu nombre de jugador" maxlength="16">
+      <div class="username-error" id="offline-name-error" role="alert"></div>
+    </div>
+  </div>
+
+  <div class="step" id="step-3">
+    <div class="step-label">Paso 3 de 3</div>
+    <h1>Elegí tu tema</h1>
+    <p>Podés cambiarlo en cualquier momento desde ajustes.</p>
+    <div class="options">
+      <button class="option-btn" id="opt-midnight" onclick="selectTheme('midnight')">
+        <div class="option-icon theme midnight"><span class="local-icon theme" aria-hidden="true"></span></div>
+        <div class="option-text">
+          <strong>Midnight</strong>
+          <span>Azul profundo Kindyr</span>
+        </div>
+      </button>
+      <button class="option-btn" id="opt-navy" onclick="selectTheme('navy')">
+        <div class="option-icon theme navy"><span class="local-icon theme" aria-hidden="true"></span></div>
+        <div class="option-text">
+          <strong>Navy</strong>
+          <span>Oscuro, compacto y contrastado</span>
+        </div>
+      </button>
+      <button class="option-btn" id="opt-azure" onclick="selectTheme('azure')">
+        <div class="option-icon theme azure"><span class="local-icon theme" aria-hidden="true"></span></div>
+        <div class="option-text">
+          <strong>Azure</strong>
+          <span>Más brillante, más eléctrico</span>
+        </div>
+      </button>
+      <button class="option-btn" id="opt-steel" onclick="selectTheme('steel')">
+        <div class="option-icon theme steel"><span class="local-icon theme" aria-hidden="true"></span></div>
+        <div class="option-text">
+          <strong>Steel</strong>
+          <span>Claro, limpio y rígido</span>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <button class="btn-back" id="btn-back" onclick="goBack()" style="visibility:hidden">Atrás</button>
+  <div class="dots">
+    <div class="dot active" id="dot-1"></div>
+    <div class="dot" id="dot-2"></div>
+    <div class="dot" id="dot-3"></div>
+  </div>
+  <button class="btn-next" id="btn-next" onclick="goNext()">Siguiente</button>
+</div>
+
+<script>
+  let currentStep = 1
+  let config = { accountType: null, language: null, theme: 'midnight', username: '' }
+  const usernamePattern = /^[A-Za-z0-9_]{3,16}$/
+
+  const themeIds = ['midnight', 'navy', 'azure', 'steel']
+
+  const i18n = {
+    es: {
+      setup: 'Setup Kindyr',
+      step1Label: 'Paso 1 de 3',
+      step1Title: 'Bienvenido a Kindyr',
+      step1Desc: 'Elegí el idioma antes de tocar cualquier otra cosa.',
+      step2Label: 'Paso 2 de 3',
+      step2Title: 'Elegí tu cuenta',
+      step2Desc: 'Definí cómo querés jugar en este launcher.',
+      step3Label: 'Paso 3 de 3',
+      step3Title: 'Elegí tu tema',
+      step3Desc: 'Podés cambiarlo en cualquier momento desde ajustes.',
+      langEs: 'Español',
+      langEsDesc: 'Interfaz en español',
+      langEn: 'English',
+      langEnDesc: 'Interface in English',
+      accountMs: 'Cuenta Microsoft',
+      accountMsDesc: 'Login oficial · Servidores premium',
+      accountOffline: 'Modo offline',
+      accountOfflineDesc: 'Sin cuenta · Solo servidores sin verificación',
+      offlinePlaceholder: 'Tu nombre de jugador',
+      offlineInvalid: 'Usá de 3 a 16 letras, números o guion bajo.',
+      themeMidnight: 'Midnight',
+      themeMidnightDesc: 'Azul profundo Kindyr',
+      themeNavy: 'Navy',
+      themeNavyDesc: 'Oscuro, compacto y contrastado',
+      themeAzure: 'Azure',
+      themeAzureDesc: 'Más brillante, más eléctrico',
+      themeSteel: 'Steel',
+      themeSteelDesc: 'Claro, limpio y rígido',
+      next: 'Siguiente',
+      finish: 'Empezar',
+      back: 'Atrás',
+      openingMs: 'Abriendo Microsoft...',
+      retry: 'Reintentar'
+    },
+    en: {
+      setup: 'Kindyr Setup',
+      step1Label: 'Step 1 of 3',
+      step1Title: 'Welcome to Kindyr',
+      step1Desc: 'Choose the language before anything else.',
+      step2Label: 'Step 2 of 3',
+      step2Title: 'Choose your account',
+      step2Desc: 'Define how you want to play in this launcher.',
+      step3Label: 'Step 3 of 3',
+      step3Title: 'Choose your theme',
+      step3Desc: 'You can change it anytime from settings.',
+      langEs: 'Español',
+      langEsDesc: 'Interfaz en español',
+      langEn: 'English',
+      langEnDesc: 'Interface in English',
+      accountMs: 'Microsoft Account',
+      accountMsDesc: 'Official login · Premium servers',
+      accountOffline: 'Offline mode',
+      accountOfflineDesc: 'No account · Offline servers only',
+      offlinePlaceholder: 'Your player name',
+      offlineInvalid: 'Use 3–16 letters, numbers, or underscores.',
+      themeMidnight: 'Midnight',
+      themeMidnightDesc: 'Deep Kindyr blue',
+      themeNavy: 'Navy',
+      themeNavyDesc: 'Dark, compact and high contrast',
+      themeAzure: 'Azure',
+      themeAzureDesc: 'Brighter, more electric',
+      themeSteel: 'Steel',
+      themeSteelDesc: 'Light, clean and rigid',
+      next: 'Next',
+      finish: "Let's go",
+      back: 'Back',
+      openingMs: 'Opening Microsoft...',
+      retry: 'Retry'
+    }
+  }
+
+  function t(key) {
+    return (i18n[config.language] || i18n.es)[key]
+  }
+
+  function applyLang() {
+    document.documentElement.lang = config.language === 'en' ? 'en' : 'es'
+    document.querySelector('.brand-chip').lastChild.textContent = ' ' + t('setup')
+
+    document.querySelector('#step-1 .step-label').textContent = t('step1Label')
+    document.querySelector('#step-1 h1').textContent = t('step1Title')
+    document.querySelector('#step-1 p').textContent = t('step1Desc')
+    document.querySelector('#step-2 .step-label').textContent = t('step2Label')
+    document.querySelector('#step-2 h1').textContent = t('step2Title')
+    document.querySelector('#step-2 p').textContent = t('step2Desc')
+    document.querySelector('#step-3 .step-label').textContent = t('step3Label')
+    document.querySelector('#step-3 h1').textContent = t('step3Title')
+    document.querySelector('#step-3 p').textContent = t('step3Desc')
+
+    document.querySelector('#opt-es .option-text strong').textContent = t('langEs')
+    document.querySelector('#opt-es .option-text span').textContent = t('langEsDesc')
+    document.querySelector('#opt-en .option-text strong').textContent = t('langEn')
+    document.querySelector('#opt-en .option-text span').textContent = t('langEnDesc')
+    document.querySelector('#opt-ms .option-text strong').textContent = t('accountMs')
+    document.querySelector('#opt-ms .option-text span').textContent = t('accountMsDesc')
+    document.querySelector('#opt-offline .option-text strong').textContent = t('accountOffline')
+    document.querySelector('#opt-offline .option-text span').textContent = t('accountOfflineDesc')
+    document.getElementById('offline-name').placeholder = t('offlinePlaceholder')
+    document.querySelector('#opt-midnight .option-text strong').textContent = t('themeMidnight')
+    document.querySelector('#opt-midnight .option-text span').textContent = t('themeMidnightDesc')
+    document.querySelector('#opt-navy .option-text strong').textContent = t('themeNavy')
+    document.querySelector('#opt-navy .option-text span').textContent = t('themeNavyDesc')
+    document.querySelector('#opt-azure .option-text strong').textContent = t('themeAzure')
+    document.querySelector('#opt-azure .option-text span').textContent = t('themeAzureDesc')
+    document.querySelector('#opt-steel .option-text strong').textContent = t('themeSteel')
+    document.querySelector('#opt-steel .option-text span').textContent = t('themeSteelDesc')
+
+    document.getElementById('btn-back').textContent = t('back')
+    document.getElementById('btn-next').textContent = currentStep === 3 ? t('finish') : t('next')
+  }
+
+  function applyThemePreview(theme) {
+    const selectedTheme = themeIds.includes(theme) ? theme : 'midnight'
+    document.documentElement.dataset.theme = selectedTheme
+    document.documentElement.style.colorScheme = selectedTheme === 'steel' ? 'light' : 'dark'
+    const logo = document.querySelector('.logo')
+    if (logo) logo.src = selectedTheme === 'steel' ? 'assets/logo-light.png' : 'assets/logo-dark.png'
+  }
+
+  function selectAccount(type) {
+    config.accountType = type
+    document.getElementById('opt-ms').classList.toggle('selected', type === 'microsoft')
+    document.getElementById('opt-offline').classList.toggle('selected', type === 'offline')
+    document.getElementById('offline-name-wrap').style.display = type === 'offline' ? 'block' : 'none'
+    document.getElementById('offline-name-error').textContent = ''
+    updateNextBtn()
+  }
+
+  function selectLang(lang) {
+    config.language = lang
+    document.getElementById('opt-es').classList.toggle('selected', lang === 'es')
+    document.getElementById('opt-en').classList.toggle('selected', lang === 'en')
+    applyLang()
+    updateNextBtn()
+  }
+
+  function selectTheme(theme) {
+    config.theme = themeIds.includes(theme) ? theme : 'midnight'
+    themeIds.forEach(id => {
+      document.getElementById('opt-' + id).classList.toggle('selected', config.theme === id)
+    })
+    applyThemePreview(config.theme)
+    updateNextBtn()
+  }
+
+  function updateNextBtn() {
+    const btn = document.getElementById('btn-next')
+    if (currentStep === 1) btn.disabled = !config.language
+    if (currentStep === 2) btn.disabled = !config.accountType
+    if (currentStep === 3) btn.disabled = !config.theme
+  }
+
+  function goNext() {
+    if (currentStep === 2 && config.accountType === 'microsoft') {
+      const btn = document.getElementById('btn-next')
+      btn.disabled = true
+      btn.textContent = t('openingMs')
+      window.electronAPI.invoke('ms-login').then(result => {
+        btn.disabled = false
+        btn.textContent = t('next')
+        if (result.ok) {
+          config.username = result.account.name
+          config.accountType = 'microsoft'
+          nextStep()
+        } else {
+          btn.textContent = t('retry')
+        }
+      })
+      return
+    }
+    if (currentStep === 2 && config.accountType === 'offline') {
+      const input = document.getElementById('offline-name')
+      const name = input.value.trim()
+      if (!usernamePattern.test(name)) {
+        input.style.borderColor = 'var(--kindyr-accent)'
+        document.getElementById('offline-name-error').textContent = t('offlineInvalid')
+        return
+      }
+      config.username = name
+    }
+    if (currentStep === 3) {
+      finishOnboarding()
+      return
+    }
+    nextStep()
+  }
+
+  function nextStep() {
+    document.getElementById('step-' + currentStep).classList.remove('active')
+    document.getElementById('dot-' + currentStep).classList.remove('active')
+    currentStep++
+    document.getElementById('step-' + currentStep).classList.add('active')
+    document.getElementById('dot-' + currentStep).classList.add('active')
+    document.getElementById('btn-back').style.visibility = currentStep > 1 ? 'visible' : 'hidden'
+    document.getElementById('btn-next').textContent = currentStep === 3 ? t('finish') : t('next')
+    updateNextBtn()
+  }
+
+  function goBack() {
+    document.getElementById('step-' + currentStep).classList.remove('active')
+    document.getElementById('dot-' + currentStep).classList.remove('active')
+    currentStep--
+    document.getElementById('step-' + currentStep).classList.add('active')
+    document.getElementById('dot-' + currentStep).classList.add('active')
+    document.getElementById('btn-back').style.visibility = currentStep > 1 ? 'visible' : 'hidden'
+    document.getElementById('btn-next').textContent = t('next')
+    updateNextBtn()
+  }
+
+  async function finishOnboarding() {
+    const result = await window.electronAPI.invoke('finish-onboarding', config)
+    if (!result.ok) console.error('Error finishing onboarding')
+  }
+
+  selectTheme('midnight')
+  document.getElementById('offline-name').addEventListener('input', event => {
+    event.currentTarget.style.borderColor = ''
+    document.getElementById('offline-name-error').textContent = ''
+  })
+  updateNextBtn()
+</script>
+
+</body>
+</html>

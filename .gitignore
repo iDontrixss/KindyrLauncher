@@ -1,0 +1,66 @@
+# Electron specific
+dist/
+electron-unit-tests/
+
+# Dependencies
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build output
+*.exe
+*.dmg
+*.png
+*.jpg
+*.gif
+*.zip
+*.tar.gz
+*.pkg
+*.msi
+*.deb
+
+# Environment variables
+.env*
+!.env.example
+# CurseForge embedded key (obfuscated, contiene secret compartido)
+curseforge-embedded.json
+# Prototipos — no commitear, solo código (ver petición usuario)
+update-notice-prototype.html
+*.prototype.html
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+
+# Backup files
+*.backup
+
+# Audit
+audit-*.txt
+
+# Coverage
+coverage/
+
+# Changelog local — no va al repo (fácil de leer, se genera en local)
+CHANGELOG.md
+
+# Loryq specific
+audit-loryq.txt
+
+# KindyrPvP mod (Forge 1.8.9) — proyecto separado, no entra en main
+kindyr-pvp-mod/
+
+# Visor de grafos local — herramienta de desarrollo, no entra en main
+docs/grafo-web/

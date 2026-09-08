@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "history": [
+    {
+      "phase": 1,
+      "source": "docs/performance/baseline.json",
+      "idle_60s_median_kib": 279940,
+      "navigation_median_kib": 296013
+    },
+    {
+      "phase": 2,
+      "source": "docs/performance/phase-2-xmcl-lazy-loading.md",
+      "idle_60s_samples_kib": [298939, 273788, 269532],
+      "idle_60s_median_kib": 273788
+    },
+    {
+      "phase": 3,
+      "status": "pre_change",
+      "navigation_accumulated_kib": [311885, 316962, 322059, 325183],
+      "idle_60s_kib": 295620,
+      "method": "AppImage; five views x10 per cycle; 30 s rest; same process tree"
+    },
+    {
+      "phase": 3,
+      "group": "A-caches",
+      "status": "validated_without_source_change",
+      "loader_cache_max_entries": 5,
+      "loader_cache_ttl_ms": 600000,
+      "harness_retained_keys": ["fifth", "fourth", "newest", "second", "third"],
+      "expired_minecraft_cache_released": true
+    },
+    {
+      "phase": 3,
+      "group": "B-logs",
+      "status": "implemented_and_harness_validated",
+      "launcher_pending_limits": { "lines": 500, "bytes": 524288, "single_line_bytes": 65536 },
+      "renderer_console_limits": { "pending_lines": 40, "pending_bytes": 8192, "visible_lines": 120, "visible_bytes": 32768 },
+      "persistent_huge_line_preserved": true,
+      "harness_retained_queue": { "lines": 0, "bytes": 0 },
+      "renderer_harness_retained": { "lines": 41, "bytes": 8199, "pending_lines": 0, "drop_summary": true }
+    },
+    {
+      "phase": 3,
+      "group": "C-windows-listeners",
+      "status": "implemented_and_validated",
+      "change": "Cancelable splash close timer; clear references and timer on window close",
+      "ipc_handlers_registered_from_createWindow": false,
+      "development_validation": { "renderer_pages": 1, "dom_nodes": 1761, "five_views_present": true }
+    },
+    {
+      "phase": 3,
+      "status": "complete",
+      "appimage_build": { "status": "success_outside_sandbox", "size_bytes": 124991173, "asar_diagnostics_absent": true },
+      "final_benchmark": {
+        "method": "Three fresh AppImage replicas; PSS smaps_rollup; five views x10 for four cycles; 30 s and 60 s recovery",
+        "idle_60s_kib": { "samples": [305322, 284609, 278952], "min": 278952, "median": 284609, "max": 305322 },
+        "navigation_cycle_1_kib": { "samples": [317879, 304905, 310414], "min": 304905, "median": 310414, "max": 317879 },
+        "navigation_cycle_4_kib": { "samples": [338697, 320833, 330601], "min": 320833, "median": 330601, "max": 338697 },
+        "recovery_30s_kib": { "samples": [338700, 320695, 330616], "min": 320695, "median": 330616, "max": 338700 },
+        "recovery_60s_kib": { "samples": [338727, 320718, 330532], "min": 320718, "median": 330532, "max": 338727 },
+        "renderer_pages": 1,
+        "dom_nodes": 1761,
+        "process_count_range": [8, 9]
+      }
+    },
+    {
+      "phase": 4,
+      "status": "superseded_by_phase_4_1",
+      "classification": "E",
+      "renderer_heap_snapshots": ["A_idle_60s", "B_cycle_1", "C_cycle_4"],
+      "finding": "Initial diagnostic observed one-time renderer section/resource load by cycle 1; no progressive JS object growth between cycle 1 and cycle 4",
+      "limitations": ["D/E snapshots were pending until Fase 4.1", "No retaining path to a Kindyr-owned object was established"]
+    },
+    {
+      "phase": "4.1",
+      "status": "complete_no_code_change",
+      "classification": { "primary": "B", "secondary": ["C", "D"] },
+      "method": "Streaming CDP snapshots A-E; PSS from smaps_rollup; five fresh section-isolation instances",
+      "a_to_e": {
+        "total_pss_kib": [282509, 313994, 336779, 318310, 322302],
+        "renderer_pss_kib": [79404, 97841, 119299, 100838, 102114],
+        "heap_used_bytes": [1577160, 2017016, 3202072, 1869948, 1869948],
+        "listeners": [91, 348, 427, 348, 348]
+      },
+      "snapshot_result": "A-to-B one-time view load; no relevant B-to-C, C-to-D or D-to-E retained-object growth",
+      "listener_result": "264 native snapshot listeners are loaded once with cached views; CDP identified 133 custom-select option click handlers and no per-cycle duplication",
+      "section_isolation": { "largest_persistent_delta": "Skins", "total_pss_kib": 12697, "renderer_pss_kib": 5427, "classification": "D" },
+      "decision": "No production change justified"
+    }
+  ]
+}
