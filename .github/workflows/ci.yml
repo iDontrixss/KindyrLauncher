@@ -25,7 +25,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:syntax
       - run: pnpm test
-      - run: pnpm audit --omit=dev --ignore-registry-errors --audit-level high
+      - run: pnpm audit --prod --ignore-registry-errors --audit-level high
       - run: pnpm ls --depth 0
 
   package-linux:
