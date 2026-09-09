@@ -1068,14 +1068,14 @@ async function installCurseForgeProject(payload = {}) {
   }
 
   if (destination === 'downloads') {
-    const downloadsDir = path.join(app.getPath('downloads'), 'KindyrLauncher')
+    const downloadsDir = resolveLocalDownloadDir(payload.downloadDir || payload.downloadPath || payload.localPath)
     const target = path.join(downloadsDir, sanitizeFileName(file.fileName || file.displayName || project.slug || 'curseforge-file'))
     const downloaded = await downloadToFile(file.downloadUrl, target)
     return { type: 'download', path: downloaded.path, version: file, file }
   }
   if (projectType === 'modpack') {
     if (destination === 'downloads') {
-      const downloadsDir = path.join(app.getPath('downloads'), 'KindyrLauncher')
+      const downloadsDir = resolveLocalDownloadDir(payload.downloadDir || payload.downloadPath || payload.localPath)
       const target = path.join(downloadsDir, sanitizeFileName(file.fileName || project.slug + '.zip'))
       const downloaded = await downloadToFile(file.downloadUrl, target)
       return { type: 'download', path: downloaded.path, version: file, file }
@@ -1204,6 +1204,33 @@ async function installCurseForgeModpackInstance(file, project) {
 function sanitizeFileName(value, fallback = 'download') {
   const clean = String(value || fallback).replace(/[<>:"/\\|?*\x00-\x1F]/g, '-').replace(/\s+/g, ' ').trim()
   return (clean || fallback).slice(0, 120)
+}
+
+function getDefaultLocalDownloadDir() {
+  try {
+    return path.join(app.getPath('downloads'), 'KindyrLauncher')
+  } catch {
+    return path.join(require('os').homedir(), 'Downloads', 'KindyrLauncher')
+  }
+}
+
+function getUserDownloadsDir() {
+  try {
+    return app.getPath('downloads')
+  } catch {
+    return path.join(require('os').homedir(), 'Downloads')
+  }
+}
+
+function resolveLocalDownloadDir(customDir) {
+  const raw = String(customDir || '').trim()
+  if (!raw) return getDefaultLocalDownloadDir()
+  if (raw.includes('\0')) throw new Error('Ruta de descarga no válida.')
+  const resolved = path.resolve(raw)
+  if (!path.isAbsolute(resolved)) throw new Error('Ruta de descarga no válida.')
+  if (resolved.length > 260) throw new Error('Ruta de descarga demasiado larga.')
+  fs.mkdirSync(resolved, { recursive: true })
+  return resolved
 }
 
 function sanitizeInstanceId(value) {
@@ -2153,7 +2180,7 @@ async function installModrinthProject(payload = {}) {
   const file = pickPrimaryFile(version)
 
   if (destination === 'downloads') {
-    const downloadsDir = path.join(app.getPath('downloads'), 'KindyrLauncher')
+    const downloadsDir = resolveLocalDownloadDir(payload.downloadDir || payload.downloadPath || payload.localPath)
     const target = path.join(downloadsDir, sanitizeFileName(file.filename || project.slug || project.title || 'modrinth-file'))
     const downloaded = await downloadToFile(file.url, target)
     return { type: 'download', path: downloaded.path, version }
@@ -4582,6 +4609,36 @@ ipcMain.handle('browse-instance-icon', async () => {
     return { ok: false, error: 'El ícono supera los 5 MiB.' }
   }
   return { ok: true, path: iconPath }
+})
+
+ipcMain.handle('get-downloads-dir', async () => {
+  try {
+    return { ok: true, path: getUserDownloadsDir(), defaultPath: getDefaultLocalDownloadDir() }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+ipcMain.handle('browse-download-dir', async (_event, payload = {}) => {
+  try {
+    const current = String(payload.current || '').trim()
+    let defaultPath = getUserDownloadsDir()
+    if (current) {
+      try {
+        const resolved = path.resolve(current)
+        if (path.isAbsolute(resolved)) defaultPath = resolved
+      } catch {}
+    }
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Elegir carpeta de descarga',
+      defaultPath,
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (result.canceled || !result.filePaths.length) return { ok: false, cancelled: true }
+    return { ok: true, path: result.filePaths[0] }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
 })
 
 ipcMain.handle('create-instance', (_event, payload) => {

@@ -157,7 +157,8 @@ async function loadCurseForgeModpackVersions() {
     const isCF = Boolean(installProject._curseForge)
     const isModpack = installProject.project_type === 'modpack'
     const selectedVersionData = getSelectedInstallVersion()
-    const destination = isModpack ? installModpackDestination : document.getElementById('install-destination').value
+    // No-modpack: siempre descarga local (el usuario ya eligió "Descargar local").
+    const destination = isModpack ? installModpackDestination : 'downloads'
     const isModpackNewInstance = isModpack && destination === 'instance'
     const shouldShowToast = isModpackNewInstance && settings.eagerPrepareOnCreate
     const btn = document.getElementById('install-confirm')
@@ -166,6 +167,8 @@ async function loadCurseForgeModpackVersions() {
     setInstallNote(t('install.working'))
     if (shouldShowToast) { showPrepareToast(installProject.title || 'Modpack', t('install.working')); updatePrepareToast(10, t('install.working'), 'Iniciando') }
     const api = isCF ? window.kindyrAPI.curseforge : window.kindyrAPI.modrinth
+    const getLocal = (typeof getInstallLocalPath === 'function') ? getInstallLocalPath : (() => document.getElementById('install-local-path')?.value?.trim() || '')
+    const getPack = (typeof getInstallModpackPath === 'function') ? getInstallModpackPath : (() => document.getElementById('install-modpack-path')?.value?.trim() || '')
     const result = await api.install({
       project: installProject,
       installKind: getInstallKind(installProject),
@@ -173,7 +176,8 @@ async function loadCurseForgeModpackVersions() {
       gameVersion: isModpack ? (selectedVersionData?.game_versions?.[0] || selectedVersionData?.version_number || selectedVersion) : document.getElementById('install-game-version').value.trim(),
       loader: isModpack ? installModpackLoader : document.getElementById('install-loader').value,
       destination,
-      instanceId: document.getElementById('install-instance').value
+      downloadDir: isModpack ? getPack() : getLocal(),
+      instanceId: document.getElementById('install-instance')?.value || ''
     })
     btn.disabled = false
     if (isModpack) btn.textContent = installModpackDestination === 'downloads' ? t('install.download') : t('install.install')
