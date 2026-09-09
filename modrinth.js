@@ -328,6 +328,7 @@ let installVersions = []
 let installVersionId = ''
 let installModpackLoader = ''
 let installModpackDestination = 'instance'
+let installLocalPathDefault = ''
 const modpackLoaderDefs = [
   { id: 'fabric', label: 'Fabric' },
   { id: 'forge', label: 'Forge' },
@@ -340,6 +341,76 @@ function getInstallKind(project) {
   const activeDiscoverType = typeof discoverType === 'string' ? discoverType : ''
   if (activeDiscoverType === 'plugin' || activeDiscoverType === 'datapack') return activeDiscoverType
   return project.project_type || 'mod'
+}
+
+async function ensureInstallLocalPaths() {
+  if (installLocalPathDefault) {
+    if (!document.getElementById('install-local-path')?.value) {
+      document.getElementById('install-local-path').value = installLocalPathDefault
+    }
+    if (!document.getElementById('install-modpack-path')?.value) {
+      document.getElementById('install-modpack-path').value = installLocalPathDefault
+    }
+    return installLocalPathDefault
+  }
+  try {
+    const api = (installProject && installProject._curseForge)
+      ? window.kindyrAPI.curseforge
+      : window.kindyrAPI.modrinth
+    const res = await api.getDownloadsDir()
+    if (res && res.ok && (res.path || res.defaultPath)) {
+      // Predefinida: carpeta Descargas del usuario (petición UX)
+      installLocalPathDefault = String(res.path || res.defaultPath)
+      const localInput = document.getElementById('install-local-path')
+      if (localInput && !localInput.value) localInput.value = installLocalPathDefault
+      const packInput = document.getElementById('install-modpack-path')
+      if (packInput && !packInput.value) packInput.value = installLocalPathDefault
+      return installLocalPathDefault
+    }
+  } catch {}
+  return ''
+}
+
+function getInstallLocalPath() {
+  const el = document.getElementById('install-local-path')
+  const v = String(el?.value || '').trim()
+  return v || installLocalPathDefault || ''
+}
+
+function getInstallModpackPath() {
+  const el = document.getElementById('install-modpack-path')
+  const v = String(el?.value || '').trim()
+  return v || installLocalPathDefault || ''
+}
+
+async function browseInstallLocalPath() {
+  try {
+    const current = getInstallLocalPath()
+    const api = (installProject && installProject._curseForge)
+      ? window.kindyrAPI.curseforge
+      : window.kindyrAPI.modrinth
+    const res = await api.browseDownloadDir(current)
+    if (res && res.ok && res.path) {
+      document.getElementById('install-local-path').value = res.path
+    }
+  } catch (e) {
+    setInstallNote(e.message || String(e))
+  }
+}
+
+async function browseInstallModpackPath() {
+  try {
+    const current = getInstallModpackPath()
+    const api = (installProject && installProject._curseForge)
+      ? window.kindyrAPI.curseforge
+      : window.kindyrAPI.modrinth
+    const res = await api.browseDownloadDir(current)
+    if (res && res.ok && res.path) {
+      document.getElementById('install-modpack-path').value = res.path
+    }
+  } catch (e) {
+    setInstallNote(e.message || String(e))
+  }
 }
 
 function getDefaultLoader(project) {
@@ -378,6 +449,8 @@ function toggleInstallLocalPanel() {
     btn.classList.add('btn-primary')
     // filtrar loaders compatibles del mod
     filterLocalLoaders()
+    updateInstallDestination()
+    ensureInstallLocalPaths()
     loadInstallVersions()
   }
 }
@@ -581,6 +654,9 @@ function selectModpackDestination(value, button) {
   })
   const confirmBtn = document.getElementById('install-confirm')
   if (confirmBtn) confirmBtn.textContent = value === 'downloads' ? t('install.download') : t('install.install')
+  const pathWrap = document.getElementById('install-modpack-path-wrap')
+  if (pathWrap) pathWrap.style.display = value === 'downloads' ? 'block' : 'none'
+  if (value === 'downloads') ensureInstallLocalPaths()
 }
 
 function selectModpackLoader(loaderId) {
@@ -729,7 +805,10 @@ async function openInstallModal(project) {
     })
     const confirmBtn = document.getElementById('install-confirm')
     if (confirmBtn) confirmBtn.textContent = t('install.install')
+    const packPathWrap = document.getElementById('install-modpack-path-wrap')
+    if (packPathWrap) packPathWrap.style.display = 'none'
     document.getElementById('install-modal').classList.add('active')
+    ensureInstallLocalPaths()
     loadModpackInstallVersions()
     return
   }
@@ -750,8 +829,6 @@ async function openInstallModal(project) {
   if (gameVersion) gameVersion.value = '' // local: sin filtro inicial, muestra todas
   const loader = document.getElementById('install-loader')
   if (loader) loader.value = 'any'
-  const destination = document.getElementById('install-destination')
-  if (destination) destination.value = 'downloads'
   const list = document.getElementById('install-version-list')
   if (list) list.innerHTML = '<div class="discover-message">' + escapeHtml(t('install.loadingVersions')) + '</div>'
   updateInstallDestination()
@@ -774,12 +851,18 @@ function closeInstallModal(event) {
 }
 
 function updateInstallDestination() {
-  const destination = document.getElementById('install-destination').value
+  // Panel local (no-modpack) siempre es descarga local: ya no hay selector Ubicación.
+  // Se conserva por compatibilidad si el select legacy existiera en alguna vista.
+  const destEl = document.getElementById('install-destination')
+  const destination = destEl ? destEl.value : 'downloads'
   const wrap = document.getElementById('install-instance-wrap')
   const isModpack = installProject && installProject.project_type === 'modpack'
   if (wrap) wrap.style.display = destination === 'instance' && !isModpack ? 'block' : 'none'
+  const pathWrap = document.getElementById('install-localpath-wrap')
+  if (pathWrap) pathWrap.style.display = 'block'
   const confirmBtn = document.getElementById('install-confirm')
-  if (confirmBtn) confirmBtn.textContent = destination === 'downloads' ? t('install.download') : t('install.install')
+  if (confirmBtn) confirmBtn.textContent = t('install.download')
+  ensureInstallLocalPaths()
 }
 
 async function loadInstallVersions() {
@@ -849,9 +932,8 @@ async function installSelectedProject() {
 
   const isModpack = installProject.project_type === 'modpack'
   const selectedVersionData = getSelectedInstallVersion()
-  const destination = isModpack
-    ? installModpackDestination
-    : document.getElementById('install-destination').value
+  // No-modpack: siempre descarga local (el usuario ya eligió "Descargar local").
+  const destination = isModpack ? installModpackDestination : 'downloads'
   const isModpackNewInstance = isModpack && destination === 'instance'
   const shouldShowToast = isModpackNewInstance && settings.eagerPrepareOnCreate
   const btn = document.getElementById('install-confirm')
@@ -873,7 +955,8 @@ async function installSelectedProject() {
       : document.getElementById('install-game-version').value.trim(),
     loader: isModpack ? installModpackLoader : document.getElementById('install-loader').value,
     destination,
-    instanceId: document.getElementById('install-instance').value
+    downloadDir: isModpack ? getInstallModpackPath() : getInstallLocalPath(),
+    instanceId: document.getElementById('install-instance')?.value || ''
   })
 
   btn.disabled = false

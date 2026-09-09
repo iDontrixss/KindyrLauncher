@@ -132,7 +132,7 @@
             <div class="compat-list" id="install-compat-list"></div>
           </div>
           <div class="card-body" id="install-local-replace" hidden style="display:grid;gap:12px">
-            <div style="font:800 10px/1 'JetBrains Mono',monospace;letter-spacing:0.1em;color:var(--kindyr-accent);text-transform:uppercase">Descarga local — elegí versión y destino</div>
+            <div style="font:800 10px/1 'JetBrains Mono',monospace;letter-spacing:0.1em;color:var(--kindyr-accent);text-transform:uppercase">Descarga local — elegí versión y ruta</div>
             <div>
               <div class="section-label">Minecraft</div>
               <input class="setting-input" id="install-game-version" placeholder="1.21.4" onchange="loadInstallVersions()">
@@ -151,16 +151,12 @@
                 <option value="bukkit">Bukkit</option>
               </select>
             </div>
-            <div>
-              <div class="section-label">Ubicación</div>
-              <select class="discover-select" id="install-destination" onchange="updateInstallDestination()">
-                <option value="downloads" data-i18n="install.destination.downloads">PC - Carpeta Descargas</option>
-                <option value="instance" data-i18n="install.destination.instance">Instalación del launcher</option>
-              </select>
-            </div>
-            <div id="install-instance-wrap">
-              <div class="section-label" data-i18n="install.instance">Instalación</div>
-              <select class="discover-select" id="install-instance"></select>
+            <div id="install-localpath-wrap">
+              <div class="section-label" data-i18n="install.localPath">Ruta</div>
+              <div class="install-path-row">
+                <input class="setting-input" id="install-local-path" data-i18n-placeholder="install.localPath.placeholder" placeholder="Carpeta de descarga" style="flex:1">
+                <button type="button" class="install-browse-btn" onclick="browseInstallLocalPath()"><i class="fa-regular fa-folder-open" aria-hidden="true"></i> <span data-i18n="install.browse">Examinar…</span></button>
+              </div>
             </div>
             <div>
               <div class="section-label" data-i18n="install.compatibleVersions">Versiones compatibles</div>
@@ -184,7 +180,14 @@
           <div class="section-label" data-i18n="install.destination">Destino</div>
           <div class="destination-row" id="install-modpack-destination">
             <button type="button" class="destination-option active" data-value="instance" onclick="selectModpackDestination('instance', this)" data-i18n="install.destination.newInstance">Nueva instancia</button>
-            <button type="button" class="destination-option" data-value="downloads" onclick="selectModpackDestination('downloads', this)" data-i18n="install.destination.downloadsShort">Carpeta Descargas</button>
+            <button type="button" class="destination-option" data-value="downloads" onclick="selectModpackDestination('downloads', this)" data-i18n="install.destination.downloadsShort">Descargar local</button>
+          </div>
+        </div>
+        <div class="install-row-full" id="install-modpack-path-wrap" style="margin-top:14px;display:none">
+          <div class="section-label" data-i18n="install.localPath">Ruta</div>
+          <div class="install-path-row">
+            <input class="setting-input" id="install-modpack-path" data-i18n-placeholder="install.localPath.placeholder" placeholder="Carpeta de descarga" style="flex:1">
+            <button type="button" class="install-browse-btn" onclick="browseInstallModpackPath()"><i class="fa-regular fa-folder-open" aria-hidden="true"></i> <span data-i18n="install.browse">Examinar…</span></button>
           </div>
         </div>
         <div class="install-row-full" style="margin-top:14px">

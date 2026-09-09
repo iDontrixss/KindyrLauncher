@@ -4971,9 +4971,17 @@ body::before {
 #install-modal .local-card h4{font:800 12px/1 'Space Grotesk',sans-serif;text-transform:uppercase;letter-spacing:0.04em}
 #install-modal .local-panel{display:grid;gap:10px;padding:12px;background:var(--kindyr-inset);border:2px solid var(--kindyr-ink);margin-top:4px}
 #install-modal .local-panel[hidden]{display:none !important}
-#install-modal .local-card .btn{padding:9px 12px;font:800 11px/1 'Space Grotesk',sans-serif;letter-spacing:0.06em;text-transform:uppercase;border:2px solid var(--kindyr-ink);box-shadow:2px 2px 0 var(--kindyr-ink);cursor:pointer}
+#install-modal .local-card .btn{padding:9px 12px;font:800 11px/1 'Space Grotesk',sans-serif;letter-spacing:0.06em;text-transform:uppercase;border:2px solid var(--kindyr-ink);border-radius:0;box-shadow:2px 2px 0 var(--kindyr-ink);cursor:pointer}
 #install-modal .local-card .btn-primary{background:var(--kindyr-accent);color:#260800}
 #install-modal .local-card .btn-secondary{background:var(--kindyr-surface-2);color:var(--kindyr-text)}
+/* === Install local path row (Kindyr neobrutalista tipo card, sin botones sueltos) === */
+#install-modal .install-path-row{display:flex;gap:8px;align-items:stretch}
+#install-modal .install-path-row .setting-input{flex:1;min-width:0}
+#install-modal .install-browse-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;font:800 11px/1 'Space Grotesk',sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:var(--kindyr-text);background:var(--kindyr-surface-2);border:2px solid var(--kindyr-ink);border-radius:0;box-shadow:2px 2px 0 var(--kindyr-ink);cursor:pointer;white-space:nowrap}
+#install-modal .install-browse-btn:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--kindyr-ink)}
+#install-modal .install-browse-btn:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--kindyr-ink)}
+#install-modal .install-browse-btn i{color:var(--kindyr-accent)}
+@media(max-width:620px){#install-modal .install-path-row{flex-direction:column}#install-modal .install-browse-btn{justify-content:center}}
 
 /* === Discord RPC switch (Kindyr neo-brutalista, solo tokens: cambia con data-theme) === */
 .kindyr-switch {

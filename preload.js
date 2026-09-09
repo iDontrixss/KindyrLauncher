@@ -56,7 +56,9 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
     versions: (payload) => ipcRenderer.invoke('modrinth-versions', payload),
     install: (payload) => ipcRenderer.invoke('modrinth-install', payload),
     installLatestRelease: (payload) => ipcRenderer.invoke('modrinth-install-latest-release', payload),
-    openProject: (url) => ipcRenderer.invoke('open-external-url', url)
+    openProject: (url) => ipcRenderer.invoke('open-external-url', url),
+    getDownloadsDir: () => ipcRenderer.invoke('get-downloads-dir'),
+    browseDownloadDir: (current) => ipcRenderer.invoke('browse-download-dir', { current })
   },
   curseforge: {
     search: (payload) => ipcRenderer.invoke('curseforge-search', payload),
@@ -65,7 +67,9 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
     installLatestRelease: (payload) => ipcRenderer.invoke('curseforge-install-latest-release', payload),
     status: () => ipcRenderer.invoke('curseforge-status'),
     setKey: (apiKey) => ipcRenderer.invoke('curseforge-set-key', apiKey),
-    openProject: (url) => ipcRenderer.invoke('open-external-url', url)
+    openProject: (url) => ipcRenderer.invoke('open-external-url', url),
+    getDownloadsDir: () => ipcRenderer.invoke('get-downloads-dir'),
+    browseDownloadDir: (current) => ipcRenderer.invoke('browse-download-dir', { current })
   },
   launcher: {
   launch: (payload) => ipcRenderer.invoke('launch-game', payload),
