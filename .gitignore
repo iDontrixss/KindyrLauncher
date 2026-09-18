@@ -65,5 +65,8 @@ audit-loryq.txt
 # KindyrPvP mod (Forge 1.8.9) — proyecto separado, no entra en main
 kindyr-pvp-mod/
 
+# Profiling local (clinic/memlab) — fuera del repo, queda en disco
+tools/performance/
+
 # Visor de grafos local — herramienta de desarrollo, no entra en main
 docs/grafo-web/

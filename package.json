@@ -13,12 +13,7 @@
     "build:win": "electron-builder --win",
     "build:win:dir": "electron-builder --win --dir",
     "postinstall": "node scripts/install-electron.js",
-    "perf:pss": "bash tools/performance/pss.sh",
-    "perf:processes": "bash tools/performance/processes.sh",
-    "perf:imports": "node tools/performance/imports.js",
     "perf:knip": "knip",
-    "perf:memlab": "node tools/performance/memlab-runner.js",
-    "perf:clinic": "node tools/performance/clinic-runner.js",
     "test": "node --test",
     "check:syntax": "node scripts/check-syntax.js",
     "update-kindyr": "node scripts/update-kindyr.js"
@@ -52,11 +47,9 @@
     "yazl": "^2.5.1"
   },
   "devDependencies": {
-    "clinic": "^13.0.0",
     "electron": "^42.3.0",
     "electron-builder": "^26.0.12",
-    "knip": "^6.29.0",
-    "memlab": "^2.0.4"
+    "knip": "^6.29.0"
   },
   "build": {
     "appId": "com.kindyr.launcher",

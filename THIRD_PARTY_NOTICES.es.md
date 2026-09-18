@@ -44,7 +44,7 @@ Extraído de `package.json` y verificado contra `pnpm-lock.yaml`. Solo se listan
 
 ## 3. Herramientas de desarrollo (no se empaquetan)
 
-`electron` (dev), `electron-builder`, `clinic`, `knip`, `memlab` — solo para `pnpm start`, `pnpm build:*`, `pnpm perf:*` y `knip`. No están en el ASAR (ver `scripts/after-pack.js` `FORBIDDEN_ASAR_PATTERNS`).
+`electron` (dev), `electron-builder`, `knip` — solo para `pnpm start`, `pnpm build:*`, `pnpm perf:knip` y `knip`. No están en el ASAR (ver `scripts/after-pack.js` `FORBIDDEN_ASAR_PATTERNS`).
 
 ## 4. Recursos gráficos y fuentes
 

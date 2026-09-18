@@ -10,17 +10,13 @@
     "modrinth.js",
     "launcher.js",
     "sections/**/*.html",
-    "scripts/**/*.js",
-    "tools/performance/app-metrics.js",
-    "tools/performance/memlab-scenario.js"
+    "scripts/**/*.js"
   ],
   "project": [
     "**/*.js"
   ],
   "ignoreDependencies": [
     "@fortawesome/fontawesome-free",
-    "clinic",
-    "memlab",
     "asar"
   ]
 }
