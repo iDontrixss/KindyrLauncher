@@ -46,9 +46,12 @@ jobs:
       - run: node scripts/obfuscate-curseforge-key.js
         env:
           CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
-      # --publish never: electron-builder detecta CI e intenta publicar a GitHub
-      # Releases sin GH_TOKEN (falla). Los artefactos se suben con upload-artifact.
+      # --publish never: no se publica nada, pero electron-builder 26 igual
+      # resuelve el provider github en CI y exige GH_TOKEN (falla sin él).
+      # GITHUB_TOKEN lo provee GitHub solo; con publish=never es solo lectura.
       - run: pnpm build:linux -- --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v5
         with:
           name: kindyr-linux
@@ -71,8 +74,10 @@ jobs:
       - run: node scripts/obfuscate-curseforge-key.js
         env:
           CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
-      # --publish never: ver nota en package-linux (evita publish implícito sin GH_TOKEN).
+      # --publish never: ver nota en package-linux (GH_TOKEN requerido igual).
       - run: pnpm build:win -- --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v5
         with:
           name: kindyr-windows
