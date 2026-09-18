@@ -1,5 +1,9 @@
 packages: []
 
+# Espejo de package.json > pnpm.overrides (valores idénticos a propósito):
+# pnpm 9 (CI) solo lee overrides desde package.json, pnpm 11+ solo desde
+# este archivo. Con ambas declaradas, `install --frozen-lockfile` pasa en
+# las dos versiones. No cambiar una sin la otra.
 overrides:
   js-yaml: ^4.3.2
   undici: ^7.28.0
