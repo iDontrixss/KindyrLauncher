@@ -4194,7 +4194,15 @@ function configureAutoUpdater(updater) {
   // No se descarga ni instala solo. Todo requiere confirmación explícita del usuario.
   updater.autoDownload = false
   updater.autoInstallOnAppQuit = false
-  updater.allowPrerelease = false
+  // Canal beta: tiene que ser true. Con false, electron-updater resuelve la
+  // versión vía GET /releases/latest, endpoint que EXCLUYE prereleases por
+  // definición → beta-a-beta jamás se ofrecería (verificado en
+  // electron-updater 6.8.9: GitHubProvider.getLatestTagName). Con true usa el
+  // feed Atom, elige prereleases del mismo canal y cae a latest.yml si no hay
+  // latest-beta.yml. No habilita downgrades de rebote (eso solo lo fuerza el
+  // setter de .channel, que no se usa); allowDowngrade sigue en false y las
+  // puertas update.json + confirmación + semver siguen vigentes.
+  updater.allowPrerelease = true
   updater.allowDowngrade = false
 
   updater.on('update-available', async (updateInfo) => {

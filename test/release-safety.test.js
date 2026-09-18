@@ -128,3 +128,12 @@ test('the update dialog never uses node require in the renderer', () => {
   const updateDialog = fs.readFileSync(path.join(root, 'update-confirmation.html'), 'utf8')
   assert.equal(updateDialog.includes("require('electron')"), false)
 })
+
+test('the beta channel can offer prereleases without allowing downgrades', () => {
+  // allowPrerelease=false fuerza GET /releases/latest (excluye prereleases) y
+  // beta-a-beta jamás se ofrecería. Con true usa el feed Atom + fallback a
+  // latest.yml. El downgrade sigue prohibido (solo lo fuerza el setter de
+  // .channel, que no se usa).
+  assert.match(mainSource, /updater\.allowPrerelease = true/)
+  assert.match(mainSource, /updater\.allowDowngrade = false/)
+})

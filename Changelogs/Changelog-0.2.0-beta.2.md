@@ -298,6 +298,8 @@ Additional details:
 
 * SmartScreen will warn because this beta is not code-signed (a certificate costs ~€300/yr). It is safe: More info → Run anyway.
 
+* Beta-to-beta updates now work: the launcher offers new betas automatically (with your confirmation). Previously the updater could never find prereleases.
+
 * Optional integrity check (PowerShell):
 
   `Get-FileHash "Kindyr Launcher Setup 0.2.0-beta.2.exe" -Algorithm SHA256`

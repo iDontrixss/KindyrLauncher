@@ -356,4 +356,24 @@
   rendering, behavioral `classifyConsoleLine` cases via `vm`, per-language
   idle text, per-character ASCII colors, close-clear/dead-session/clear-button
   flows, and absence of every legacy-console token.
-- Full suite green (172 tests), `node scripts/check-syntax.js` clean.
+- Full suite green (173 tests), `node scripts/check-syntax.js` clean.
+
+## Auto-updater — beta channel fix (`allowPrerelease`)
+
+- `configureAutoUpdater` set `updater.allowPrerelease = false`, which silently
+  broke beta-to-beta updates: with `false`, electron-updater resolves the
+  version via `GET /releases/latest`, an endpoint that excludes prereleases by
+  definition (verified in electron-updater 6.8.9 source:
+  `GitHubProvider.getLatestTagName`). With only prereleases published,
+  `checkForUpdates()` always failed with `ERR_UPDATER_LATEST_VERSION_NOT_FOUND`
+  and the prerelease consent dialog was dead code (fail-closed, no crash — but
+  no updates either; the `update.json` gate itself uses the releases API and
+  *did* see the newer beta, so it passed just for electron-updater to fail).
+- Now `allowPrerelease = true`: the provider scans the Atom feed, picks
+  same-channel (`beta`) prereleases, looks for `latest-beta.yml` and falls back
+  to `latest.yml` (verified fallback in `GitHubProvider`), so the existing 5
+  release assets cover it with no new files. No downgrade side effect: that is
+  only forced by the `.channel` setter (never used); `allowDowngrade` stays
+  `false` and the `update.json` + confirmation + semver gates still apply.
+- New `release-safety` test pins `allowPrerelease = true` with
+  `allowDowngrade = false`.
