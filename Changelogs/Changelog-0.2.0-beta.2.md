@@ -1,5 +1,23 @@
 # Changelog 0.2.0-beta.2
 
+> ⚠️ **SmartScreen will warn** because this beta is not code-signed
+> (a certificate costs ~€300/yr). It is safe: click **More info →
+> Run anyway**.
+
+### Verify integrity (optional)
+In PowerShell:
+```powershell
+Get-FileHash "Kindyr-Launcher-Setup-0.2.0-beta.2.exe" -Algorithm SHA256
+Get-FileHash "Kindyr-Launcher-0.2.0-beta.2.AppImage" -Algorithm SHA256
+```
+Must match:
+- EXE: `94D63581CC5B8AE777ABB7C6C030D84E06A9151F71568E1BED7B7AA665DD98A1`
+- AppImage: `3C3397A430EB8082D621DCA5CCFAA117B89FC88523AC445ABE3B66590156F762`
+
+* Beta-to-beta updates now work: the launcher offers new betas automatically (with your confirmation).
+
+---
+
 ## Discover — reorganized filters
 
 The Discover sidebar has been reorganized to better match the reference layout:
@@ -291,18 +309,3 @@ Additional details:
 * Full test suite: **green**
 
 * `node scripts/check-syntax.js`: **clean**
-
----
-
-## Install note
-
-* SmartScreen will warn because this beta is not code-signed (a certificate costs ~€300/yr). It is safe: More info → Run anyway.
-
-* Beta-to-beta updates now work: the launcher offers new betas automatically (with your confirmation). Previously the updater could never find prereleases.
-
-* Optional integrity check (PowerShell):
-
-  `Get-FileHash "Kindyr Launcher Setup 0.2.0-beta.2.exe" -Algorithm SHA256`
-
-  * EXE: `94D63581CC5B8AE777ABB7C6C030D84E06A9151F71568E1BED7B7AA665DD98A1`
-  * AppImage: `3C3397A430EB8082D621DCA5CCFAA117B89FC88523AC445ABE3B66590156F762`
