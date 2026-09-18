@@ -161,7 +161,9 @@ async function importMrpack() {
     window.kindyrAPI.instances.offImportProgress()
   }
 
-  if (result.ok) {
+  if (typeof afterModpackImport === 'function') {
+    await afterModpackImport(result)
+  } else if (result.ok) {
     if (result.warnings) {
       setStatus(t('instances.importSuccess', { name: result.name }) + ` (${result.warnings} mod(s) fallaron)`)
     } else {

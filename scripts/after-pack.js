@@ -25,6 +25,7 @@ const REQUIRED_ASAR_FILES = [
   'account-storage.js',
   'archive-utils.js',
   'mrpack-utils.js',
+  'content-sniff.js',
   'curseforge-modpack.js',
   'skin-security.js',
   'main.js',

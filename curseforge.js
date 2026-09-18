@@ -160,12 +160,10 @@ async function loadCurseForgeModpackVersions() {
     // No-modpack: siempre descarga local (el usuario ya eligió "Descargar local").
     const destination = isModpack ? installModpackDestination : 'downloads'
     const isModpackNewInstance = isModpack && destination === 'instance'
-    const shouldShowToast = isModpackNewInstance && settings.eagerPrepareOnCreate
     const btn = document.getElementById('install-confirm')
     btn.disabled = true
     btn.textContent = destination === 'downloads' ? t('install.downloading') : t('install.installing')
-    setInstallNote(t('install.working'))
-    if (shouldShowToast) { showPrepareToast(installProject.title || 'Modpack', t('install.working')); updatePrepareToast(10, t('install.working'), 'Iniciando') }
+    setInstallNote(t('install.installing'))
     const api = isCF ? window.kindyrAPI.curseforge : window.kindyrAPI.modrinth
     const getLocal = (typeof getInstallLocalPath === 'function') ? getInstallLocalPath : (() => document.getElementById('install-local-path')?.value?.trim() || '')
     const getPack = (typeof getInstallModpackPath === 'function') ? getInstallModpackPath : (() => document.getElementById('install-modpack-path')?.value?.trim() || '')
@@ -183,16 +181,14 @@ async function loadCurseForgeModpackVersions() {
     if (isModpack) btn.textContent = installModpackDestination === 'downloads' ? t('install.download') : t('install.install')
     else updateInstallDestination()
     if (!result.ok) {
-      if (shouldShowToast) { updatePrepareToast(0, result.error, 'Error'); setTimeout(()=>hidePrepareToast(true),3000) }
       setInstallNote(result.error); setStatus(result.error); return
     }
     await refreshLauncherInstances()
-    if (shouldShowToast) {
-      updatePrepareToast(100, t('install.done', { path: result.path }), 'Listo')
-      setStatus(t('settings.beta.prepared', { name: installProject.title || result.instance?.name || 'Modpack' }))
-      setTimeout(()=>hidePrepareToast(true),900)
+    if (isModpackNewInstance && result.instance && result.instance.id) {
+      // El modpack crea instancia: preparación real (Java+MC) si está activada.
+      await runEagerPrepare(result.instance.id, installProject.title || result.instance.name || 'Modpack')
       closeInstallModal()
-      if (result.instance && result.instance.id) { await new Promise(r=>setTimeout(r,200)); openInstanceView(result.instance.id) }
+      await new Promise(r=>setTimeout(r,200)); openInstanceView(result.instance.id)
       return
     }
     setInstallNote(t('install.done', { path: result.path }))

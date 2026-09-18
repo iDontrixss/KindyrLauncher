@@ -26,7 +26,7 @@ Neo-brutalista hard-shadow: `border-radius: 0` en todo, bordes gruesos `2-3px so
 ## 3. Tipografía
 * Primaria: `'Space Grotesk','Segoe UI',system-ui,sans-serif` `600` base, `800` títulos/CTAs
 * Mono: `'JetBrains Mono',monospace` para kickers, badges, números
-* Console: `Consolas,'Courier New',monospace` `11px/1.45` `.console-output`
+* Console: `Consolas,'Courier New',monospace` `11px/1.45` `.console-tab-view` (tab Consola del Centro de control; única consola, solo lectura)
 * Escala: `.page-title 32px/1.05 800 -0.035em uppercase` + barra `14×3 accent` `::before`; `.bento-label 10px 700 0.14em uppercase accent`; `.project-title 13px 800`; `.pill-nav 13px 700`
 
 ## 4. Espaciado / Layout
@@ -59,5 +59,6 @@ Neo-brutalista hard-shadow: `border-radius: 0` en todo, bordes gruesos `2-3px so
 
 ## 9. Reglas para nuevo UX/UI
 1. Usa tokens, no hex sueltos. 2. `radius 0`, `2px ink` + hard shadow. 3. Hover `translate(-1,-1)` + shadow. 4. Texto `Space Grotesk 800` + `JetBrains Mono` para números. 5. Reutiliza `.settings-group`, `.primary-btn`, `.type-chip` antes de crear nuevo. 6. Toasts → `prepare-toast-stack` top-right, `340px`, `var(--kindyr-surface)`, `4px 4px`, `left 3px accent`.
+7. Todo control clickeable propio es una card: usa `.type-chip`, `.project-card` o los botones del sistema (`.primary-btn`/`.secondary-btn`). Prohibido inventar botones/pills con otros radios, bordes o paletas.
 
 > **Obligatorio:** Antes de agregar cualquier componente, importa este archivo y copia un componente existente. No inventes paletas ni radios.

@@ -149,30 +149,25 @@
         <button type="button" class="secondary-btn" onclick="purgeLauncherCache()"><i class="fa-solid fa-trash-can"></i> <span data-i18n="settings.cache.purge">Vaciar caché</span></button>
       </div>
 
-      <div class="settings-group" style="border-color:#facc15; background: linear-gradient(135deg, #1f1f1f 0%, #242014 100%);">
-        <div class="settings-group-title" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <span data-i18n="settings.beta.title">Funciones beta</span>
-          <span class="beta-badge" style="background:#facc15; color:#100d07; border-radius:999px; padding:3px 8px; font-size:10px; font-weight:800; letter-spacing:0.06em;">BETA</span>
-          <span style="color:#facc15; font-size:11px; font-weight:600;"><i class="fa-solid fa-flask"></i> Experimental</span>
-        </div>
-        <div class="settings-group-desc" data-i18n="settings.beta.desc">Funciones experimentales que pueden cambiar en futuras versiones.</div>
+      <div class="settings-group">
+        <div class="settings-group-title" data-i18n="settings.prepare.title">Preparar instancias</div>
+        <div class="settings-group-desc" data-i18n="settings.prepare.desc">Descarga Java y Minecraft al crear o instalar. El primer inicio será instantáneo. Usa más espacio y red.</div>
         <div class="setting-row">
-          <label class="setting-label" for="beta-eager-row">
-            <strong data-i18n="settings.beta.eager">Preparar instancias al crear</strong>
-            <span data-i18n="settings.beta.eager.desc">Descarga Java y Minecraft al crear la instancia. El primer inicio será instantáneo. Usa más espacio y red al crear.</span>
+          <label class="setting-label" for="prepare-row">
+            <strong data-i18n="settings.prepare.title">Preparar instancias</strong>
           </label>
-          <div class="beta-toggle-row" id="beta-eager-row" style="display:flex; gap:8px; margin-top:4px;">
-            <button type="button" class="theme-chip" id="beta-eager-off" onclick="setEagerPrepare(false)" data-i18n="settings.beta.disabled">Desactivado</button>
-            <button type="button" class="theme-chip" id="beta-eager-on" onclick="setEagerPrepare(true)" data-i18n="settings.beta.enabled">Activado</button>
+          <div class="prepare-toggle-row" id="prepare-row" style="display:flex; gap:8px; margin-top:4px;">
+            <button type="button" class="theme-chip" id="prepare-off" onclick="setEagerPrepare(false)" data-i18n="settings.prepare.off">Desactivado</button>
+            <button type="button" class="theme-chip" id="prepare-on" onclick="setEagerPrepare(true)" data-i18n="settings.prepare.on">Activado</button>
           </div>
-          <div id="beta-eager-status" class="ram-hint" style="margin-top:6px; display:none;"></div>
+          <div id="prepare-status" class="ram-hint" style="margin-top:6px; display:none;"></div>
         </div>
       </div>
 
       <div class="settings-group" style="border:3px solid var(--kindyr-ink); background:var(--kindyr-surface); box-shadow:4px 4px 0 var(--kindyr-ink);">
         <div class="settings-group-title" style="display:flex; align-items:center; gap:8px;">
           <i class="fa-solid fa-rotate" style="color:var(--kindyr-blue)"></i> Actualizaciones & Rollback
-          <span id="settings-version-badge" style="margin-left:auto; background:var(--kindyr-accent); color:var(--kindyr-ink); border:2px solid var(--kindyr-ink); font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:800; padding:3px 8px; box-shadow:2px 2px 0 var(--kindyr-ink);">v0.1.0</span>
+          <span id="settings-version-badge" style="margin-left:auto; background:var(--kindyr-accent); color:var(--kindyr-ink); border:2px solid var(--kindyr-ink); font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:800; padding:3px 8px; box-shadow:2px 2px 0 var(--kindyr-ink);">v0.2.0</span>
         </div>
         <div class="settings-group-desc">Canal beta con auto-update. Si una versión falla, volvé a la anterior sin perder datos.</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
@@ -232,16 +227,16 @@ function updateDownloadsLabel() {
 }
 
 function updateEagerToggleUI() {
-  const on = document.getElementById('beta-eager-on')
-  const off = document.getElementById('beta-eager-off')
-  const status = document.getElementById('beta-eager-status')
+  const on = document.getElementById('prepare-on')
+  const off = document.getElementById('prepare-off')
+  const status = document.getElementById('prepare-status')
   const enabled = Boolean(settings.eagerPrepareOnCreate)
   if (on) on.classList.toggle('active', enabled)
   if (off) off.classList.toggle('active', !enabled)
   if (status) {
     status.style.display = 'block'
-    status.textContent = enabled ? '✓ ' + t('settings.beta.enabled') + ' · ' + t('settings.beta.eager.desc') : '○ ' + t('settings.beta.disabled')
-    status.style.color = enabled ? '#facc15' : '#666'
+    status.textContent = enabled ? '✓ ' + t('settings.prepare.on') + ' · ' + t('settings.prepare.desc') : '○ ' + t('settings.prepare.off')
+    status.style.color = enabled ? '#1bd96a' : '#666'
   }
 }
 
@@ -250,7 +245,7 @@ function setEagerPrepare(enabled) {
   settings.settingsSavedAt = Date.now()
   try { localStorage.setItem('kindyr-settings', JSON.stringify(settings)) } catch {}
   updateEagerToggleUI()
-  setStatus((enabled ? t('settings.beta.enabled') : t('settings.beta.disabled')) + ' · ' + t('settings.beta.eager'))
+  setStatus((enabled ? t('settings.prepare.on') : t('settings.prepare.off')) + ' · ' + t('settings.prepare.title'))
 }
 
 function updateDiscordToggleUI() {
@@ -685,7 +680,7 @@ async function loadPreviousVersions() {
   listEl.innerHTML = '<div class="ram-hint">Cargando versiones...</div>'
   try {
     const verRes = await window.kindyrAPI.updater.getVersion()
-    const current = typeof verRes === 'string' ? verRes : (verRes || '0.1.0')
+    const current = typeof verRes === 'string' ? verRes : (verRes || '0.2.0')
     // Actualizar badge
     const badge = document.getElementById('settings-version-badge')
     if (badge) badge.textContent = 'v' + current

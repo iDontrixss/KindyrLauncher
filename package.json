@@ -1,6 +1,6 @@
 {
   "name": "kindyrlauncher",
-  "version": "0.1.0-beta.1",
+  "version": "0.2.0-beta.2",
   "private": true,
   "description": "Kindyr Launcher - Tu launcher de Minecraft",
   "main": "main.js",
@@ -45,6 +45,7 @@
     "@xmcl/unzip": "2.1.2",
     "electron-updater": "^6.8.9",
     "ffmpeg-static": "^5.3.0",
+    "marked": "^18.0.13",
     "msmc": "^5.0.5",
     "semver": "^7.8.4",
     "tar": "^7.5.22",
@@ -85,6 +86,7 @@
       "archive-utils.js",
       "discord-rpc.js",
       "mrpack-utils.js",
+      "content-sniff.js",
       "skin-security.js",
       "preload.js",
       "preload-onboarding.js",
@@ -138,11 +140,5 @@
   "allowScripts": {
     "electron": true,
     "ffmpeg-static": true
-  },
-  "pnpm": {
-    "overrides": {
-      "js-yaml": "^4.3.2",
-      "undici": "^7.28.0"
-    }
   }
 }

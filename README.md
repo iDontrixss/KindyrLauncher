@@ -35,7 +35,7 @@ Artifacts are created in `dist/`. Microsoft credentials are encrypted with the O
 
 ## Release status
 
-The declared version is `0.1.0-beta.1`. Before publishing, [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) must be completed, including clean-install validation, artifact signing and remote repository setup. The changelog is local (`CHANGELOG.md` ignored in git) — it is not committed.
+The declared version is `0.2.0-beta.2`. Before publishing, [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) must be completed, including clean-install validation, artifact signing and remote repository setup. The changelog is local (`CHANGELOG.md` ignored in git) — it is not committed.
 
 ### Publishing an update (manual control)
 

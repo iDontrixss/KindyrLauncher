@@ -48,14 +48,14 @@
 <div class="discover-toast-stack" id="discover-toast-stack" aria-live="polite"></div>
 
 <div class="discover-shell">
-  <aside class="discover-filter-panel">
+  <aside class="discover-filter-panel" id="discover-filter-panel">
     <div class="discover-filter-heading">
       <span class="section-kicker" data-i18n="discover.filters">Filtros</span>
       <button type="button" class="discover-reset" onclick="resetDiscoverFilters()" data-i18n="discover.reset">Restablecer</button>
     </div>
 
     <div class="discover-filter-group">
-      <label data-i18n="discover.projectType">Tipo de proyecto</label>
+      <label data-i18n="discover.contentType">Tipo de contenido</label>
       <div class="discover-types" id="discover-types"></div>
     </div>
 
@@ -70,8 +70,9 @@
     </div>
 
     <div class="discover-filter-group">
-      <label for="discover-loader" data-i18n="discover.loader">Loader</label>
-      <div class="discover-select-shell">
+      <label data-i18n="discover.modLoaders">Cargadores de mods</label>
+      <div class="discover-chips" id="discover-loaders"></div>
+      <div class="discover-select-shell" hidden>
         <select class="discover-select" id="discover-loader" onchange="searchModrinth(true)">
           <option value="" data-i18n="discover.anyLoader">Cualquier loader</option>
           <option value="fabric">Fabric</option>
@@ -81,6 +82,11 @@
         </select>
         <i class="fa-solid fa-chevron-down"></i>
       </div>
+    </div>
+
+    <div class="discover-filter-group" id="discover-category-group" hidden>
+      <label data-i18n="discover.categories">Categorías</label>
+      <div class="discover-chips discover-chips-scroll" id="discover-categories"></div>
     </div>
 
     <div class="discover-filter-group">
@@ -112,7 +118,7 @@
   </aside>
 
   <section class="discover-workspace">
-    <div class="discover-searchbar">
+    <div class="discover-searchbar" id="discover-searchbar">
       <div class="discover-search-wrap">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input class="discover-search" id="discover-query" placeholder="Buscar en Modrinth..." data-i18n-placeholder="discover.search" oninput="scheduleModrinthSearch()" onkeydown="if(event.key === 'Enter') searchModrinth(true)">
@@ -122,20 +128,54 @@
       </button>
     </div>
 
-    <div class="discover-meta">
+    <div class="discover-meta" hidden>
       <span id="discover-summary" data-i18n="discover.ready">Listo para buscar mods y contenido.</span>
     </div>
 
     <div class="discover-results" id="discover-results"></div>
 
-    <div class="discover-pager">
+    <div class="discover-pager" id="discover-pager">
       <span id="discover-page-summary">1 / 1</span>
       <div>
         <button type="button" class="secondary-btn" id="discover-prev" onclick="changeDiscoverPage(-1)" aria-label="Anterior"><i class="fa-solid fa-arrow-left"></i></button>
         <button type="button" class="secondary-btn" id="discover-next" onclick="changeDiscoverPage(1)" aria-label="Siguiente"><i class="fa-solid fa-arrow-right"></i></button>
       </div>
     </div>
+
+    <div class="discover-details" id="discover-details" hidden>
+      <div class="discover-details-top">
+        <div class="project-modal-identity">
+          <div class="project-modal-icon" id="project-modal-icon"><i class="fa-solid fa-cube" aria-hidden="true"></i></div>
+          <div class="project-modal-copy">
+            <div class="project-modal-title" id="project-modal-title">—</div>
+            <div class="project-modal-summary" id="project-modal-summary"></div>
+            <div class="project-modal-stats" id="project-modal-stats"></div>
+          </div>
+        </div>
+        <div class="project-modal-actions">
+          <button type="button" class="type-chip detail-action detail-action-install" id="project-modal-install" onclick="installDetailProject(this)"><i class="fa-solid fa-download" aria-hidden="true"></i> <span data-i18n="discover.install">Instalar</span></button>
+          <button type="button" class="type-chip detail-action" id="project-modal-open" onclick="openDetailProjectUrl()"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> <span data-i18n="discover.view">Ver</span></button>
+        </div>
+        <button type="button" class="type-chip detail-action discover-close detail-close" onclick="closeProjectDetails()" aria-label="Cerrar" data-i18n-aria-label="project.close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </div>
+      <div class="discover-details-main">
+        <div class="discover-details-content">
+          <div class="project-modal-tabs" role="tablist">
+            <button type="button" class="type-chip project-tab active" data-ptab="desc" onclick="selectProjectTab('desc')"><span data-i18n="project.tab.description">Descripción</span></button>
+            <button type="button" class="type-chip project-tab" data-ptab="versions" onclick="selectProjectTab('versions')"><span data-i18n="project.tab.versions">Versiones</span></button>
+            <button type="button" class="type-chip project-tab" data-ptab="gallery" onclick="selectProjectTab('gallery')"><span data-i18n="project.tab.gallery">Galería</span></button>
+          </div>
+          <div class="project-modal-body">
+            <div id="project-tab-desc" class="rich-body" role="tabpanel"></div>
+            <div id="project-tab-versions" role="tabpanel" hidden></div>
+            <div id="project-tab-gallery" role="tabpanel" hidden></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
+
+  <aside class="discover-filter-panel discover-details-side" id="discover-details-info" hidden></aside>
 </div>
 
 <script>
@@ -148,6 +188,79 @@ let discoverLoading = false
 let discoverLimit = 18
 let discoverAbortController = null
 let discoverRequestId = 0
+let discoverCategory = '' // Modrinth: slug de categoría ('adventure'), '' = todas
+let discoverCategoryId = 0 // CurseForge: id numérico de categoría, 0 = todas
+let discoverCategoryIds = [] // CurseForge en tipo "all": ids agrupados bajo un mismo nombre
+let discoverCategoryName = '' // CurseForge en tipo "all": nombre seleccionado
+let cfCategoryIdsByName = {}
+let curseForgeCategoriesCache = null
+let curseForgeCategoriesPromise = null
+let discoverCategoryRequest = 0
+
+// Loaders con soporte real en Kindyr (crear instancia / instalar): solo estos 4.
+const DISCOVER_LOADERS = [
+  { id: 'fabric', label: 'Fabric' },
+  { id: 'forge', label: 'Forge' },
+  { id: 'neoforge', label: 'NeoForge' },
+  { id: 'quilt', label: 'Quilt' }
+]
+
+// Iconos SVG oficiales de loaders (Modrinth /v2/tag/loader), con currentColor.
+const LOADER_ICONS = {
+  "bukkit": "<svg viewBox=\"0 0 292 319\" style=\"fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;\" stroke=\"currentColor\"><g transform=\"matrix(1,0,0,1,0,-5)\"><path d=\"M12,109.5L12,155L34.5,224L57.5,224L57.5,271L81,294L160,294L160,172L259.087,172L265,155L265,109.5M12,109.5L12,64L34.5,64L34.5,41L81,17L195.5,17L241,41L241,64L265,64L265,109.5M12,109.5L81,109.5L81,132L195.5,132L195.5,109.5L265,109.5M264.087,204L264.087,244M207.5,272L207.5,312M250,272L250,312L280,312L280,272L250,272ZM192.5,204L192.5,244L222.5,244L222.5,204L192.5,204Z\" style=\"fill:none;fill-rule:nonzero;stroke-width:24px;\"/></g></svg>",
+  "canvas": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 1.305 1.305 12 12 22.695 22.695 12 12 1.305Z\" style=\"\"/><path d=\"M12 5.547 5.547 12 12 18.453 18.453 12 12 5.547Z\" style=\"\"/><path d=\"M12 9.79 9.79 12 12 14.21 14.21 12 12 9.79Z\" style=\"\"/></svg>",
+  "fabric": "<svg xmlns=\"http://www.w3.org/2000/svg\" xml:space=\"preserve\" fill-rule=\"evenodd\" stroke-linecap=\"round\" stroke-linejoin=\"round\" clip-rule=\"evenodd\" viewBox=\"0 0 24 24\"> <path fill=\"none\" d=\"M0 0h24v24H0z\"/> <path fill=\"none\" stroke=\"currentColor\" stroke-width=\"23\" d=\"m820 761-85.6-87.6c-4.6-4.7-10.4-9.6-25.9 1-19.9 13.6-8.4 21.9-5.2 25.4 8.2 9 84.1 89 97.2 104 2.5 2.8-20.3-22.5-6.5-39.7 5.4-7 18-12 26-3 6.5 7.3 10.7 18-3.4 29.7-24.7 20.4-102 82.4-127 103-12.5 10.3-28.5 2.3-35.8-6-7.5-8.9-30.6-34.6-51.3-58.2-5.5-6.3-4.1-19.6 2.3-25 35-30.3 91.9-73.8 111.9-90.8\" transform=\"matrix(.08671 0 0 .0867 -49.8 -56)\"/> </svg>",
+  "forge": "<svg xml:space=\"preserve\" fill-rule=\"evenodd\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-miterlimit=\"1.5\" clip-rule=\"evenodd\" viewBox=\"0 0 24 24\"> <path fill=\"none\" d=\"M0 0h24v24H0z\"></path> <path fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" d=\"M2 7.5h8v-2h12v2s-7 3.4-7 6 3.1 3.1 3.1 3.1l.9 3.9H5l1-4.1s3.8.1 4-2.9c.2-2.7-6.5-.7-8-6Z\"></path> </svg>",
+  "iris": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m22.59 12.013-3.01 3.126v4.405l.005.019-4.251-.005-2.994 3.115h-.003l-3.003-3.132H5.1l-.018.005.005-4.424-2.994-3.116-.003-.023L5.1 8.858V4.452l-.005-.019 4.252.005 2.993-3.115h.003l3.003 3.132h4.234l.018-.005-.005 4.425 2.994 3.115\" style=\"\" transform=\"translate(-.344)\"/><path d=\"m17.229 12.005-1.436 1.491v2.101l.003.009-2.028-.002-1.428 1.486h-.001l-1.433-1.494H8.887l-.008.002.002-2.11-1.428-1.486-.001-.011L8.887 10.5V8.399l-.002-.009 2.027.002 1.428-1.485h.002l1.432 1.494h2.019l.009-.003-.003 2.11 1.428 1.486\" style=\"\" transform=\"translate(-.344)\"/></svg>",
+  "minecraft": "<svg viewBox=\"0 0 20 20\" fill=\"currentColor\"><path fill-rule=\"evenodd\" d=\"M9.504 1.132a1 1 0 01.992 0l1.75 1a1 1 0 11-.992 1.736L10 3.152l-1.254.716a1 1 0 11-.992-1.736l1.75-1zM5.618 4.504a1 1 0 01-.372 1.364L5.016 6l.23.132a1 1 0 11-.992 1.736L4 7.723V8a1 1 0 01-2 0V6a.996.996 0 01.52-.878l1.734-.99a1 1 0 011.364.372zm8.764 0a1 1 0 011.364-.372l1.733.99A1.002 1.002 0 0118 6v2a1 1 0 11-2 0v-.277l-.254.145a1 1 0 11-.992-1.736l.23-.132-.23-.132a1 1 0 01-.372-1.364zm-7 4a1 1 0 011.364-.372L10 8.848l1.254-.716a1 1 0 11.992 1.736L11 10.58V12a1 1 0 11-2 0v-1.42l-1.246-.712a1 1 0 01-.372-1.364zM3 11a1 1 0 011 1v1.42l1.246.712a1 1 0 11-.992 1.736l-1.75-1A1 1 0 012 14v-2a1 1 0 011-1zm14 0a1 1 0 011 1v2a1 1 0 01-.504.868l-1.75 1a1 1 0 11-.992-1.736L16 13.42V12a1 1 0 011-1zm-9.618 5.504a1 1 0 011.364-.372l.254.145V16a1 1 0 112 0v.277l.254-.145a1 1 0 11.992 1.736l-1.735.992a.995.995 0 01-1.022 0l-1.735-.992a1 1 0 01-.372-1.364z\" clip-rule=\"evenodd\" /></svg>",
+  "neoforge": "<svg enable-background=\"new 0 0 24 24\" version=\"1.1\" viewBox=\"0 0 24 24\" xml:space=\"preserve\" xmlns=\"http://www.w3.org/2000/svg\"><g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"m12 19.2v2m0-2v2\"/><path d=\"m8.4 1.3c0.5 1.5 0.7 3 0.1 4.6-0.2 0.5-0.9 1.5-1.6 1.5m8.7-6.1c-0.5 1.5-0.7 3-0.1 4.6 0.2 0.6 0.9 1.5 1.6 1.5\"/><path d=\"m3.6 15.8h-1.7m18.5 0h1.7\"/><path d=\"m3.2 12.1h-1.7m19.3 0h1.8\"/><path d=\"m8.1 12.7v1.6m7.8-1.6v1.6\"/><path d=\"m10.8 18h1.2m0 1.2-1.2-1.2m2.4 0h-1.2m0 1.2 1.2-1.2\"/><path d=\"m4 9.7c-0.5 1.2-0.8 2.4-0.8 3.7 0 3.1 2.9 6.3 5.3 8.2 0.9 0.7 2.2 1.1 3.4 1.1m0.1-17.8c-1.1 0-2.1 0.2-3.2 0.7m11.2 4.1c0.5 1.2 0.8 2.4 0.8 3.7 0 3.1-2.9 6.3-5.3 8.2-0.9 0.7-2.2 1.1-3.4 1.1m-0.1-17.8c1.1 0 2.1 0.2 3.2 0.7\"/><path d=\"m4 9.7c-0.2-1.8-0.3-3.7 0.5-5.5s2.2-2.6 3.9-3m11.6 8.5c0.2-1.9 0.3-3.7-0.5-5.5s-2.2-2.6-3.9-3\"/><path d=\"m12 21.2-2.4 0.4m2.4-0.4 2.4 0.4\"/></g></svg>",
+  "optifine": "<svg fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" stroke-width=\"2\"><path d=\"M10.985 9.205c0-1.38-1.121-2.5-2.5-2.5H7.156a2.5 2.5 0 0 0-2.5 2.5v5.59a2.5 2.5 0 0 0 2.5 2.5h1.329c1.379 0 2.5-1.12 2.5-2.5v-5.59ZM14.793 17.295v-9.34a1.252 1.252 0 0 1 1.25-1.25h3.301M18.007 10.997h-3.214\" /></svg>",
+  "paper": "<svg xml:space=\"preserve\" fill-rule=\"evenodd\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-miterlimit=\"1.5\" clip-rule=\"evenodd\" viewBox=\"0 0 24 24\"> <path fill=\"none\" d=\"M0 0h24v24H0z\"/> <path fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" d=\"m12 18 6 2 3-17L2 14l6 2\"/> <path stroke=\"currentColor\" stroke-width=\"2\" d=\"m9 21-1-5 4 2-3 3Z\"/> <path fill=\"currentColor\" d=\"m12 18-4-2 10-9-6 11Z\"/> </svg>",
+  "purpur": "<svg xml:space=\"preserve\" fill-rule=\"evenodd\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-miterlimit=\"1.5\" clip-rule=\"evenodd\" viewBox=\"0 0 24 24\"> <defs> <path id=\"purpur\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.68\" d=\"m264 41.95 8-4v8l-8 4v-8Z\"></path> </defs> <path fill=\"none\" d=\"M0 0h24v24H0z\"></path> <path fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.77\" d=\"m264 29.95-8 4 8 4.42 8-4.42-8-4Z\" transform=\"matrix(1.125 0 0 1.1372 -285 -31.69)\"></path> <path fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.77\" d=\"m272 38.37-8 4.42-8-4.42\" transform=\"matrix(1.125 0 0 1.1372 -285 -31.69)\"></path> <path fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.77\" d=\"m260 31.95 8 4.21V45\" transform=\"matrix(1.125 0 0 1.1372 -285 -31.69)\"></path> <path fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.77\" d=\"M260 45v-8.84l8-4.21\" transform=\"matrix(1.125 0 0 1.1372 -285 -31.69)\"></path> <use xlink:href=\"#purpur\" stroke-width=\"1.68\" transform=\"matrix(1.125 0 0 1.2569 -285 -40.78)\"></use> <use xlink:href=\"#purpur\" stroke-width=\"1.68\" transform=\"matrix(-1.125 0 0 1.2569 309 -40.78)\"></use> </svg>",
+  "quilt": "<svg xmlns:xlink=\"http://www.w3.org/1999/xlink\" xml:space=\"preserve\" fill-rule=\"evenodd\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-miterlimit=\"2\" clip-rule=\"evenodd\" viewBox=\"0 0 24 24\"> <defs> <path id=\"quilt\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"65.6\" d=\"M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197Z\"></path> </defs> <path fill=\"none\" d=\"M0 0h24v24H0z\"></path> <use xlink:href=\"#quilt\" stroke-width=\"65.6\" transform=\"matrix(.03053 0 0 .03046 -3.2 -3.2)\"></use> <use xlink:href=\"#quilt\" stroke-width=\"65.6\" transform=\"matrix(.03053 0 0 .03046 -3.2 7)\"></use> <use xlink:href=\"#quilt\" stroke-width=\"65.6\" transform=\"matrix(.03053 0 0 .03046 6.9 -3.2)\"></use> <path fill=\"none\" stroke=\"currentColor\" stroke-width=\"70.4\" d=\"M442.5 234.8c0-7-5.6-12.5-12.5-12.5H234.7c-6.8 0-12.4 5.6-12.4 12.5V430c0 6.9 5.6 12.5 12.4 12.5H430c6.9 0 12.5-5.6 12.5-12.5V234.8Z\" transform=\"rotate(45 3.5 24) scale(.02843 .02835)\"></path> </svg>",
+  "spigot": "<svg viewBox=\"0 0 332 284\" style=\"fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;fill:none;fill-rule:nonzero;stroke-width:24px;\" stroke=\"currentColor\"><path d=\"M147.5,27l27,-15l27.5,15l66.5,0l0,33.5l-73,-0.912l0,45.5l26,-0.088l0,31.5l-12.5,0l0,15.5l16,21.5l35,0l0,-21.5l35.5,0l0,21.5l24.5,0l0,55.5l-24.5,0l0,17l-35.5,0l0,-27l-35,0l-55.5,14.5l-67.5,-14.5l-15,14.5l18,12.5l-3,24.5l-41.5,1.5l-48.5,-19.5l6,-19l24.5,-4.5l16,-41l79,-36l-7,-15.5l0,-31.5l23.5,0l0,-45.5l-73.5,0l0,-32.5l67,0Z\"/></svg>",
+  "vanilla": "<svg viewBox=\"0 0 20 20\" fill=\"currentColor\"><path fill-rule=\"evenodd\" d=\"M9.504 1.132a1 1 0 01.992 0l1.75 1a1 1 0 11-.992 1.736L10 3.152l-1.254.716a1 1 0 11-.992-1.736l1.75-1zM5.618 4.504a1 1 0 01-.372 1.364L5.016 6l.23.132a1 1 0 11-.992 1.736L4 7.723V8a1 1 0 01-2 0V6a.996.996 0 01.52-.878l1.734-.99a1 1 0 011.364.372zm8.764 0a1 1 0 011.364-.372l1.733.99A1.002 1.002 0 0118 6v2a1 1 0 11-2 0v-.277l-.254.145a1 1 0 11-.992-1.736l.23-.132-.23-.132a1 1 0 01-.372-1.364zm-7 4a1 1 0 011.364-.372L10 8.848l1.254-.716a1 1 0 11.992 1.736L11 10.58V12a1 1 0 11-2 0v-1.42l-1.246-.712a1 1 0 01-.372-1.364zM3 11a1 1 0 011 1v1.42l1.246.712a1 1 0 11-.992 1.736l-1.75-1A1 1 0 012 14v-2a1 1 0 011-1zm14 0a1 1 0 011 1v2a1 1 0 01-.504.868l-1.75 1a1 1 0 11-.992-1.736L16 13.42V12a1 1 0 011-1zm-9.618 5.504a1 1 0 011.364-.372l.254.145V16a1 1 0 112 0v.277l.254-.145a1 1 0 11.992 1.736l-1.735.992a.995.995 0 01-1.022 0l-1.735-.992a1 1 0 01-.372-1.364z\" clip-rule=\"evenodd\" /></svg>"
+};
+
+// Nombres propios de loaders: siempre con mayúscula, nunca traducidos.
+const LOADER_DISPLAY_NAMES = {
+  fabric: 'Fabric', forge: 'Forge', neoforge: 'NeoForge', quilt: 'Quilt',
+  minecraft: 'Minecraft', vanilla: 'Vanilla', paper: 'Paper', spigot: 'Spigot',
+  bukkit: 'Bukkit', purpur: 'Purpur', folia: 'Folia', velocity: 'Velocity',
+  waterfall: 'Waterfall', sponge: 'Sponge', iris: 'Iris', optifine: 'OptiFine',
+  canvas: 'Canvas', datapack: 'Datapack'
+}
+
+function loaderDisplayName(id) {
+  const key = String(id || '').toLowerCase()
+  if (LOADER_DISPLAY_NAMES[key]) return LOADER_DISPLAY_NAMES[key]
+  return key ? key.charAt(0).toUpperCase() + key.slice(1) : ''
+}
+
+function loaderIcon(id) {
+  const svg = LOADER_ICONS[String(id || '').toLowerCase()]
+  if (!svg) return '<i class="fa-solid fa-cube" aria-hidden="true"></i>'
+  return '<span class="loader-svg" aria-hidden="true">' + svg + '</span>'
+}
+
+function loaderChip(id) {
+  return '<span class="project-tag loader-tag">' + loaderIcon(id) + '<span>' + escapeHtml(loaderDisplayName(id)) + '</span></span>'
+}
+
+// Categorías oficiales Modrinth (GET /v2/tag/category), agrupadas por tipo de contenido.
+const MODRINTH_MOD_CATEGORIES = ['adventure', 'cursed', 'decoration', 'economy', 'equipment', 'food', 'game-mechanics', 'library', 'magic', 'management', 'minigame', 'mobs', 'optimization', 'social', 'storage', 'technology', 'transportation', 'utility', 'worldgen']
+const MODRINTH_CATEGORIES_BY_TYPE = {
+  mod: MODRINTH_MOD_CATEGORIES,
+  datapack: MODRINTH_MOD_CATEGORIES,
+  plugin: MODRINTH_MOD_CATEGORIES,
+  modpack: ['adventure', 'challenging', 'combat', 'kitchen-sink', 'lightweight', 'magic', 'multiplayer', 'optimization', 'quests', 'technology'],
+  resourcepack: ['128x', '16x', '256x', '32x', '48x', '512x+', '8x-', 'audio', 'blocks', 'combat', 'core-shaders', 'cursed', 'decoration', 'entities', 'environment', 'equipment', 'fonts', 'gui', 'items', 'locale', 'modded', 'models', 'realistic', 'simplistic', 'themed', 'tweaks', 'utility', 'vanilla-like'],
+  shader: ['atmosphere', 'bloom', 'cartoon', 'colored-lighting', 'cursed', 'fantasy', 'foliage', 'high', 'low', 'medium', 'path-tracing', 'pbr', 'potato', 'realistic', 'reflections', 'screenshot', 'semi-realistic', 'shadows', 'vanilla-like']
+}
+// Clases oficiales CurseForge (gameId 432) para filtrar sus categorías por tipo.
+const CURSEFORGE_CLASS_ID_BY_TYPE = { mod: 6, modpack: 4471, resourcepack: 12, shader: 6552, datapack: 6945, plugin: 5 }
+// Clases buscables desde Descubrir (se excluyen Worlds/Customization/Addons, sin flujo de instalación).
+const CURSEFORGE_SEARCHABLE_CLASS_IDS = [6, 4471, 12, 6552, 6945, 5]
 
 function tDiscover(key, vars) {
   const raw = t(key, vars)
@@ -172,7 +285,12 @@ function updateDiscoverProviderTexts() {
 }
 
 function selectDiscoverProvider(provider) {
+  if (typeof closeProjectDetails === 'function') closeProjectDetails()
   discoverProvider = provider === 'curseforge' ? 'curseforge' : 'modrinth'
+  discoverCategory = ''
+  discoverCategoryId = 0
+  discoverCategoryIds = []
+  discoverCategoryName = ''
   try { localStorage.setItem('kindyr-discover-provider', discoverProvider) } catch {}
   document.querySelectorAll('.provider-chip').forEach(btn => {
     const isActive = btn.dataset.provider === discoverProvider
@@ -181,6 +299,8 @@ function selectDiscoverProvider(provider) {
   })
   updateDiscoverProviderTexts()
   checkCurseForgeStatus()
+  renderDiscoverLoaders()
+  loadDiscoverCategories()
   searchModrinth(true)
 }
 
@@ -249,7 +369,162 @@ function renderDiscoverTypes() {
 function selectDiscoverType(type) {
   discoverType = type
   discoverOffset = 0
+  discoverCategory = ''
+  discoverCategoryId = 0
+  discoverCategoryIds = []
+  discoverCategoryName = ''
   renderDiscoverTypes()
+  loadDiscoverCategories()
+  searchModrinth(true)
+}
+
+function renderDiscoverLoaders() {
+  const box = document.getElementById('discover-loaders')
+  if (!box) return
+  const current = document.getElementById('discover-loader')?.value || ''
+  const locked = Boolean(getDiscoverInstanceContext())
+  box.innerHTML = DISCOVER_LOADERS.map(item => (
+    '<button type="button" class="type-chip discover-chip' + (item.id === current ? ' active' : '') + '"' +
+      (locked ? ' disabled' : '') + ' onclick="selectDiscoverLoader(&quot;' + item.id + '&quot;)">' +
+      loaderIcon(item.id) + '<span>' + escapeHtml(loaderDisplayName(item.id)) + '</span>' +
+    '</button>'
+  )).join('')
+}
+
+function selectDiscoverLoader(id) {
+  if (getDiscoverInstanceContext()) return
+  const select = document.getElementById('discover-loader')
+  if (!select) return
+  select.value = (select.value === id) ? '' : id
+  discoverOffset = 0
+  renderDiscoverLoaders()
+  searchModrinth(true)
+}
+
+function formatModrinthCategoryLabel(slug) {
+  return String(slug || '').split('-').map(word => word ? word.charAt(0).toUpperCase() + word.slice(1) : '').join(' ')
+}
+
+// Etiqueta de categoría en el idioma del launcher. Solo el diccionario ES traduce
+// (cat.<slug>); en inglés se muestra el nombre original del proveedor. Los tipos de
+// contenido (Mod, Modpack...) y los loaders (Forge, Fabric...) no se traducen nunca.
+function categoryLabel(slug, fallbackName) {
+  if (settings.language === 'en') return fallbackName
+  const key = 'cat.' + String(slug || '').toLowerCase()
+  const text = t(key)
+  return text === key ? fallbackName : text
+}
+
+function getModrinthCategoriesForType(type) {
+  if (MODRINTH_CATEGORIES_BY_TYPE[type]) return MODRINTH_CATEGORIES_BY_TYPE[type]
+  const union = new Set([...MODRINTH_MOD_CATEGORIES, ...(MODRINTH_CATEGORIES_BY_TYPE.modpack || [])])
+  return [...union].sort()
+}
+
+async function getCurseForgeCategoriesCached() {
+  if (Array.isArray(curseForgeCategoriesCache)) return curseForgeCategoriesCache
+  if (!curseForgeCategoriesPromise) {
+    curseForgeCategoriesPromise = (window.kindyrAPI?.curseforge?.categories
+      ? window.kindyrAPI.curseforge.categories()
+      : Promise.resolve({ ok: false }))
+      .then(result => {
+        curseForgeCategoriesCache = (result && result.ok && Array.isArray(result.categories)) ? result.categories : []
+        return curseForgeCategoriesCache
+      })
+      .catch(() => {
+        curseForgeCategoriesCache = []
+        return curseForgeCategoriesCache
+      })
+      .finally(() => { curseForgeCategoriesPromise = null })
+  }
+  return curseForgeCategoriesPromise
+}
+
+function renderDiscoverCategoryChips(items, activeKey) {
+  const box = document.getElementById('discover-categories')
+  if (!box) return
+  box.innerHTML = items.map(item => (
+    '<button type="button" class="type-chip discover-chip' + (String(item.key) === String(activeKey) ? ' active' : '') + '" onclick="selectDiscoverCategory(&quot;' + escapeHtml(String(item.key)) + '&quot;)">' +
+      '<span>' + escapeHtml(item.label) + '</span>' +
+    '</button>'
+  )).join('')
+}
+
+async function loadDiscoverCategories() {
+  const group = document.getElementById('discover-category-group')
+  const box = document.getElementById('discover-categories')
+  if (!group || !box) return
+  const myRequest = ++discoverCategoryRequest
+  if (discoverProvider === 'modrinth') {
+    const items = getModrinthCategoriesForType(discoverType).map(slug => ({ key: slug, label: categoryLabel(slug, formatModrinthCategoryLabel(slug)) }))
+    if (myRequest !== discoverCategoryRequest) return
+    renderDiscoverCategoryChips(items, discoverCategory)
+    group.hidden = false
+    return
+  }
+  const classId = CURSEFORGE_CLASS_ID_BY_TYPE[discoverType] || 0
+  group.hidden = false
+  try {
+    const list = await getCurseForgeCategoriesCached()
+    if (myRequest !== discoverCategoryRequest) return
+    let items
+    if (classId) {
+      items = list.filter(cat => Number(cat.classId) === classId).map(cat => ({ key: String(cat.id), label: categoryLabel(cat.slug, cat.name) }))
+    } else {
+      // Tipo "all": UN chip por nombre y SOLO categorías principales, es decir, las que
+      // existen en 2+ clases (128x y otras específicas de un tipo no tienen sentido acá).
+      // El backend hace fan-out con los ids agrupados.
+      const pool = list.filter(cat => CURSEFORGE_SEARCHABLE_CLASS_IDS.includes(Number(cat.classId)))
+      const byName = {}
+      pool.forEach(cat => {
+        const name = String(cat.name || '').trim()
+        if (!name) return
+        if (!byName[name]) byName[name] = { ids: [], slug: cat.slug || '' }
+        if (!byName[name].ids.includes(cat.id)) byName[name].ids.push(cat.id)
+      })
+      cfCategoryIdsByName = {}
+      items = Object.keys(byName)
+        .filter(name => byName[name].ids.length >= 2)
+        .sort((a, b) => a.localeCompare(b))
+        .map(name => {
+          cfCategoryIdsByName[name] = byName[name].ids
+          return { key: name, label: categoryLabel(byName[name].slug, name), ids: byName[name].ids }
+        })
+    }
+    if (!items.length) { group.hidden = true; return }
+    const activeKey = classId
+      ? (discoverCategoryId ? String(discoverCategoryId) : '')
+      : (discoverCategoryName || '')
+    renderDiscoverCategoryChips(items, activeKey)
+  } catch {
+    if (myRequest !== discoverCategoryRequest) return
+    group.hidden = true
+  }
+}
+
+function selectDiscoverCategory(key) {
+  if (discoverProvider === 'curseforge') {
+    if (!CURSEFORGE_CLASS_ID_BY_TYPE[discoverType]) {
+      // Tipo "all": la key es el nombre y cubre los ids de todas sus clases.
+      if (discoverCategoryName === key) {
+        discoverCategoryName = ''
+        discoverCategoryIds = []
+      } else {
+        discoverCategoryName = key
+        discoverCategoryIds = (cfCategoryIdsByName[key] || []).slice()
+      }
+      discoverCategoryId = 0
+    } else {
+      const next = Number(key) || 0
+      discoverCategoryId = (discoverCategoryId === next) ? 0 : next
+      discoverCategoryName = ''
+      discoverCategoryIds = []
+    }
+  } else {
+    discoverCategory = (discoverCategory === key) ? '' : key
+  }
+  discoverOffset = 0
+  loadDiscoverCategories()
   searchModrinth(true)
 }
 
@@ -291,6 +566,8 @@ function syncDiscoverContextView(refresh = true) {
     if (anyLoaderOption) anyLoaderOption.textContent = t('discover.anyLoader')
   }
   renderDiscoverTypes()
+  renderDiscoverLoaders()
+  loadDiscoverCategories()
   if (typeof syncKindyrSelects === 'function') {
     syncKindyrSelects(versionSelect)
     syncKindyrSelects(loaderSelect)
@@ -316,6 +593,10 @@ function resetDiscoverFilters() {
   const context = getDiscoverInstanceContext()
   discoverType = context ? 'mod' : 'all'
   discoverOffset = 0
+  discoverCategory = ''
+  discoverCategoryId = 0
+  discoverCategoryIds = []
+  discoverCategoryName = ''
   document.getElementById('discover-query').value = ''
   document.getElementById('discover-version').value = ''
   document.getElementById('discover-loader').value = ''
@@ -327,6 +608,8 @@ function resetDiscoverFilters() {
     document.getElementById('discover-loader').value = context.loader !== 'vanilla' ? context.loader : ''
   }
   renderDiscoverTypes()
+  renderDiscoverLoaders()
+  loadDiscoverCategories()
   searchModrinth(true)
 }
 
@@ -367,7 +650,7 @@ function getProjectUrl(project) {
 function formatDiscoverDate(value) {
   if (!value) return ''
   try {
-    const locale = currentLanguage === 'en' ? 'en-US' : 'es-UY'
+    const locale = settings.language === 'en' ? 'en-US' : 'es-UY'
     formatDiscoverDate.formatters ||= new Map()
     if (!formatDiscoverDate.formatters.has(locale)) {
       formatDiscoverDate.formatters.set(
@@ -398,6 +681,8 @@ function renderDiscoverMessage(message, ui = getDiscoverUI()) {
 
 function renderDiscoverResults(projects, ui = getDiscoverUI()) {
   if (!ui) return
+  discoverLastHits = Array.isArray(projects) ? projects : []
+  discoverLastUi = ui
   const results = ui.results
   if (!projects.length) {
     renderDiscoverMessage(t('discover.noResults'))
@@ -419,7 +704,17 @@ function renderDiscoverResults(projects, ui = getDiscoverUI()) {
     const encodedUrl = escapeHtml(JSON.stringify(getProjectUrl(project)))
     const updated = formatDiscoverDate(project.date_modified)
     const isCF = Boolean(project._curseForge)
-    return '<article class="project-card">' +
+    const translateTag = tag => translateCategoryName(tag, isCF)
+    const installed = Boolean(context) && isDiscoveredProjectInstalled(project)
+    // Solo web: el autor bloqueó la distribución por API (la API no da URL).
+    // El botón busca un gemelo verificado en Modrinth en vez de intentar en vano.
+    const webOnly = Boolean(isCF && project.allowModDistribution === false)
+    const installBtn = installed
+      ? '<button type="button" class="secondary-btn" disabled><i class="fa-solid fa-check"></i>' + t('discover.installed') + '</button>'
+      : webOnly
+        ? '<button type="button" class="secondary-btn" onclick="event.stopPropagation();installDiscoveredProject(' + encodedProject + ', this)" title="' + escapeHtml(t('curseforge.noDistribution')) + '"><i class="fa-solid fa-arrows-rotate"></i>' + t('twin.findButton') + '</button>'
+        : '<button type="button" class="primary-btn" onclick="event.stopPropagation();installDiscoveredProject(' + encodedProject + ', this)"><i class="fa-solid fa-download"></i>' + (context ? t('discover.installDirect') : t('discover.install')) + '</button>'
+    return '<article class="project-card project-clickable' + (installed ? ' is-installed' : '') + '" onclick="openDiscoveredProjectDetails(' + encodedProject + ')">' +
       '<div class="project-card-top">' +
         '<div class="project-icon">' + icon + '</div>' +
         '<div class="project-identity">' +
@@ -429,31 +724,90 @@ function renderDiscoverResults(projects, ui = getDiscoverUI()) {
         '</div>' +
       '</div>' +
       '<div class="project-desc">' + escapeHtml(project.description || t('discover.noDescription')) + '</div>' +
-      '<div class="project-tags">' + categories.map(tag => '<span class="project-tag">' + escapeHtml(tag) + '</span>').join('') + (version ? '<span class="project-tag">' + escapeHtml(version) + '</span>' : '') + '</div>' +
+      '<div class="project-tags">' + categories.map(tag => '<span class="project-tag">' + escapeHtml(translateTag(tag)) + '</span>').join('') + (version ? '<span class="project-tag">' + escapeHtml(version) + '</span>' : '') + (webOnly ? '<span class="project-tag tag-warn">' + escapeHtml(t('curseforge.webOnly')) + '</span>' : '') + '</div>' +
       '<div class="project-stats">' +
         '<span><i class="fa-solid fa-download"></i><strong>' + formatCompactNumber(project.downloads) + '</strong><small>' + t('discover.downloads') + '</small></span>' +
         (isCF ? '' : '<span><i class="fa-solid fa-heart"></i><strong>' + formatCompactNumber(project.follows) + '</strong><small>' + t('discover.followers') + '</small></span>') +
         (updated ? '<span class="project-updated"><i class="fa-solid fa-clock"></i><small>' + escapeHtml(updated) + '</small></span>' : '') +
       '</div>' +
       '<div class="project-actions">' +
-        '<button type="button" class="secondary-btn" onclick="openModrinthProject(' + encodedUrl + ')"><i class="fa-solid fa-arrow-up-right-from-square"></i>' + t('discover.view') + '</button>' +
-        '<button type="button" class="primary-btn" onclick="installDiscoveredProject(' + encodedProject + ', this)"><i class="fa-solid fa-download"></i>' + (context ? t('discover.installDirect') : t('discover.install')) + '</button>' +
+        '<button type="button" class="secondary-btn" onclick="event.stopPropagation();openModrinthProject(' + encodedUrl + ')"><i class="fa-solid fa-arrow-up-right-from-square"></i>' + t('discover.view') + '</button>' +
+        installBtn +
       '</div>' +
     '</article>'
   }).join('')
   updateDiscoverPager(ui)
 }
 
-function showDiscoverInstallCard(kind, title, message) {
+// --- Badge "Instalado": qué proyectos ya están en la instancia del contexto ---
+// Evita instalar dos veces lo mismo (ej. sodium). Se marca por project_id de
+// Modrinth (meta persistida al instalar/identificar) con fallback a slug en
+// el nombre del archivo para contenido preexistente sin meta.
+let discoverInstalledProjectIds = new Set()
+let discoverInstalledFileHints = []
+let discoverInstalledFor = null
+let discoverInstalledRequest = 0
+let discoverLastHits = []
+let discoverLastUi = null
+
+async function refreshDiscoverInstalled(requestContextId) {
+  const context = getDiscoverInstanceContext()
+  const contextId = context?.id || null
+  if (requestContextId !== undefined && contextId !== requestContextId) return
+  const myRequest = ++discoverInstalledRequest
+  if (!contextId || !window.kindyrAPI?.instances?.getDetails) {
+    discoverInstalledProjectIds = new Set()
+    discoverInstalledFileHints = []
+    discoverInstalledFor = contextId
+    return
+  }
+  try {
+    const det = await window.kindyrAPI.instances.getDetails(contextId)
+    if (myRequest !== discoverInstalledRequest) return
+    if ((getDiscoverInstanceContext()?.id || null) !== contextId) return
+    const ids = new Set()
+    const hints = []
+    const content = (det && (det.content || det.mods)) || []
+    content.forEach(item => {
+      const pid = String(item.projectId || '').toLowerCase()
+      if (pid) ids.add(pid)
+      const base = String(item.baseName || item.file || item.name || '').toLowerCase().replace(/\.disabled$/, '')
+      if (base) hints.push(base)
+    })
+    discoverInstalledProjectIds = ids
+    discoverInstalledFileHints = hints
+    discoverInstalledFor = contextId
+  } catch {
+    if (myRequest !== discoverInstalledRequest) return
+    discoverInstalledProjectIds = new Set()
+    discoverInstalledFileHints = []
+    discoverInstalledFor = contextId
+  }
+}
+
+function isDiscoveredProjectInstalled(project) {
+  if (!project) return false
+  const pid = String(project.project_id || project.id || '').toLowerCase()
+  if (pid && discoverInstalledProjectIds.has(pid)) return true
+  const slug = String(project.slug || '').toLowerCase()
+  if (slug && slug.length >= 4 && discoverInstalledFileHints.some(name => name.includes(slug))) return true
+  return false
+}
+
+function showDiscoverInstallCard(kind, title, message, action) {
   const stack = document.getElementById('discover-toast-stack')
   if (!stack) return
   const card = document.createElement('div')
   card.className = 'discover-install-card ' + kind
   card.innerHTML = '<div class="discover-install-card-icon"><i class="fa-solid ' + (kind === 'success' ? 'fa-check' : 'fa-triangle-exclamation') + '"></i></div>' +
     '<div><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(message) + '</span></div>' +
+    (action && action.url ? '<button type="button" class="discover-install-card-action"><i class="fa-solid fa-arrow-up-right-from-square"></i>' + escapeHtml(action.label || '') + '</button>' : '') +
     '<button type="button" onclick="this.parentElement.remove()" aria-label="Cerrar">×</button>'
+  if (action && action.url) {
+    card.querySelector('.discover-install-card-action').addEventListener('click', () => openModrinthProject(action.url))
+  }
   stack.appendChild(card)
-  setTimeout(() => card.remove(), 6500)
+  setTimeout(() => card.remove(), kind === 'error' && action ? 12000 : 6500)
 }
 
 function installDiscoveredProject(project, button) {
@@ -471,12 +825,45 @@ async function installDiscoverProjectDirect(project, button) {
   button.disabled = true
   button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>' + t('discover.installingDirect')
   setStatus(t('home.installingRelease', { title: project.title }))
-  const result = await installProjectIntoInstance(project, context.id)
-  button.disabled = false
-  button.innerHTML = original
+  // Solo web: primero se intenta el rescate vía gemelo de Modrinth (mismo
+  // slug + tipo + autor verificado). Sin gemelo, mensaje accionable directo
+  // sin round-trip inútil contra una API que no va a dar URL.
+  let result = null
+  const webOnlyCF = project._curseForge && project.allowModDistribution === false
+  if (webOnlyCF && typeof offerModrinthTwinInstall === 'function') {
+    const twin = await offerModrinthTwinInstall({ cfProject: project, instanceId: context.id })
+    if (twin.cancelled) {
+      button.disabled = false
+      button.innerHTML = original
+      setStatus(t('app.ready'))
+      return
+    }
+    if (twin.twin !== false) {
+      result = twin
+    }
+  }
+  if (!result) {
+    if (webOnlyCF) {
+      button.disabled = false
+      button.innerHTML = original
+      const msg = t('curseforge.noDistribution')
+      showDiscoverInstallCard('error', project.title, msg, { label: t('curseforge.openSite'), url: getProjectUrl(project) })
+      setStatus(msg)
+      return
+    }
+    result = await installProjectIntoInstance(project, context.id)
+    button.disabled = false
+    button.innerHTML = original
+  } else {
+    button.disabled = false
+    button.innerHTML = original
+  }
   if (!result.ok) {
-    showDiscoverInstallCard('error', project.title, result.error || t('discover.installDirectError'))
-    setStatus(result.error || t('discover.installDirectError'))
+    if (result.cancelled) { setStatus(t('app.ready')); return }
+    const noDist = typeof isNoDistributionError === 'function' && isNoDistributionError(result.error)
+    const msg = noDist ? t('curseforge.noDistribution') : (result.error || t('discover.installDirectError'))
+    showDiscoverInstallCard('error', project.title, msg, noDist ? { label: t('curseforge.openSite'), url: getProjectUrl(project) } : null)
+    setStatus(msg)
     return
   }
   if (result.instance) {
@@ -487,6 +874,11 @@ async function installDiscoverProjectDirect(project, button) {
     })
   }
   if (typeof refreshLauncherInstances === 'function') await refreshLauncherInstances()
+  // Refrescar badges "Instalado" con la lista visible (sin nueva búsqueda)
+  await refreshDiscoverInstalled(context.id)
+  if (discoverLastHits.length && discoverLastUi?.results?.isConnected) {
+    renderDiscoverResults(discoverLastHits, discoverLastUi)
+  }
   syncDiscoverContextView(false)
   const versionName = result.version?.name || result.version?.version_number || project.title
   showDiscoverInstallCard('success', t('discover.installedDirect'), t('discover.installedDirectMessage', { project: project.title, instance: context.name, version: versionName }))
@@ -513,13 +905,458 @@ async function installProjectIntoInstance(project, instanceId) {
   if (!window.kindyrAPI?.modrinth?.installLatestRelease) {
     return { ok: false, error: t('home.searchFailed') }
   }
-  return window.kindyrAPI.modrinth.installLatestRelease({
+  const first = await window.kindyrAPI.modrinth.installLatestRelease({
     project,
     instanceId: instance.id,
     gameVersion: instance.version,
     loader: instance.loader || 'vanilla',
     installKind
   })
+  // Fallback RP/shader: sin compatibilidad directa se ofrece instalar la más
+  // actual con modal de aviso en vez de fallar en seco (solo Modrinth).
+  if (first.ok || typeof installFallbackNewest !== 'function' || !isNoCompatibleError(first.error) || !COMPAT_FALLBACK_KINDS.has(getFallbackKind(project))) {
+    return first
+  }
+  const fb = await installFallbackNewest({ project, installKind, instanceId: instance.id, instanceVersion: instance.version })
+  if (fb.cancelled) return { ok: false, cancelled: true }
+  return fb
+}
+
+// --- Ficha de proyecto (misma descripción que en la web del proveedor) ---
+let detailProject = null
+let detailData = null
+let detailTab = 'desc'
+let detailRequest = 0
+let detailVersionsLoaded = false
+
+const RICH_ALLOWED_TAGS = new Set(['a', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'del', 'code', 'pre', 'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'blockquote', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'div', 'details', 'summary', 'sup', 'sub'])
+const RICH_DROP_TAGS = new Set(['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'select', 'textarea', 'noscript', 'template', 'link', 'meta', 'base', 'title'])
+
+function isSafeRichUrl(value, base) {
+  const raw = String(value || '').trim()
+  if (!raw || raw.charAt(0) === '#') return ''
+  if (/^(javascript|data|vbscript|file|blob):/i.test(raw)) return ''
+  try {
+    const url = new URL(raw, base || undefined)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return ''
+    return url.href
+  } catch { return '' }
+}
+
+// Sanea el HTML del proveedor (markdown de Modrinth ya convertido en main, HTML de
+// CurseForge tal cual) antes de inyectarlo: allowlist de tags, sin handlers ni estilos,
+// solo URLs http(s) absolutas.
+function sanitizeRichHtml(html, baseUrl) {
+  const source = String(html || '')
+  if (!source.trim()) return ''
+  let root
+  try {
+    const doc = new DOMParser().parseFromString('<div>' + source + '</div>', 'text/html')
+    root = doc.body ? doc.body.firstChild : null
+  } catch { return '' }
+  if (!root) return ''
+  function clean(node) {
+    const children = Array.from(node.childNodes)
+    for (const child of children) {
+      if (child.nodeType === 8) { child.remove(); continue }
+      if (child.nodeType === 3) continue
+      if (child.nodeType !== 1) { child.remove(); continue }
+      const tag = child.tagName.toLowerCase()
+      if (RICH_DROP_TAGS.has(tag)) { child.remove(); continue }
+      if (!RICH_ALLOWED_TAGS.has(tag)) {
+        while (child.firstChild) node.insertBefore(child.firstChild, child)
+        child.remove()
+        continue
+      }
+      for (const attr of Array.from(child.attributes)) {
+        const name = attr.name.toLowerCase()
+        if ((tag === 'a' && name === 'href') || (tag === 'img' && name === 'src')) {
+          const safe = isSafeRichUrl(attr.value, baseUrl)
+          if (safe) child.setAttribute(attr.name, safe)
+          else child.removeAttribute(attr.name)
+          continue
+        }
+        if ((name === 'alt' || name === 'title') && (tag === 'img' || tag === 'a')) continue
+        child.removeAttribute(attr.name)
+      }
+      if (tag === 'a') { child.setAttribute('target', '_blank'); child.setAttribute('rel', 'noopener noreferrer') }
+      if (tag === 'img') { child.setAttribute('loading', 'lazy'); if (!child.getAttribute('alt')) child.setAttribute('alt', '') }
+      clean(child)
+    }
+  }
+  clean(root)
+  return root.innerHTML
+}
+
+function detailStatsHtml(project, details) {
+  const downloads = formatCompactNumber((details && details.downloads) ?? project.downloads)
+  const parts = ['<span><i class="fa-solid fa-download"></i> ' + escapeHtml(downloads) + ' ' + escapeHtml(t('discover.downloads')) + '</span>']
+  const follows = (details && details.follows) || project.follows || 0
+  if (follows) {
+    parts.push('<span><i class="fa-solid fa-heart"></i> ' + escapeHtml(formatCompactNumber(follows)) + ' ' + escapeHtml(t('discover.followers')) + '</span>')
+  }
+  const cats = ((details && details.categories) || project.display_categories || project.categories || []).filter(c => typeof c === 'string').slice(0, 3)
+  const isCF = Boolean(project._curseForge)
+  cats.forEach(cat => parts.push('<span class="project-tag">' + escapeHtml(translateCategoryName(cat, isCF)) + '</span>'))
+  return parts.join('')
+}
+
+function fillProjectHeader(project, details) {
+  const icon = document.getElementById('project-modal-icon')
+  if (icon) {
+    const url = (details && details.iconUrl) || project.icon_url
+    icon.innerHTML = url ? '<img src="' + escapeHtml(url) + '" alt="">' : '<i class="fa-solid fa-cube" aria-hidden="true"></i>'
+  }
+  const title = document.getElementById('project-modal-title')
+  if (title) title.textContent = (details && details.title) || project.title || ''
+  const summary = document.getElementById('project-modal-summary')
+  if (summary) summary.textContent = (details && details.summary) || project.description || ''
+  const stats = document.getElementById('project-modal-stats')
+  if (stats) stats.innerHTML = detailStatsHtml(project, details)
+}
+
+function selectProjectTab(name) {
+  detailTab = name
+  document.querySelectorAll('#discover-details [data-ptab]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.ptab === name)
+  })
+  ;['desc', 'versions', 'gallery'].forEach(tab => {
+    const panel = document.getElementById('project-tab-' + tab)
+    if (panel) panel.hidden = tab !== name
+  })
+  if (name === 'versions') loadProjectVersionList()
+}
+
+function setDiscoverDetailsOpen(open) {
+  const shell = document.querySelector('.discover-shell')
+  if (shell) shell.classList.toggle('showing-details', open)
+  const details = document.getElementById('discover-details')
+  if (details) details.hidden = !open
+  ;['discover-searchbar', 'discover-results', 'discover-pager'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.hidden = open
+  })
+}
+
+function closeProjectDetails() {
+  setDiscoverDetailsOpen(false)
+}
+
+function openDiscoveredProjectDetails(project) {
+  if (!project) return
+  const sameId = (detailProject && (detailProject.project_id || detailProject.id)) === (project.project_id || project.id)
+  const sameProvider = detailProject && Boolean(detailProject._curseForge) === Boolean(project._curseForge)
+  if (sameId && sameProvider && detailData) {
+    setDiscoverDetailsOpen(true)
+    return
+  }
+  detailProject = project
+  detailData = null
+  detailVersionsLoaded = false
+  detailSidebarVersionsExpanded = false
+  fillProjectHeader(project, null)
+  renderProjectInfo()
+  const desc = document.getElementById('project-tab-desc')
+  if (desc) desc.innerHTML = '<div class="discover-message">' + escapeHtml(t('project.loadingDetails')) + '</div>'
+  const versions = document.getElementById('project-tab-versions')
+  if (versions) versions.innerHTML = ''
+  const gallery = document.getElementById('project-tab-gallery')
+  if (gallery) gallery.innerHTML = ''
+  selectProjectTab('desc')
+  setDiscoverDetailsOpen(true)
+  loadProjectDetails()
+}
+
+async function loadProjectDetails() {
+  const myRequest = ++detailRequest
+  const project = detailProject
+  if (!project) return
+  const isCF = Boolean(project._curseForge)
+  const api = isCF ? window.kindyrAPI.curseforge : window.kindyrAPI.modrinth
+  if (!api || !api.details) {
+    const desc = document.getElementById('project-tab-desc')
+    if (desc) desc.innerHTML = '<div class="discover-message">' + escapeHtml(t('project.detailsFailed')) + '</div>'
+    return
+  }
+  try {
+    const result = await api.details(isCF
+      ? { modId: project.project_id || project.id }
+      : { projectId: project.project_id || project.slug })
+    if (myRequest !== detailRequest || detailProject !== project) return
+    if (!result.ok) throw new Error(result.error || t('project.detailsFailed'))
+    detailData = result.details
+    detailVersionsLoaded = false
+    fillProjectHeader(project, detailData)
+    renderProjectInfo()
+    renderProjectDescription()
+    renderProjectGallery()
+    if (detailTab === 'versions') loadProjectVersionList()
+  } catch (e) {
+    if (myRequest !== detailRequest || detailProject !== project) return
+    const desc = document.getElementById('project-tab-desc')
+    if (desc) desc.innerHTML = '<div class="discover-message">' + escapeHtml(e.message || t('project.detailsFailed')) + '</div>'
+  }
+}
+
+function environmentSideLabel(value) {
+  const v = String(value || '').toLowerCase()
+  if (v === 'required') return t('project.info.required')
+  if (v === 'optional') return t('project.info.optional')
+  if (v === 'unsupported') return t('project.info.unsupported')
+  return v ? v.charAt(0).toUpperCase() + v.slice(1) : ''
+}
+
+function translateCategoryName(name, isCF) {
+  if (!isCF) return categoryLabel(name, formatModrinthCategoryLabel(name))
+  const found = (Array.isArray(curseForgeCategoriesCache) ? curseForgeCategoriesCache : []).find(cat => cat.name === name)
+  return found ? categoryLabel(found.slug, name) : name
+}
+
+function translateTeamRole(role) {
+  const raw = String(role || '').trim()
+  if (!raw || settings.language === 'en') return raw
+  const key = 'project.role.' + raw.toLowerCase()
+  const text = t(key)
+  return text === key ? raw : text
+}
+
+// Sidebar de información: SIEMPRE las 4 secciones (Compatibilidad, Links, Tags,
+// Creadores); si un proyecto no trae datos para alguna, queda vacía.
+function renderProjectInfo() {
+  const box = document.getElementById('discover-details-info')
+  if (!box) return
+  const d = detailData || {}
+  const p = detailProject || {}
+  const isCF = Boolean(p._curseForge)
+
+  // Compatibilidad: sub-secciones Minecraft Version y Loader, cada versión en su card.
+  // La lista de versiones de Minecraft se limita a 15 visibles + "Ver más".
+  const gameVersions = d.gameVersions || []
+  const collapsedSidebarVersions = gameVersions.length > MAX_SIDEBAR_GAME_VERSIONS && !detailSidebarVersionsExpanded
+  const visibleGameVersions = collapsedSidebarVersions ? gameVersions.slice(0, MAX_SIDEBAR_GAME_VERSIONS) : gameVersions
+  const mcVersionChips = visibleGameVersions.map(gv => '<span class="project-tag">' + escapeHtml(gv) + '</span>').join('')
+  const hiddenCount = gameVersions.length - visibleGameVersions.length
+  const versionsWrapClass = 'discover-chips sidebar-versions' + (detailSidebarVersionsExpanded && gameVersions.length > MAX_SIDEBAR_GAME_VERSIONS ? ' sidebar-versions-scroll' : '')
+  const versionsToggle = gameVersions.length > MAX_SIDEBAR_GAME_VERSIONS
+    ? '<button type="button" class="type-chip discover-chip sidebar-versions-toggle" onclick="toggleSidebarVersions()" aria-expanded="' + String(detailSidebarVersionsExpanded) + '">' +
+      '<i class="fa-solid ' + (detailSidebarVersionsExpanded ? 'fa-chevron-up' : 'fa-chevron-down') + '" aria-hidden="true"></i>' +
+      '<span>' + escapeHtml(detailSidebarVersionsExpanded ? t('instance.showLess') : t('instance.showMore') + ' (+' + hiddenCount + ')') + '</span>' +
+      '</button>'
+    : ''
+  const loaderChips = (d.loaders && d.loaders.length ? d.loaders : []).filter(Boolean)
+    .map(item => loaderChip(item)).join('')
+  const compatHtml = '<div class="detail-sub"><span class="detail-sub-label">' + escapeHtml(t('discover.minecraftVersion')) + '</span>' +
+      '<div class="' + versionsWrapClass + '">' + mcVersionChips + '</div>' + versionsToggle + '</div>' +
+    '<div class="detail-sub"><span class="detail-sub-label">' + escapeHtml(t('discover.loader')) + '</span>' +
+      '<div class="discover-chips">' + loaderChips + '</div></div>'
+
+  // Links: todos los del proyecto (discord, código, bugs, wiki, donaciones...).
+  const linkDefs = isCF
+    ? [['website', d.links && d.links.website]]
+    : [['discord', d.links && d.links.discord], ['source', d.links && d.links.source], ['issues', d.links && d.links.issues], ['wiki', d.links && d.links.wiki]]
+  const linkChips = linkDefs
+    .filter(([, url]) => url)
+    .map(([kind, url]) => '<button type="button" class="type-chip discover-chip" onclick="openDetailLink(&quot;' + escapeHtml(url) + '&quot;)">' + escapeHtml(t('project.link.' + kind)) + '</button>')
+  ;(d.donations || []).forEach(donation => {
+    if (!donation || !donation.url) return
+    const platform = String(donation.platform || 'donate')
+    const label = platform.charAt(0).toUpperCase() + platform.slice(1)
+    linkChips.push('<button type="button" class="type-chip discover-chip" onclick="openDetailLink(&quot;' + escapeHtml(donation.url) + '&quot;)">' + escapeHtml(label) + '</button>')
+  })
+  const linksHtml = linkChips.length ? '<div class="discover-chips">' + linkChips.join('') + '</div>' : ''
+
+  // Tags: categorías traducidas + lado cliente/servidor.
+  const tagChips = []
+  const cats = (d.categories || p.display_categories || p.categories || []).filter(cat => typeof cat === 'string')
+  cats.slice(0, 12).forEach(cat => tagChips.push('<span class="project-tag">' + escapeHtml(translateCategoryName(cat, isCF)) + '</span>'))
+  const clientSide = environmentSideLabel(d.side && d.side.client)
+  if (clientSide) tagChips.push('<span class="project-tag">' + escapeHtml(t('project.info.clientSide') + ' · ' + clientSide) + '</span>')
+  const serverSide = environmentSideLabel(d.side && d.side.server)
+  if (serverSide) tagChips.push('<span class="project-tag">' + escapeHtml(t('project.info.serverSide') + ' · ' + serverSide) + '</span>')
+  const tagsHtml = tagChips.length ? '<div class="discover-chips">' + tagChips.join('') + '</div>' : ''
+
+  // Creadores: nick + foto + nivel en el equipo, desde la página fuente.
+  const creatorRows = (d.creators || []).map(creator => {
+    const avatar = creator.avatarUrl
+      ? '<img src="' + escapeHtml(creator.avatarUrl) + '" alt="" loading="lazy">'
+      : '<i class="fa-solid fa-user" aria-hidden="true"></i>'
+    const inner = '<span class="creator-avatar">' + avatar + '</span>' +
+      '<span class="creator-copy"><strong>' + escapeHtml(creator.name) + '</strong>' +
+      (creator.role ? '<small>' + escapeHtml(translateTeamRole(creator.role)) + '</small>' : '') + '</span>'
+    return creator.url
+      ? '<button type="button" class="creator-row" onclick="openDetailLink(&quot;' + escapeHtml(creator.url) + '&quot;)">' + inner + '</button>'
+      : '<div class="creator-row">' + inner + '</div>'
+  }).join('')
+  const creatorsHtml = creatorRows ? '<div class="creator-list">' + creatorRows + '</div>' : ''
+
+  const sections = [
+    [t('project.info.compatibility'), compatHtml],
+    [t('project.info.links'), linksHtml],
+    [t('project.info.tags'), tagsHtml],
+    [t('project.info.creators'), creatorsHtml]
+  ]
+  box.hidden = false
+  box.innerHTML = '<div class="discover-info-sticky">' +
+    '<div class="discover-filter-heading"><span class="section-kicker">' + escapeHtml(t('discover.info')) + '</span></div>' +
+    sections.map(([label, value]) => (
+      '<div class="discover-filter-group"><label>' + escapeHtml(label) + '</label>' + value + '</div>'
+    )).join('') + '</div>'
+}
+
+function renderProjectDescription() {
+  const box = document.getElementById('project-tab-desc')
+  if (!box) return
+  const isCF = Boolean(detailProject && detailProject._curseForge)
+  const base = isCF ? 'https://www.curseforge.com' : 'https://modrinth.com'
+  const clean = sanitizeRichHtml(detailData && detailData.bodyHtml, base)
+  if (!clean.trim()) {
+    box.innerHTML = '<div class="discover-message">' + escapeHtml(t('project.noDescription')) + '</div>'
+    return
+  }
+  box.innerHTML = clean
+  // Los links externos salen por el canal seguro (shell), nunca navegan el launcher.
+  box.querySelectorAll('a[href]').forEach(link => {
+    link.addEventListener('click', linkEvent => {
+      linkEvent.preventDefault()
+      openDetailLink(link.getAttribute('href'))
+    })
+  })
+}
+
+function renderProjectGallery() {
+  const box = document.getElementById('project-tab-gallery')
+  if (!box) return
+  const images = (detailData && detailData.gallery) || []
+  if (!images.length) {
+    box.innerHTML = '<div class="discover-message">' + escapeHtml(t('project.noGallery')) + '</div>'
+    return
+  }
+  box.innerHTML = '<div class="project-gallery">' + images.map((img, index) => (
+    '<button type="button" class="project-gallery-item" onclick="openDetailGalleryImage(' + index + ')" title="' + escapeHtml(img.title || '') + '">' +
+      '<img src="' + escapeHtml(img.thumb || img.url) + '" alt="' + escapeHtml(img.title || '') + '" loading="lazy">' +
+    '</button>'
+  )).join('') + '</div>'
+}
+
+function versionTypeLabel(versionType) {
+  const v = String(versionType || '').toLowerCase()
+  if (v === 'release' || v === 'beta' || v === 'alpha') return t('project.versionType.' + v)
+  return v ? v.charAt(0).toUpperCase() + v.slice(1) : ''
+}
+
+// Fecha relativa con las keys time.* de common.js (formatRelativeTime vive ahí;
+// no duplicarla acá: el último script clásico evaluado pisa al resto).
+
+// Como el ProjectPageVersions de Modrinth: máximo de tags visibles + "+N" con el resto.
+// En la tabla los tags no hacen wrap: 2 game versions + 3 loaders entran en una línea.
+const MAX_VERSION_GAME_TAGS = 2
+const MAX_VERSION_LOADER_TAGS = 3
+
+// Sidebar de la ficha: máximo 15 versiones visibles, luego "Ver más" / "Ver menos".
+// Al expandir, la lista completa va en un contenedor con scroll propio y la
+// sidebar entera también scrollea si el contenido no entra en viewport.
+const MAX_SIDEBAR_GAME_VERSIONS = 15
+let detailSidebarVersionsExpanded = false
+
+function toggleSidebarVersions() {
+  detailSidebarVersionsExpanded = !detailSidebarVersionsExpanded
+  const side = document.getElementById('discover-details-info')
+  const prevTop = side ? side.scrollTop : 0
+  renderProjectInfo()
+  const next = document.getElementById('discover-details-info')
+  if (next) next.scrollTop = detailSidebarVersionsExpanded ? prevTop : 0
+}
+
+function cappedTagChips(items, max, chipFor) {
+  const list = (items || []).filter(Boolean)
+  const shown = list.slice(0, max).map(chipFor).join('')
+  if (list.length <= max) return shown
+  const rest = list.slice(max).join(', ')
+  return shown + '<span class="project-tag" title="' + escapeHtml(rest) + '">+' + (list.length - max) + '</span>'
+}
+
+async function loadProjectVersionList() {
+  const box = document.getElementById('project-tab-versions')
+  if (!box || detailVersionsLoaded || !detailProject) return
+  box.innerHTML = '<div class="discover-message">' + escapeHtml(t('project.loadingDetails')) + '</div>'
+  const project = detailProject
+  const isCF = Boolean(project._curseForge)
+  const api = isCF ? window.kindyrAPI.curseforge : window.kindyrAPI.modrinth
+  try {
+    const result = await api.versions({
+      projectId: project.project_id || project.slug || project.id,
+      modId: project.project_id || project.id
+    })
+    if (detailProject !== project) return
+    if (!result.ok) throw new Error(result.error || t('project.detailsFailed'))
+    const versions = (result.versions || []).slice(0, 30)
+    if (!versions.length) {
+      box.innerHTML = '<div class="discover-message">' + escapeHtml(t('project.noVersions')) + '</div>'
+      return
+    }
+    detailVersionsLoaded = true
+    // Tabla real (como el Table de Modrinth): las columnas se definen una sola vez
+    // en <colgroup>, así header y filas comparten medidas exactas siempre.
+    box.innerHTML = '<div class="version-table-scroll"><table class="version-table">' +
+      '<colgroup><col class="col-name"><col class="col-gv"><col class="col-loader"><col class="col-pub"><col class="col-dl"><col class="col-act"></colgroup>' +
+      '<thead><tr class="version-row version-head">' +
+        '<th scope="col">' + escapeHtml(t('project.col.status')) + '</th>' +
+        '<th scope="col">' + escapeHtml(t('project.info.gameVersions')) + '</th>' +
+        '<th scope="col">' + escapeHtml(t('discover.modLoaders')) + '</th>' +
+        '<th scope="col">' + escapeHtml(t('project.info.published')) + '</th>' +
+        '<th scope="col">' + escapeHtml(t('discover.downloads')) + '</th>' +
+        '<th scope="col"></th>' +
+      '</tr></thead><tbody>' +
+      versions.map(version => {
+        const typeLabel = versionTypeLabel(version.version_type)
+        const uploadedRaw = version.date_published || version.fileDate || version.datePublished || ''
+        const uploaded = uploadedRaw ? formatRelativeTime(uploadedRaw) : ''
+        const uploadedTitle = uploadedRaw ? formatDiscoverDate(uploadedRaw) : ''
+        const downloads = version.downloads ?? version.downloadCount ?? 0
+        return '<tr class="version-row">' +
+          '<td class="version-cell-name" title="' + escapeHtml(version.name || version.version_number || '') + '"><span class="version-name-text">' + escapeHtml(version.name || version.version_number || '') + '</span>' +
+            (typeLabel ? ' <span class="project-tag">' + escapeHtml(typeLabel) + '</span>' : '') +
+            (version.webOnly ? ' <span class="project-tag tag-warn" title="' + escapeHtml(t('curseforge.noDistribution')) + '">' + escapeHtml(t('curseforge.webOnly')) + '</span>' : '') + '</td>' +
+          '<td class="version-cell-chips">' + cappedTagChips(version.game_versions, MAX_VERSION_GAME_TAGS, gv => '<span class="project-tag">' + escapeHtml(gv) + '</span>') + '</td>' +
+          '<td class="version-cell-chips">' + cappedTagChips(version.loaders, MAX_VERSION_LOADER_TAGS, ld => loaderChip(ld)) + '</td>' +
+          '<td class="version-cell-dim" title="' + escapeHtml(uploadedTitle) + '">' + escapeHtml(uploaded || '—') + '</td>' +
+          '<td class="version-cell-dim" title="' + escapeHtml(String(downloads)) + '">' + escapeHtml(formatCompactNumber(downloads)) + '</td>' +
+          '<td class="version-cell-act"><button type="button" class="type-chip detail-action" onclick="installFromProjectDetails()"><i class="fa-solid fa-download" aria-hidden="true"></i>' + escapeHtml(t('discover.install')) + '</button></td>' +
+        '</tr>'
+      }).join('') + '</tbody></table></div>'
+  } catch (e) {
+    if (detailProject !== project) return
+    box.innerHTML = '<div class="discover-message">' + escapeHtml(e.message || t('project.detailsFailed')) + '</div>'
+  }
+}
+
+function installDetailProject(button) {
+  if (detailProject) installDiscoveredProject(detailProject, button)
+}
+
+function installFromProjectDetails() {
+  const project = detailProject
+  closeProjectDetails()
+  if (project) openInstallModal(project)
+}
+
+function openDetailProjectUrl() {
+  const url = (detailData && detailData.url) || (detailProject ? getProjectUrl(detailProject) : '')
+  if (url) openDetailLink(url)
+}
+
+function openDetailLink(url) {
+  if (!url) return
+  const isCF = Boolean(detailProject && detailProject._curseForge)
+  const api = isCF ? window.kindyrAPI.curseforge : window.kindyrAPI.modrinth
+  if (api && api.openProject) api.openProject(url)
+  else openModrinthProject(url)
+}
+
+function openDetailGalleryImage(index) {
+  const images = (detailData && detailData.gallery) || []
+  const img = images[Number(index)]
+  if (img && img.url) openDetailLink(img.url)
 }
 
 async function searchModrinth(resetPage = false) {
@@ -548,8 +1385,8 @@ async function searchModrinth(resetPage = false) {
   let result
   try {
     const searchPromise = discoverProvider === 'curseforge'
-      ? window.kindyrAPI.curseforge.search({ query, version, loader, sort, type: discoverType, offset: discoverOffset, limit: discoverLimit })
-      : window.kindyrAPI.modrinth.search({ query, version, loader, sort, type: discoverType, offset: discoverOffset, limit: discoverLimit })
+      ? window.kindyrAPI.curseforge.search({ query, version, loader, sort, type: discoverType, offset: discoverOffset, limit: discoverLimit, categoryIds: discoverCategoryIds.length ? discoverCategoryIds : (discoverCategoryId || undefined) })
+      : window.kindyrAPI.modrinth.search({ query, version, loader, sort, type: discoverType, offset: discoverOffset, limit: discoverLimit, category: discoverCategory || undefined })
     const abortPromise = new Promise((_, reject) => {
       abortController.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
     })
@@ -603,6 +1440,9 @@ async function searchModrinth(resetPage = false) {
   const shownStart = discoverTotal ? result.offset + 1 : 0
   const shownEnd = Math.min(result.offset + result.hits.length, discoverTotal)
   ui.summary.textContent = t('discover.resultsSummary', { start: shownStart, end: shownEnd, total: formatCompactNumber(discoverTotal) })
+  await refreshDiscoverInstalled(requestContextId)
+  if (myRequestId !== discoverRequestId) return
+  if ((getDiscoverInstanceContext()?.id || null) !== requestContextId) return
   renderDiscoverResults(result.hits, ui)
   setStatus(t('discover.loaded'))
 }
@@ -622,6 +1462,7 @@ async function openModrinthProject(url) {
 
 async function initializeDiscover() {
   renderDiscoverTypes()
+  renderDiscoverLoaders()
   await loadDiscoverVersions()
   syncDiscoverContextView(false)
   try {
@@ -631,6 +1472,7 @@ async function initializeDiscover() {
   document.querySelectorAll('.provider-chip').forEach(btn => btn.classList.toggle('active', btn.dataset.provider === discoverProvider))
   updateDiscoverProviderTexts()
   checkCurseForgeStatus()
+  loadDiscoverCategories()
   searchModrinth(true)
   // Mantener textos de provider tras cambio de idioma
   try {

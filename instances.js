@@ -10,12 +10,72 @@ let launcherInstancesRefreshRequest = null
 const instanceRefreshTimers = new Set()
 let instanceViewGeneration = 0
 
+// Sanea HTML de proveedor (changelog Modrinth ya convertido a HTML en main)
+// antes de inyectarlo con innerHTML. Replica el patrón de Descubrir
+// (sections/descubrir.html: sanitizeRichHtml) con nombres propios para no
+// colisionar con sus `const` globales cuando esa sección se carga.
+// Allowlist de tags, sin handlers ni estilos, solo URLs http(s).
+const CHANGELOG_ALLOWED_TAGS = new Set(['a', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'del', 'code', 'pre', 'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'blockquote', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'div', 'details', 'summary', 'sup', 'sub'])
+const CHANGELOG_DROP_TAGS = new Set(['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'select', 'textarea', 'noscript', 'template', 'link', 'meta', 'base', 'title'])
+
+function isSafeChangelogUrl(value) {
+  const raw = String(value || '').trim()
+  if (!raw || raw.charAt(0) === '#') return ''
+  if (/^(javascript|data|vbscript|file|blob):/i.test(raw)) return ''
+  try {
+    const url = new URL(raw, 'https://modrinth.com')
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return ''
+    return url.href
+  } catch { return '' }
+}
+
+function sanitizeChangelogHtml(html) {
+  const source = String(html || '')
+  if (!source.trim()) return ''
+  let root
+  try {
+    const doc = new DOMParser().parseFromString('<div>' + source + '</div>', 'text/html')
+    root = doc.body ? doc.body.firstChild : null
+  } catch { return '' }
+  if (!root) return ''
+  function clean(node) {
+    const children = Array.from(node.childNodes)
+    for (const child of children) {
+      if (child.nodeType === 8) { child.remove(); continue }
+      if (child.nodeType === 3) continue
+      if (child.nodeType !== 1) { child.remove(); continue }
+      const tag = child.tagName.toLowerCase()
+      if (CHANGELOG_DROP_TAGS.has(tag)) { child.remove(); continue }
+      if (!CHANGELOG_ALLOWED_TAGS.has(tag)) {
+        while (child.firstChild) node.insertBefore(child.firstChild, child)
+        child.remove()
+        continue
+      }
+      for (const attr of Array.from(child.attributes)) {
+        const name = attr.name.toLowerCase()
+        if ((tag === 'a' && name === 'href') || (tag === 'img' && name === 'src')) {
+          const safe = isSafeChangelogUrl(attr.value)
+          if (safe) child.setAttribute(attr.name, safe)
+          else child.removeAttribute(attr.name)
+          continue
+        }
+        if ((name === 'alt' || name === 'title') && (tag === 'img' || tag === 'a')) continue
+        child.removeAttribute(attr.name)
+      }
+      if (tag === 'a') { child.setAttribute('target', '_blank'); child.setAttribute('rel', 'noopener noreferrer') }
+      if (tag === 'img') { child.setAttribute('loading', 'lazy'); if (!child.getAttribute('alt')) child.setAttribute('alt', '') }
+      clean(child)
+    }
+  }
+  clean(root)
+  return root.innerHTML
+}
+
 function disposeInstanceDetailView() {
   instanceViewGeneration++
   for (const timer of instanceRefreshTimers) clearTimeout(timer)
   instanceRefreshTimers.clear()
-  if (typeof clearConsole === 'function') clearConsole()
-  if (typeof consolePanelVisible !== 'undefined') consolePanelVisible = false
+  if (typeof stopInstanceConsole === 'function') stopInstanceConsole()
   modsExpanded = false
   const detailView = document.getElementById('instance-detail-view')
   if (detailView) detailView.replaceChildren()
@@ -190,7 +250,6 @@ function loadInstanceDetailContent() {
             <i class="fa-solid fa-compass" aria-hidden="true"></i> ${escapeHtml(t('instance.discover'))}
           </button>
           <button type="button" class="secondary-btn" onclick="refreshInstancePanel()"><i class="fa-solid fa-rotate"></i> ${escapeHtml(t('instance.refresh'))}</button>
-          <button type="button" class="secondary-btn" id="toggle-mods-btn" onclick="toggleModsList()"><i class="fa-solid fa-chevron-down" id="toggle-mods-icon"></i> ${escapeHtml(t('instance.showMore'))}</button>
         </div>
       </div>
       <div class="tab-row">
@@ -198,15 +257,47 @@ function loadInstanceDetailContent() {
         <button type="button" class="tab-btn" id="instance-tab-files-btn" onclick="switchInstanceTab('files')"><i class="fa-regular fa-folder-open"></i><span>${escapeHtml(t('instance.folders'))}</span></button>
         <button type="button" class="tab-btn" id="instance-tab-worlds-btn" onclick="switchInstanceTab('worlds')"><i class="fa-solid fa-earth-americas"></i><span>${escapeHtml(t('instance.worlds'))}</span></button>
         <button type="button" class="tab-btn" id="instance-tab-logs-btn" onclick="switchInstanceTab('logs')"><i class="fa-regular fa-rectangle-list"></i><span>${escapeHtml(t('instance.logs'))}</span></button>
+        <button type="button" class="tab-btn" id="instance-tab-console-btn" onclick="switchInstanceTab('console')"><i class="fa-solid fa-terminal"></i><span>${escapeHtml(t('instance.consoleTab'))}</span></button>
       </div>
       <div class="instance-tab active" id="instance-tab-content">
-        <div class="instance-actions">
-          <span class="instance-actions-label">${escapeHtml(t('instance.quickFolders'))}</span>
-          <button type="button" class="folder-btn" onclick="openInstanceTarget('mods')"><i class="fa-solid fa-cubes"></i> ${escapeHtml(t('instance.openMods'))}</button>
-          <button type="button" class="folder-btn" onclick="openInstanceTarget('resourcepacks')"><i class="fa-solid fa-palette"></i> Resource packs</button>
-          <button type="button" class="folder-btn" onclick="openInstanceTarget('shaderpacks')"><i class="fa-solid fa-wand-magic-sparkles"></i> Shaders</button>
+        <div class="content-hub">
+          <div class="content-hub-title">${escapeHtml(t('instance.additionalContent'))}</div>
+          <div class="content-hub-toolbar">
+            <label class="content-hub-search" for="instance-content-search">
+              <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+              <input id="instance-content-search" placeholder="${escapeHtml(t('instance.searchContent'))}" oninput="filterInstanceContent()" autocomplete="off">
+            </label>
+            <button type="button" class="secondary-btn content-hub-btn" onclick="uploadInstanceFiles()" title="${escapeHtml(t('instance.dropHint'))}"><i class="fa-regular fa-folder-open"></i> ${escapeHtml(t('instance.uploadFiles'))}</button>
+            <button type="button" class="primary-btn content-hub-btn content-hub-browse" onclick="openDiscoverForInstance()"><i class="fa-regular fa-compass"></i> ${escapeHtml(t('instance.browseContent'))}</button>
+          </div>
+          <div class="content-hub-filters">
+            <div class="content-hub-sort">
+              <button type="button" class="content-hub-sort-btn" id="instance-content-sort" onclick="cycleInstanceContentSort()" title="${escapeHtml(t('instance.sortBy'))}">
+                <i class="fa-solid fa-arrow-down-wide-short"></i> <span id="instance-content-sort-label">${escapeHtml(t('instance.sortName'))}</span> <i class="fa-solid fa-chevron-down"></i>
+              </button>
+              <button type="button" class="content-hub-iconbtn" onclick="filterInstanceContent()" title="${escapeHtml(t('instance.refresh'))}"><i class="fa-solid fa-filter"></i></button>
+            </div>
+            <div class="content-hub-chips" id="instance-content-filters" role="tablist" aria-label="${escapeHtml(t('instance.content'))}"></div>
+            <button type="button" class="content-hub-updatesonly" id="instance-content-updatesonly" onclick="toggleInstanceContentUpdatesOnly()"><i class="fa-solid fa-plus"></i> ${escapeHtml(t('instance.filter'))}</button>
+            <div class="content-hub-side">
+              <button type="button" class="content-hub-link" id="instance-update-all-btn" onclick="updateAllInstanceContent()"><i class="fa-solid fa-download"></i> ${escapeHtml(t('instance.updateAll'))}</button>
+              <button type="button" class="content-hub-link" onclick="refreshInstancePanel()"><i class="fa-solid fa-rotate"></i> ${escapeHtml(t('instance.refresh'))}</button>
+            </div>
+          </div>
+          <div class="content-hub-tablehead">
+            <button type="button" id="instance-content-selectall" class="kindyr-check" onclick="toggleSelectAllInstanceContent()" aria-pressed="false" aria-label="${escapeHtml(t('instance.selectAll'))}"><i class="fa-solid fa-check"></i></button>
+            <span>${escapeHtml(t('instance.colProject'))}</span>
+            <span>${escapeHtml(t('instance.colVersion'))}</span>
+            <span class="content-hub-actionshead">${escapeHtml(t('instance.colActions'))}</span>
+          </div>
+          <div id="instance-content-list" class="content-hub-list"></div>
+          <div class="content-hub-bulk" id="instance-content-bulk" hidden>
+            <span id="instance-content-bulk-label"></span>
+            <button type="button" class="secondary-btn content-hub-btn" onclick="bulkToggleInstanceContent(true)">${escapeHtml(t('instance.enable'))}</button>
+            <button type="button" class="secondary-btn content-hub-btn" onclick="bulkToggleInstanceContent(false)">${escapeHtml(t('instance.disable'))}</button>
+            <button type="button" class="secondary-btn content-hub-btn content-hub-danger" onclick="bulkDeleteInstanceContent()"><i class="fa-regular fa-trash-can"></i> ${escapeHtml(t('confirm.delete'))}</button>
+          </div>
         </div>
-        <div id="instance-content-list" class="content-table"></div>
       </div>
       <div class="instance-tab" id="instance-tab-files">
         <div class="instance-actions" id="instance-folder-actions"></div>
@@ -221,21 +312,25 @@ function loadInstanceDetailContent() {
         </div>
         <div id="instance-logs-list" class="content-table"></div>
       </div>
-    </div>
-
-    <div class="console-panel" id="console-panel">
-      <div class="console-head">
-        <span>${escapeHtml(t('instance.console'))}</span>
-        <div class="console-actions">
-          <button type="button" class="console-btn">${escapeHtml(t('instance.clear'))}</button>
+      <div class="instance-tab" id="instance-tab-console">
+        <div class="console-tab">
+          <div class="console-tab-toolbar">
+            <span class="console-tab-status" id="instance-console-status"><span class="console-tab-dot" id="instance-console-dot"></span><span id="instance-console-status-text"></span></span>
+            <span class="console-tab-count" id="instance-console-count"></span>
+            <div class="console-tab-side">
+              <button type="button" class="type-chip active" id="instance-console-follow" onclick="toggleInstanceConsoleFollow()"><i class="fa-solid fa-arrow-down"></i> ${escapeHtml(t('instance.console.follow'))}</button>
+              <button type="button" class="content-hub-iconbtn" onclick="refreshInstanceConsole(true)" title="${escapeHtml(t('instance.refresh'))}"><i class="fa-solid fa-rotate"></i></button>
+              <button type="button" class="content-hub-iconbtn" onclick="copyInstanceConsole()" title="${escapeHtml(t('instance.console.copy'))}"><i class="fa-regular fa-copy"></i></button>
+              <button type="button" class="content-hub-iconbtn" onclick="clearInstanceConsoleView()" title="${escapeHtml(t('instance.console.clear'))}"><i class="fa-solid fa-eraser"></i></button>
+            </div>
+          </div>
+          <div class="console-tab-view" id="instance-console-view" aria-live="off"></div>
         </div>
       </div>
-      <div class="console-output" id="console-output"></div>
     </div>
   `
 
   const openFolderBtn = document.getElementById('open-folder-btn')
-  const consoleBtn = document.querySelector('.console-btn')
 
   if (openFolderBtn) {
     openFolderBtn.addEventListener('click', openSelectedInstanceFolder)
@@ -249,10 +344,9 @@ function loadInstanceDetailContent() {
   const launcherLogsBtn = document.querySelector('#instance-tab-logs .folder-btn:nth-of-type(2)')
   if (logsBtn) logsBtn.addEventListener('click', () => openInstanceTarget('logs'))
   if (launcherLogsBtn) launcherLogsBtn.addEventListener('click', () => openInstanceTarget('launcherLogs'))
-  if (consoleBtn) {
-    consoleBtn.addEventListener('click', clearConsole)
-  }
-  
+
+  stopInstanceConsole()
+  instanceConsole = null
   updateSelectedInstanceHero()
   refreshInstancePanel()
 }
@@ -272,6 +366,8 @@ async function openInstanceView(rowOrId) {
     await refreshInstancePanel()
   }
   updateSelectedInstanceHero()
+  // Si la consola estaba siguiendo en vivo, reenganchar a la instancia actual.
+  if (getInstanceConsole().timer) startInstanceConsole()
 
   try {
     window.kindyrAPI.launcher.status().then(result => {
@@ -302,6 +398,8 @@ function switchInstanceTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
   document.getElementById('instance-tab-' + tab).classList.add('active')
   document.getElementById('instance-tab-' + tab + '-btn').classList.add('active')
+  if (tab === 'console') startInstanceConsole()
+  else stopInstanceConsole()
 }
 
 function openInstanceTarget(target) {
@@ -369,6 +467,8 @@ async function openInstanceFolder(event, button) {
 
 function showInstanceTab(tabName) {
   activeInstanceTab = tabName
+  if (tabName === 'console') startInstanceConsole()
+  else stopInstanceConsole()
   requestAnimationFrame(() => {
     const tabs = document.querySelectorAll('.instance-tab')
     const btns = document.querySelectorAll('.tab-btn')
@@ -387,8 +487,60 @@ function renderEmpty(targetId, message) {
   target.textContent = message
 }
 
+// ===== Centro de control: hub de contenido unificado =====
+// Reorganización estilo "Additional content": mods + resourcepacks + shaders +
+// datapacks en una sola lista con pfp del proyecto, versiones (⇄) y updates (⬇).
+let instanceContentItems = []
+let instanceContentFilter = { q: '', kind: 'all', sort: 'name', updatesOnly: false }
+let instanceContentSelected = new Set()
+let instanceProjectCache = new Map()
+let instanceUpdatesCache = new Map()
+let instanceUpdatesState = 'idle'
+let instanceContentGen = 0
+const INSTANCE_CONTENT_KINDS_UI = [
+  { id: 'all', labelKey: 'instance.filterAll' },
+  { id: 'mod', labelKey: 'instance.filterMods' },
+  { id: 'resourcepack', labelKey: 'instance.filterResourcepacks' },
+  { id: 'shader', labelKey: 'instance.filterShaders' },
+  { id: 'datapack', labelKey: 'instance.filterDatapacks' }
+]
+const INSTANCE_CONTENT_SORTS = [
+  { id: 'name', labelKey: 'instance.sortName' },
+  { id: 'recent', labelKey: 'instance.sortRecent' },
+  { id: 'size', labelKey: 'instance.sortSize' }
+]
+
+function instanceContentKindLabel(kind) {
+  const found = INSTANCE_CONTENT_KINDS_UI.find(k => k.id === kind)
+  return found ? t(found.labelKey) : kind
+}
+
+function normalizeInstanceContent(raw, modsFallback) {
+  if (Array.isArray(raw) && raw.length) return raw
+  if (Array.isArray(modsFallback)) {
+    return modsFallback.map(m => ({
+      id: 'mod:' + m.name,
+      kind: 'mod',
+      kindLabel: 'Mod',
+      dir: 'mods',
+      file: m.name,
+      baseName: String(m.name || '').replace(/\.disabled$/i, ''),
+      rel: 'mods/' + m.name,
+      entryType: 'file',
+      size: m.size,
+      updatedAt: m.updatedAt,
+      enabled: !/\.disabled$/i.test(String(m.name || '')),
+      uploaded: true,
+      projectId: '',
+      versionId: ''
+    }))
+  }
+  return []
+}
+
 async function refreshInstancePanel() {
   const generation = instanceViewGeneration
+  const myGen = ++instanceContentGen
   const result = await window.kindyrAPI.instances.getDetails(selectedInstance)
   if (generation !== instanceViewGeneration || currentSection !== 'instance-detail') return
   if (!result.ok) {
@@ -412,77 +564,334 @@ async function refreshInstancePanel() {
     const statWorlds = document.getElementById('instance-stat-worlds')
     if (statLoader) statLoader.textContent = getInstanceLoaderLabel(instance.loader)
     if (statVersion) statVersion.textContent = instance.version
-    if (statMods) statMods.textContent = result.mods.length
+    if (statMods) statMods.textContent = (result.content || result.mods || []).length
     if (statWorlds) statWorlds.textContent = result.worlds.length
   })
-  const wasExpanded = modsExpanded
-  renderInstanceContent(result.mods)
-  modsExpanded = wasExpanded
-  // Sincronizar estado sin forzar colapso
-  const list = document.getElementById('instance-content-list')
-  if (list) {
-    const rows = list.querySelectorAll('.content-row')
-    const limit = 5
-    const shouldCollapse = !wasExpanded && rows.length > limit
-    // Aplicar estado actual
-    rows.forEach((row, i) => {
-      if (i >= limit) row.style.display = wasExpanded ? '' : 'none'
-    })
-    const btn = document.getElementById('toggle-mods-btn')
-    const icon = document.getElementById('toggle-mods-icon')
-    if (btn) btn.style.display = rows.length > limit ? '' : 'none'
-    if (icon) icon.className = wasExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'
-    if (btn) btn.innerHTML = `<i class="${wasExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'}" id="toggle-mods-icon"></i> ${wasExpanded ? t('instance.showLess') : t('instance.showMore')}`
-  }
+  instanceContentItems = normalizeInstanceContent(result.content, result.mods)
+  instanceContentSelected = new Set()
+  instanceUpdatesCache = new Map()
+  instanceUpdatesState = 'idle'
+  renderInstanceContentFilters()
+  renderInstanceContent()
+  enrichInstanceContentProjects(myGen)
+  checkInstanceContentUpdates(myGen)
+  identifyInstanceContentFiles(myGen)
   renderInstanceWorlds(result.worlds)
   renderInstanceLogs(result.logs)
   renderInstanceFolders()
 }
 
-function renderInstanceContent(mods) {
+function renderInstanceContentFilters() {
+  const wrap = document.getElementById('instance-content-filters')
+  if (!wrap) return
+  wrap.innerHTML = INSTANCE_CONTENT_KINDS_UI.map(kind => (
+    '<button type="button" class="type-chip' + (instanceContentFilter.kind === kind.id ? ' active' : '') + '" data-kind="' + kind.id + '" onclick="setInstanceContentFilter(&quot;' + kind.id + '&quot;)">' + escapeHtml(t(kind.labelKey)) + '</button>'
+  )).join('')
+  const sortLabel = document.getElementById('instance-content-sort-label')
+  if (sortLabel) {
+    const sort = INSTANCE_CONTENT_SORTS.find(s => s.id === instanceContentFilter.sort) || INSTANCE_CONTENT_SORTS[0]
+    sortLabel.textContent = t(sort.labelKey)
+  }
+  const updatesBtn = document.getElementById('instance-content-updatesonly')
+  if (updatesBtn) {
+    updatesBtn.classList.toggle('active', instanceContentFilter.updatesOnly)
+    updatesBtn.innerHTML = '<i class="fa-solid fa-' + (instanceContentFilter.updatesOnly ? 'check' : 'plus') + '"></i> ' + escapeHtml(instanceContentFilter.updatesOnly ? t('instance.updatesOnly') : t('instance.filter'))
+  }
+  const search = document.getElementById('instance-content-search')
+  if (search && document.activeElement !== search) {
+    search.placeholder = t('instance.searchContent', { count: instanceContentItems.length })
+  }
+}
+
+function setInstanceContentFilter(kind) {
+  instanceContentFilter.kind = kind
+  renderInstanceContentFilters()
+  renderInstanceContent()
+}
+
+function cycleInstanceContentSort() {
+  const idx = INSTANCE_CONTENT_SORTS.findIndex(s => s.id === instanceContentFilter.sort)
+  instanceContentFilter.sort = INSTANCE_CONTENT_SORTS[(idx + 1) % INSTANCE_CONTENT_SORTS.length].id
+  renderInstanceContentFilters()
+  renderInstanceContent()
+}
+
+function toggleInstanceContentUpdatesOnly() {
+  instanceContentFilter.updatesOnly = !instanceContentFilter.updatesOnly
+  renderInstanceContentFilters()
+  renderInstanceContent()
+}
+
+function filterInstanceContent() {
+  const search = document.getElementById('instance-content-search')
+  instanceContentFilter.q = String(search ? search.value : '').trim().toLowerCase()
+  renderInstanceContent()
+}
+
+function getFilteredInstanceContent() {
+  const q = instanceContentFilter.q
+  let list = instanceContentItems.filter(item => {
+    if (instanceContentFilter.kind !== 'all' && item.kind !== instanceContentFilter.kind) return false
+    if (instanceContentFilter.updatesOnly && !instanceUpdatesCache.has(item.id)) return false
+    if (!q) return true
+    const proj = instanceProjectCache.get(item.projectId || '')
+    const hay = [item.baseName, item.file, item.kindLabel, item.dir, proj?.title, proj?.author].filter(Boolean).join(' ').toLowerCase()
+    return hay.includes(q)
+  })
+  if (instanceContentFilter.sort === 'recent') {
+    list = [...list].sort((a, b) => Date.parse(b.updatedAt || 0) - Date.parse(a.updatedAt || 0))
+  } else if (instanceContentFilter.sort === 'size') {
+    list = [...list].sort((a, b) => (b.size || 0) - (a.size || 0))
+  } else {
+    list = [...list].sort((a, b) => String(a.baseName || a.file).localeCompare(String(b.baseName || b.file), undefined, { sensitivity: 'base' }))
+  }
+  return list
+}
+
+function contentKindIcon(kind) {
+  if (kind === 'mod') return 'fa-puzzle-piece'
+  if (kind === 'resourcepack') return 'fa-palette'
+  if (kind === 'shader') return 'fa-wand-magic-sparkles'
+  if (kind === 'datapack') return 'fa-database'
+  return 'fa-cube'
+}
+
+function renderInstanceContent() {
   const list = document.getElementById('instance-content-list')
   if (!list) return
-  list.className = 'content-table'
-  if (!mods.length) {
+  setupInstanceContentDropZone()
+  const items = getFilteredInstanceContent()
+  const search = document.getElementById('instance-content-search')
+  if (search && document.activeElement !== search) {
+    search.placeholder = t('instance.searchContent', { count: instanceContentItems.length })
+  }
+  if (!instanceContentItems.length) {
+    list.className = 'content-hub-list'
     renderEmpty('instance-content-list', t('instance.emptyMods'))
+    syncInstanceContentBulk()
     return
   }
-
-  const fragment = document.createDocumentFragment()
-  mods.forEach(mod => {
-    const disabled = mod.name.endsWith('.disabled')
-    const status = disabled ? t('instance.disabled') : t('instance.active')
-    const action = disabled ? t('instance.enable') : t('instance.disable')
-    const div = document.createElement('div')
-    div.className = 'content-row'
-    const iconWrap = document.createElement('div')
-    iconWrap.className = 'content-row-icon'
-    const icon = document.createElement('i')
-    icon.className = 'fa-solid fa-puzzle-piece'
-    icon.setAttribute('aria-hidden', 'true')
-    iconWrap.appendChild(icon)
-    const copy = document.createElement('div')
-    copy.className = 'content-row-copy'
-    const strong = document.createElement('strong')
-    strong.title = mod.name
-    strong.textContent = mod.name
-    const sizeSpan = document.createElement('span')
-    sizeSpan.textContent = formatFileSize(mod.size)
-    copy.append(strong, sizeSpan)
-    const pill = document.createElement('span')
-    pill.className = 'pill' + (disabled ? ' disabled' : '')
-    pill.textContent = status
-    const btn = document.createElement('button')
-    btn.type = 'button'
-    btn.className = 'small-action'
-    btn.textContent = action
-    btn.addEventListener('click', () => toggleInstanceMod(mod.name))
-    div.append(iconWrap, copy, pill, btn)
-    fragment.appendChild(div)
+  if (!items.length) {
+    list.className = 'content-hub-list'
+    renderEmpty('instance-content-list', t('discover.noResults'))
+    syncInstanceContentBulk()
+    return
+  }
+  list.className = 'content-hub-list'
+  const frag = document.createDocumentFragment()
+  items.forEach(item => {
+    const proj = item.projectId ? instanceProjectCache.get(item.projectId) : null
+    const update = instanceUpdatesCache.get(item.id)
+    const title = proj?.title || item.baseName
+    const subtitle = proj ? (proj.author || '') : t('instance.uploaded')
+    const versionLabel = update?.latestNumber && update.hasUpdate ? update.latestNumber : (proj?.version || t('instance.unknownVersion'))
+    const row = document.createElement('div')
+    row.className = 'content-hub-row' + (item.enabled ? '' : ' is-disabled')
+    row.dataset.id = item.id
+    // Icono / pfp original del proyecto
+    const iconHtml = proj?.iconUrl
+      ? '<span class="content-hub-icon has-img"><img src="' + escapeHtml(proj.iconUrl) + '" alt="" loading="lazy" onerror="this.remove()"></span>'
+      : '<span class="content-hub-icon"><i class="fa-solid ' + contentKindIcon(item.kind) + '"></i></span>'
+    const versionBtn = !item.projectId
+      ? '<span class="content-hub-verbtn is-muted" title="' + escapeHtml(t('instance.uploadedHint')) + '"><i class="fa-solid fa-arrow-right-arrow-left"></i></span>'
+      : update?.hasUpdate
+        ? '<button type="button" class="content-hub-verbtn is-update" data-act="update" title="' + escapeHtml(t('instance.updateAvailable', { version: update.latestNumber || '' })) + '"><i class="fa-solid fa-download"></i></button>'
+        : '<button type="button" class="content-hub-verbtn" data-act="versions" title="' + escapeHtml(t('instance.seeVersions')) + '"><i class="fa-solid fa-arrow-right-arrow-left"></i></button>'
+    row.innerHTML =
+      '<button type="button" class="kindyr-check" data-act="select" aria-pressed="' + (instanceContentSelected.has(item.id) ? 'true' : 'false') + '" aria-label="' + escapeHtml(t('instance.selectAll') + ': ' + title) + '"><i class="fa-solid fa-check"></i></button>' +
+      '<div class="content-hub-project">' + iconHtml +
+        '<div class="content-hub-copy"><strong title="' + escapeHtml(item.file) + '">' + escapeHtml(title) + '</strong>' +
+        '<span>' + (proj ? '<i class="fa-solid fa-circle-user"></i> ' + escapeHtml(subtitle) : '<i class="fa-solid fa-upload"></i> ' + escapeHtml(subtitle)) + ' · ' + escapeHtml(instanceContentKindLabel(item.kind)) + '</span></div>' +
+      '</div>' +
+      '<div class="content-hub-version"><strong>' + escapeHtml(versionLabel) + '</strong><span>' + escapeHtml(item.file) + '</span></div>' +
+      '<div class="content-hub-actions">' + versionBtn +
+        '<label class="content-hub-switch" title="' + escapeHtml(item.enabled ? t('instance.disable') : t('instance.enable')) + '"><input type="checkbox" data-act="toggle" ' + (item.enabled ? 'checked' : '') + '><span></span></label>' +
+        '<button type="button" class="content-hub-iconbtn" data-act="delete" title="' + escapeHtml(t('confirm.delete')) + '"><i class="fa-regular fa-trash-can"></i></button>' +
+        '<button type="button" class="content-hub-iconbtn" data-act="menu" title="⋮"><i class="fa-solid fa-ellipsis-vertical"></i></button>' +
+      '</div>'
+    row.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-act]')
+      if (!btn) return
+      ev.stopPropagation()
+      const act = btn.dataset.act
+      if (act === 'select') {
+        if (instanceContentSelected.has(item.id)) instanceContentSelected.delete(item.id)
+        else instanceContentSelected.add(item.id)
+        btn.setAttribute('aria-pressed', instanceContentSelected.has(item.id) ? 'true' : 'false')
+        syncInstanceContentSelectAll()
+        syncInstanceContentBulk()
+        return
+      }
+      if (act === 'toggle') { toggleInstanceContent(item); return }
+      if (act === 'delete') { deleteInstanceContent(item); return }
+      // Tanto ⬇ (update disponible) como ⇄ (ver versiones) abren el mismo
+      // modal "Update version": el download preselecciona la última versión.
+      if (act === 'update' || act === 'versions') { openInstanceContentVersions(item, act === 'update'); return }
+      if (act === 'menu') { openInstanceContentMenu(item, btn); return }
+    })
+    frag.appendChild(row)
   })
   list.innerHTML = ''
-  list.appendChild(fragment)
+  list.appendChild(frag)
+  syncInstanceContentSelectAll()
+  syncInstanceContentBulk()
+  const updateBtn = document.getElementById('instance-update-all-btn')
+  if (updateBtn) {
+    const n = instanceUpdatesCache.size
+    updateBtn.innerHTML = '<i class="fa-solid fa-download"></i> ' + escapeHtml(t('instance.updateAll') + (n ? ' (' + n + ')' : ''))
+    updateBtn.classList.toggle('has-updates', n > 0)
+  }
 }
+
+function syncInstanceContentBulk() {
+  const bar = document.getElementById('instance-content-bulk')
+  if (!bar) return
+  const n = instanceContentSelected.size
+  bar.hidden = n === 0
+  const label = document.getElementById('instance-content-bulk-label')
+  if (label) label.textContent = t('instance.selectedCount', { count: n })
+}
+
+function toggleSelectAllInstanceContent() {
+  const items = getFilteredInstanceContent()
+  const allSelected = items.length > 0 && items.every(i => instanceContentSelected.has(i.id))
+  items.forEach(i => {
+    if (allSelected) instanceContentSelected.delete(i.id)
+    else instanceContentSelected.add(i.id)
+  })
+  renderInstanceContent()
+}
+
+function syncInstanceContentSelectAll() {
+  const selectAll = document.getElementById('instance-content-selectall')
+  if (!selectAll) return
+  const items = getFilteredInstanceContent()
+  selectAll.setAttribute('aria-pressed', items.length > 0 && items.every(i => instanceContentSelected.has(i.id)) ? 'true' : 'false')
+}
+
+async function enrichInstanceContentProjects(gen) {
+  const ids = [...new Set(instanceContentItems.map(i => i.projectId).filter(Boolean))]
+    .filter(id => !instanceProjectCache.has(id)).slice(0, 40)
+  if (!ids.length) return
+  await Promise.all(ids.map(async (projectId) => {
+    try {
+      const res = await window.kindyrAPI.modrinth.details({ projectId })
+      if (gen !== instanceContentGen) return
+      if (res && res.ok && res.details) {
+        const d = res.details
+        const author = (d.creators && d.creators[0] && d.creators[0].name) || d.author || ''
+        instanceProjectCache.set(projectId, {
+          title: d.title || projectId,
+          iconUrl: d.iconUrl || '',
+          author,
+          version: '',
+          url: d.url || ('https://modrinth.com/project/' + encodeURIComponent(projectId))
+        })
+      } else {
+        instanceProjectCache.set(projectId, { title: projectId, iconUrl: '', author: '' })
+      }
+    } catch {
+      if (gen === instanceContentGen) instanceProjectCache.set(projectId, { title: projectId, iconUrl: '', author: '' })
+    }
+  }))
+  if (gen !== instanceContentGen) return
+  // Completar número de versión instalada cuando hay meta versionId
+  try {
+    await Promise.all(instanceContentItems.filter(i => i.versionId && i.projectId).slice(0, 40).map(async (item) => {
+      try {
+        const versions = await window.kindyrAPI.modrinth.versions({ projectId: item.projectId })
+        if (gen !== instanceContentGen || !versions.ok) return
+        const v = (versions.versions || []).find(x => x.id === item.versionId)
+        if (v) {
+          const cached = instanceProjectCache.get(item.projectId) || { title: item.baseName }
+          instanceProjectCache.set(item.projectId + ':' + item.versionId, { ...cached })
+          item._versionNumber = v.version_number || v.name || ''
+        }
+      } catch {}
+    }))
+  } catch {}
+  if (gen !== instanceContentGen) return
+  // Pintar número de versión por item
+  instanceContentItems.forEach(item => {
+    if (item._versionNumber) {
+      const cached = instanceProjectCache.get(item.projectId)
+      if (cached && !cached.version) cached.version = item._versionNumber
+    }
+  })
+  renderInstanceContent()
+}
+
+async function checkInstanceContentUpdates(gen) {
+  if (!instanceContentItems.some(i => i.projectId)) return
+  instanceUpdatesState = 'checking'
+  try {
+    const res = await window.kindyrAPI.instances.checkUpdates({ instanceId: selectedInstance })
+    if (gen !== instanceContentGen) return
+    if (res && res.ok && Array.isArray(res.updates)) {
+      instanceUpdatesCache = new Map(res.updates.map(u => [u.id, u]))
+      instanceUpdatesState = 'done'
+      // Reflejar última versión conocida en la caché de proyecto para la columna Version
+      res.updates.forEach(u => {
+        const item = instanceContentItems.find(i => i.id === u.id)
+        if (item && u.latestNumber) {
+          const cached = instanceProjectCache.get(item.projectId)
+          if (cached) cached._latest = u.latestNumber
+        }
+      })
+      renderInstanceContent()
+      renderInstanceContentFilters()
+      if (res.updates.length) setStatus(t('instance.updatesFound', { count: res.updates.length }))
+    } else {
+      instanceUpdatesState = 'done'
+    }
+  } catch {
+    instanceUpdatesState = 'done'
+  }
+}
+
+// Identifica archivos subidos a mano por hash (Modrinth version_file):
+// así recuperan pfp/título/autor/versión y entran al flujo de updates.
+let instanceIdentifyAttempted = new Set()
+let instanceIdentifyFor = ''
+async function identifyInstanceContentFiles(gen) {
+  if (instanceIdentifyFor !== selectedInstance) {
+    instanceIdentifyFor = selectedInstance
+    instanceIdentifyAttempted = new Set()
+  }
+  const pending = instanceContentItems.filter(i => !i.projectId && i.entryType !== 'folder' && !instanceIdentifyAttempted.has(selectedInstance + ':' + i.id))
+  if (!pending.length || !window.kindyrAPI?.instances?.identifyContent) return
+  pending.slice(0, 30).forEach(i => instanceIdentifyAttempted.add(selectedInstance + ':' + i.id))
+  try {
+    const res = await window.kindyrAPI.instances.identifyContent({ instanceId: selectedInstance, limit: 30 })
+    if (gen !== instanceContentGen) return
+    if (res && res.ok && Array.isArray(res.identified) && res.identified.length) {
+      res.identified.forEach(found => {
+        const item = instanceContentItems.find(i => i.id === found.id)
+        if (!item) return
+        item.projectId = found.projectId
+        item.versionId = found.versionId
+        item.uploaded = false
+        if (found.versionNumber) item._versionNumber = found.versionNumber
+        if (found.projectId) {
+          instanceProjectCache.set(found.projectId, {
+            title: found.title || item.baseName,
+            iconUrl: found.iconUrl || '',
+            author: found.author || '',
+            version: found.versionNumber || '',
+            url: found.url || ''
+          })
+        }
+      })
+      renderInstanceContent()
+      renderInstanceContentFilters()
+      // Los recién identificados también pueden tener updates
+      checkInstanceContentUpdates(gen)
+    }
+  } catch {}
+}
+
+// Compat: el botón viejo "mostrar más" ya no existe en el hub (lista completa con scroll).
+function toggleModsList() {}
 
 function renderInstanceWorlds(worlds) {
   const list = document.getElementById('instance-worlds-list')
@@ -528,6 +937,320 @@ function renderInstanceLogs(logs) {
   })
   list.innerHTML = ''
   list.appendChild(fragment)
+}
+
+// ===== Consola read-only del Centro de control =====
+// Muestra latest.log completo SIN filtrar (sin colapsar espacios ni truncar
+// líneas) + polling en vivo por byte. Solo lectura: sin entrada de comandos.
+const INSTANCE_CONSOLE_POLL_MS = 1200
+const INSTANCE_CONSOLE_MAX_LINES = 5000
+let instanceConsole = null
+// Sesiones terminadas: al cerrar el juego la consola se vacía y vuelve el
+// ASCII, y no se recarga la cola vieja hasta el próximo inicio.
+const consoleDeadInstances = new Set()
+
+// Arte idle. Regla de color SOLO para el dibujo: # negro, B azul,
+// : azul marino, K blanco. El resto usa el color de consola del tema.
+const CONSOLE_FACE_ART = [
+  ':##:#',
+  '             ####::BBBBBBBBBBB::####',
+  '         ####::BBBBBBBBBBBBBBBBBBB::####',
+  '     ####::BBBBBBBBBBBBBBBBBBBBBBBBBBB:####',
+  '   ####::BBBBBBBBBB:::::BBBBBBBBBBB::##::###',
+  '   ###::###::BB::#::KK:###::BBB::##::KKK:###',
+  '   ###::::::####KKKKKK:########:KKKKKKK:####',
+  '   ##:::::::::#:KKKKKK:#####:KKKKKKKKK:#::##',
+  '   ##:::::::::#:KKKKKK:###:KKKKKKKK:##:BBB##',
+  '   ##:::::::::#:KKKKKK:::KKKKKKKK:#::BBBBB##',
+  '   ##:::::::::#:KKKKKKKKKKKKKK::#:BBBBBBBB##',
+  '   ##:::::::::#:KKKKKKKKKKKKKKK:##:BBBBBBB##',
+  '   ##:::::::::#:KKKKKKKKKKKKKKKKKK::#::BBB##',
+  '   ###::::::::#:KKKKKK:::KKKKKKKKKKKKK:##:##',
+  '   ###::::::::#:KKKKKK:####::KKKKKKKKKKK:###',
+  '     #####::::#:KKKKKK:###:::##:KKKKK::###',
+  '         ######:KKKKK:####:BBBB:######',
+  '             ####::#######:BB::###',
+  '                 #############',
+  '                      :##:'
+]
+
+function getInstanceConsole() {
+  if (!instanceConsole) {
+    instanceConsole = { instanceId: null, lines: [], carry: '', bytes: 0, timer: null, follow: true, running: false, pollCount: 0, busy: false, rendered: 0, showingAscii: false }
+  }
+  return instanceConsole
+}
+
+function stopInstanceConsole() {
+  const st = getInstanceConsole()
+  if (st.timer) { clearInterval(st.timer); st.timer = null }
+}
+
+async function startInstanceConsole() {
+  const st = getInstanceConsole()
+  stopInstanceConsole()
+  if (st.instanceId !== selectedInstance) {
+    instanceConsole = { instanceId: selectedInstance, lines: [], carry: '', bytes: 0, timer: null, follow: true, running: false, pollCount: 0, busy: false, rendered: 0, showingAscii: false }
+  }
+  renderInstanceConsole()
+  // Sesión ya terminada: drenar hasta EOF para mostrar el ASCII en vez de la cola vieja.
+  if (consoleDeadInstances.has(selectedInstance)) {
+    await drainInstanceConsole()
+    renderInstanceConsole()
+  } else {
+    await pollInstanceConsole(true)
+  }
+  getInstanceConsole().timer = setInterval(() => { pollInstanceConsole(false) }, INSTANCE_CONSOLE_POLL_MS)
+}
+
+// Vacía la vista y avanza hasta el final del archivo para no recargar lo viejo.
+async function drainInstanceConsole() {
+  const st = getInstanceConsole()
+  st.lines = []
+  st.carry = ''
+  st.pollCount = 0
+  st.rendered = 0
+  try {
+    if (window.kindyrAPI?.instances?.readConsole && st.instanceId) {
+      const res = await window.kindyrAPI.instances.readConsole({ instanceId: st.instanceId, sizeOnly: true })
+      st.bytes = (res && Number(res.nextByte)) || 0
+    } else {
+      st.bytes = 0
+    }
+  } catch { st.bytes = 0 }
+}
+
+// Botón limpiar: vacía la vista y drena hasta EOF para que el polling no
+// recargue lo viejo (igual que al cerrar el juego). No borra el archivo.
+async function clearInstanceConsoleView() {
+  const st = getInstanceConsole()
+  if (st.instanceId) consoleDeadInstances.add(st.instanceId)
+  await drainInstanceConsole()
+  renderInstanceConsole()
+}
+
+// Al cerrar el juego: desaparecen todos los logs y vuelve el ASCII.
+async function clearInstanceConsoleFor(instanceId) {
+  if (!instanceId) return
+  consoleDeadInstances.add(instanceId)
+  const st = getInstanceConsole()
+  if (st.instanceId !== instanceId) return
+  await drainInstanceConsole()
+  renderInstanceConsole()
+}
+
+// Al iniciar el juego: la sesión revive (el próximo inicio trae logs nuevos).
+function reviveInstanceConsole(instanceId) {
+  if (!instanceId) return
+  consoleDeadInstances.delete(instanceId)
+}
+
+async function pollInstanceConsole(initial) {
+  const st = getInstanceConsole()
+  if (st.busy) return
+  if (currentSection !== 'instance-detail' || st.instanceId !== selectedInstance) return
+  if (!window.kindyrAPI?.instances?.readConsole) return
+  st.busy = true
+  try {
+    const res = await window.kindyrAPI.instances.readConsole({ instanceId: selectedInstance, fromByte: initial ? 0 : st.bytes })
+    if (currentSection !== 'instance-detail' || st.instanceId !== selectedInstance) return
+    if (!res || !res.ok) return
+    if (res.reset || initial) {
+      st.lines = []
+      st.carry = ''
+      st.bytes = 0
+    }
+    if (res.text) appendInstanceConsoleText(st, res.text)
+    st.bytes = Number(res.nextByte) || st.bytes
+    st.pollCount++
+    if (st.pollCount % 10 === 1) syncInstanceConsoleRunning()
+    else renderInstanceConsole()
+  } catch {} finally {
+    st.busy = false
+  }
+}
+
+function appendInstanceConsoleText(st, text) {
+  const chunk = st.carry + String(text || '')
+  st.carry = ''
+  if (!chunk) return
+  const endsNewline = /(\r\n|\n)$/.test(chunk)
+  const parts = chunk.split(/\r\n|\n/)
+  if (!endsNewline) st.carry = parts.pop()
+  for (const line of parts) st.lines.push(line)
+  if (st.lines.length > INSTANCE_CONSOLE_MAX_LINES) {
+    st.lines.splice(0, st.lines.length - INSTANCE_CONSOLE_MAX_LINES)
+  }
+}
+
+async function syncInstanceConsoleRunning() {
+  const st = getInstanceConsole()
+  try {
+    const res = await window.kindyrAPI.launcher.status()
+    st.running = Boolean(res && res.running && (!res.instanceId || res.instanceId === st.instanceId))
+  } catch { st.running = false }
+  renderInstanceConsole()
+}
+
+function toggleInstanceConsoleFollow() {
+  const st = getInstanceConsole()
+  st.follow = !st.follow
+  const btn = document.getElementById('instance-console-follow')
+  if (btn) btn.classList.toggle('active', st.follow)
+  if (st.follow) scrollInstanceConsoleToBottom()
+}
+
+function refreshInstanceConsole() {
+  const st = getInstanceConsole()
+  st.bytes = 0
+  st.lines = []
+  st.carry = ''
+  st.pollCount = 0
+  st.rendered = 0
+  renderInstanceConsole()
+  pollInstanceConsole(true)
+}
+
+async function copyInstanceConsole() {
+  const st = getInstanceConsole()
+  try {
+    await navigator.clipboard.writeText(st.lines.join('\n'))
+    setStatus(t('instance.console.copied'))
+  } catch {}
+}
+
+function scrollInstanceConsoleToBottom() {
+  const view = document.getElementById('instance-console-view')
+  if (view) view.scrollTop = view.scrollHeight
+}
+
+// Severidad por línea para colorear como una terminal promedio (amarillo /
+// rojo). Solo pinta: jamás filtra ni oculta líneas.
+function classifyConsoleLine(line) {
+  const text = String(line || '')
+  if (/\[(?:[^\]\[]*\/)?(?:error|fatal|severe)\b/i.test(text)) return 'error'
+  if (/\b(\w*exceptions?|fatal error|severe)\b/i.test(text)) return 'error'
+  if (/\b(failed to|failure|could not|unable to|no se pudo|error:)/i.test(text)) return 'error'
+  if (/\[(?:[^\]\[]*\/)?(?:warn|warning)\b/i.test(text)) return 'warn'
+  if (/^\s*warn(ing)?\b/i.test(text)) return 'warn'
+  return null
+}
+
+function consoleLineDiv(line) {
+  const div = document.createElement('div')
+  const level = classifyConsoleLine(line)
+  div.className = 'console-line' + (level ? ' lvl-' + level : '')
+  div.textContent = line
+  return div
+}
+
+function renderInstanceConsole() {
+  const st = getInstanceConsole()
+  const view = document.getElementById('instance-console-view')
+  if (!view) return
+  const dot = document.getElementById('instance-console-dot')
+  const statusText = document.getElementById('instance-console-status-text')
+  const count = document.getElementById('instance-console-count')
+  if (dot) dot.classList.toggle('live', st.running)
+  if (statusText) statusText.textContent = st.running ? t('instance.console.live') : t('instance.console.stopped')
+  if (count) count.textContent = t('instance.console.lines', { count: st.lines.length })
+  const followBtn = document.getElementById('instance-console-follow')
+  if (followBtn) followBtn.classList.toggle('active', st.follow)
+  if (!st.lines.length && !st.carry) {
+    // Estado idle: ASCII (no estaba en modo vivo o se limpió).
+    if (!st.showingAscii) {
+      renderInstanceConsoleIdle(view)
+      st.showingAscii = true
+    }
+    st.rendered = 0
+    return
+  }
+  // Reconstruir solo si cambió el modo o se recortó el buffer por delante.
+  if (st.showingAscii || st.rendered > st.lines.length) {
+    view.innerHTML = ''
+    const frag = document.createDocumentFragment()
+    for (const line of st.lines) frag.appendChild(consoleLineDiv(line))
+    view.appendChild(frag)
+    st.showingAscii = false
+    st.rendered = st.lines.length
+  } else if (st.rendered < st.lines.length) {
+    // Incremental: solo las líneas nuevas (el poll corre cada ~1s).
+    const nearBottomPre = view.scrollHeight - view.scrollTop - view.clientHeight < 48
+    const frag = document.createDocumentFragment()
+    for (let i = st.rendered; i < st.lines.length; i++) frag.appendChild(consoleLineDiv(st.lines[i]))
+    const oldCarry = view.querySelector('.console-carry')
+    if (oldCarry) oldCarry.remove()
+    view.appendChild(frag)
+    st.rendered = st.lines.length
+    if (st.carry) {
+      const carryDiv = document.createElement('div')
+      carryDiv.className = 'console-line console-carry'
+      carryDiv.textContent = st.carry
+      view.appendChild(carryDiv)
+    }
+    if (st.follow && nearBottomPre) scrollInstanceConsoleToBottom()
+    return
+  }
+  const oldCarry = view.querySelector('.console-carry')
+  if (oldCarry) oldCarry.remove()
+  if (st.carry) {
+    const carryDiv = document.createElement('div')
+    carryDiv.className = 'console-line console-carry'
+    carryDiv.textContent = st.carry
+    view.appendChild(carryDiv)
+  }
+  if (st.follow) {
+    const nearBottom = view.scrollHeight - view.scrollTop - view.clientHeight < 48
+    if (nearBottom) scrollInstanceConsoleToBottom()
+  }
+}
+
+function renderInstanceConsoleIdle(view) {
+  view.innerHTML = ''
+  const wrap = document.createElement('div')
+  wrap.className = 'console-ascii'
+  const msgLines = String(t('instance.consoleIdle')).split('\n')
+  const content = ['', ...msgLines, '']
+  const boxWidth = Math.max(...content.map(l => l.length))
+  const rows = [
+    { text: '/' + '_'.repeat(boxWidth + 2) + '\\', art: false },
+    ...content.map(l => ({ text: '| ' + l.padEnd(boxWidth, ' ') + ' |', art: false })),
+    { text: ' ' + '\\' + '_'.repeat(boxWidth + 2) + '/', art: false },
+    { text: '      \\', art: false },
+    { text: '       \\', art: false },
+    ...CONSOLE_FACE_ART.map(text => ({ text, art: true }))
+  ]
+  for (const row of rows) {
+    const div = document.createElement('div')
+    div.className = 'console-ascii-row'
+    if (row.art) div.appendChild(renderAsciiColored(row.text))
+    else div.textContent = row.text
+    wrap.appendChild(div)
+  }
+  view.appendChild(wrap)
+  view.scrollTop = 0
+}
+
+function renderAsciiColored(line) {
+  const frag = document.createDocumentFragment()
+  const classes = { '#': 'ascii-ink', 'B': 'ascii-blue', ':': 'ascii-navy', 'K': 'ascii-white' }
+  let buf = ''
+  let cls = null
+  const flush = () => {
+    if (!buf) return
+    const span = document.createElement('span')
+    if (cls) span.className = cls
+    span.textContent = buf
+    frag.appendChild(span)
+    buf = ''
+  }
+  for (const ch of line) {
+    const c = classes[ch] || null
+    if (c !== cls) { flush(); cls = c }
+    buf += ch
+  }
+  flush()
+  return frag
 }
 
 function renderInstanceFolders() {
@@ -580,6 +1303,555 @@ async function toggleInstanceMod(fileName) {
   const result = await window.kindyrAPI.instances.toggleMod(selectedInstance, fileName)
   setStatus(result.ok ? t('instance.modUpdated') : result.error)
   if (result.ok) refreshInstancePanelSoon(2)
+}
+
+async function toggleInstanceContent(item) {
+  const result = await window.kindyrAPI.instances.toggleContent({ instanceId: selectedInstance, kind: item.kind, file: item.file })
+  setStatus(result.ok ? t('instance.modUpdated') : (result.error || t('instance.modUpdated')))
+  if (result.ok) {
+    item.file = result.file || item.file
+    item.id = item.kind + ':' + item.file
+    item.enabled = !item.enabled
+    item.baseName = String(item.file).replace(/\.disabled$/i, '')
+    renderInstanceContent()
+  }
+}
+
+function deleteInstanceContent(item) {
+  const label = (instanceProjectCache.get(item.projectId || '')?.title) || item.baseName
+  if (typeof showConfirm === 'function') {
+    showConfirm(t('instance.deleteConfirm', { name: label }), async () => {
+      const result = await window.kindyrAPI.instances.deleteContent({ instanceId: selectedInstance, kind: item.kind, file: item.file })
+      setStatus(result.ok ? t('instance.deleted') : result.error)
+      if (result.ok) refreshInstancePanel()
+    })
+  } else {
+    refreshInstancePanel()
+  }
+}
+
+async function bulkToggleInstanceContent(enable) {
+  const ids = [...instanceContentSelected]
+  for (const id of ids) {
+    const item = instanceContentItems.find(i => i.id === id)
+    if (!item || item.enabled === enable) continue
+    try {
+      const result = await window.kindyrAPI.instances.toggleContent({ instanceId: selectedInstance, kind: item.kind, file: item.file })
+      if (result.ok) {
+        item.file = result.file || item.file
+        item.id = item.kind + ':' + item.file
+        item.enabled = enable
+        item.baseName = String(item.file).replace(/\.disabled$/i, '')
+      }
+    } catch {}
+  }
+  instanceContentSelected = new Set()
+  renderInstanceContent()
+}
+
+async function bulkDeleteInstanceContent() {
+  const ids = [...instanceContentSelected]
+  const doDelete = async () => {
+    for (const id of ids) {
+      const item = instanceContentItems.find(i => i.id === id)
+      if (!item) continue
+      try { await window.kindyrAPI.instances.deleteContent({ instanceId: selectedInstance, kind: item.kind, file: item.file }) } catch {}
+    }
+    instanceContentSelected = new Set()
+    refreshInstancePanel()
+  }
+  if (typeof showConfirm === 'function') showConfirm(t('instance.deleteBulkConfirm', { count: ids.length }), doDelete)
+  else doDelete()
+}
+
+async function uploadInstanceFiles() {
+  setStatus(t('instance.uploading'))
+  const hint = instanceContentFilter.kind !== 'all' ? instanceContentFilter.kind : 'mod'
+  const result = await window.kindyrAPI.instances.uploadFiles({ instanceId: selectedInstance, kindHint: hint })
+  if (result.cancelled) { setStatus(t('app.ready')); return }
+  if (!result.ok) { setStatus(result.error); return }
+  setStatus(uploadResultStatus(result))
+  refreshInstancePanel()
+}
+
+// Mensaje de estado compartido diálogo/drop: subidos + omitidos. Si algún
+// omitido es un modpack completo se muestra la guía al instalador en vez de
+// un conteo genérico (es el caso que más confunde: el archivo "desaparece").
+// Para el resto, el primer motivo conocido con mensaje propio (los demás
+// quedan en el conteo).
+const UPLOAD_SKIP_MESSAGE_KEY = {
+  'is-modpack': 'instance.uploadIsModpack',
+  type: 'instance.uploadSkipType',
+  'too-large': 'instance.uploadSkipTooLarge',
+  unrecognized: 'instance.uploadSkipUnknown',
+  unreadable: 'instance.uploadSkipUnreadable'
+}
+function uploadResultStatus(result) {
+  const copied = (result.copied || []).length
+  const skipped = result.skipped || []
+  let status = t('instance.uploadedOk', { count: copied })
+  if (skipped.length) {
+    const noted = skipped.find(s => s && UPLOAD_SKIP_MESSAGE_KEY[s.reason])
+    status += ' ' + (noted
+      ? t(UPLOAD_SKIP_MESSAGE_KEY[noted.reason], { file: noted.file })
+      : t('instance.uploadSkipped', { count: skipped.length }))
+  }
+  return status
+}
+
+// Drag&drop de archivos ÚNICAMENTE sobre el panel "Contenido adicional"
+// (.content-hub: título, toolbar, filtros y lista). Todo lo demás rechaza.
+// En Electron solo un drop real del SO puebla File.path; los eventos
+// sintéticos desde JS llegan con isTrusted=false y sin paths, y se ignoran
+// aquí. La frontera real igual es main, que revalida cada ruta.
+// Se enlaza sobre #instance-detail-view (nodo estático que nunca se recrea)
+// filtrando por .content-hub más cercano: así no depende del momento del
+// render ni se pierde si el panel se reconstruye.
+function setupInstanceContentDropZone() {
+  guardWindowDropNavigation()
+  const view = document.getElementById('instance-detail-view')
+  if (!view || view.dataset.contentDropBound) return
+  view.dataset.contentDropBound = '1'
+  const hubFromEvent = (event) => {
+    const target = event.target
+    if (!target || typeof target.closest !== 'function') return null
+    return target.closest('.content-hub')
+  }
+  const clearHighlight = () => {
+    view.querySelectorAll('.content-hub.is-drop-target').forEach(el => el.classList.remove('is-drop-target'))
+  }
+  view.addEventListener('dragenter', (event) => {
+    const hub = hubFromEvent(event)
+    if (!selectedInstance || !hub) return
+    event.preventDefault()
+    // Sin dropEffect explícito, Chromium/Windows sigue mostrando el cursor
+    // de prohibido (🚫) aunque el drop esté permitido.
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
+    hub.classList.add('is-drop-target')
+  })
+  view.addEventListener('dragover', (event) => {
+    if (!selectedInstance || !hubFromEvent(event)) return
+    event.preventDefault()
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
+  })
+  view.addEventListener('dragleave', (event) => {
+    if (!hubFromEvent(event)) clearHighlight()
+  })
+  view.addEventListener('drop', (event) => {
+    event.preventDefault()
+    clearHighlight()
+    const hub = hubFromEvent(event)
+    if (!event.isTrusted || !selectedInstance || !hub) return
+    collectDroppedPaths(event).then((collected) => {
+      const paths = collected.paths || []
+      const blobs = collected.blobs || []
+      if (paths.length || blobs.length) { uploadDroppedFiles(paths, undefined, collected); return }
+      // Diagnóstico permanente: sin esto es imposible saber del lado soporte
+      // si el SO no entregó nada, si vino solo texto o si eran carpetas.
+      setStatus(t(collected.sawFolder ? 'instance.dropFolder' : 'instance.dropEmpty') + ' [' + describeDropData(event.dataTransfer) + ']')
+    }).catch(() => setStatus(t('instance.dropEmpty')))
+  })
+}
+
+// Huella del contenido del drop para diagnóstico (qué entregó el SO).
+// Incluye marcador de build del código drop (dz:N): al reportar un problema,
+// pegar el mensaje COMPLETO permite saber qué versión del código lo generó.
+// REGLA: incrementar DROP_BUILD en cada cambio al flujo de drop; quitarlo
+// cuando el feature se declare estable.
+const DROP_BUILD = 3
+function describeDropData(dt) {
+  try {
+    const files = (dt && dt.files && dt.files.length) || 0
+    const items = Array.from((dt && dt.items) || []).map(i => ((i && i.kind) || '?') + ':' + ((i && i.type) || '?')).join(',')
+    const types = Array.from((dt && dt.types) || []).join(',')
+    return `archivos:${files} items:[${items}] tipos:[${types}] dz:${DROP_BUILD}`
+  } catch { return 'indisponible dz:' + DROP_BUILD }
+}
+
+// file:// URL o ruta Windows en texto -> 'E:\dir\file' canónica para main.
+// Orígenes como Firefox/Outlook pegan URIs en vez de Files con .path.
+function fileUriToPath(uri) {
+  let p = String(uri || '').trim().replace(/^<|>$/g, '')
+  if (!p || p.startsWith('#')) return ''
+  if (/^file:\/\//i.test(p)) {
+    try {
+      const u = new URL(p)
+      if (u.protocol.toLowerCase() !== 'file:') return ''
+      p = decodeURIComponent(u.pathname)
+    } catch { return '' }
+  }
+  const drive = p.match(/^\/([A-Za-z]:[\/\\])/)
+  if (drive) p = p.slice(1)
+  p = p.replace(/\//g, '\\')
+  if (!/^[A-Za-z]:\\/.test(p)) return ''
+  return p
+}
+
+// file.path solo lo pueblan drops reales del Explorador. Gestores virtuales
+// (WinRAR/7-Zip abierto, Firefox, Outlook) mandan items de texto con URIs o
+// entradas de directorio: se resuelven aquí; main revalida todo igual.
+// Tope espejo de MAX_UPLOAD_BLOB_BYTES (content-sniff.js): los bytes viajan
+// en memoria por IPC; más que esto ni se serializa (main lo rechazaría igual
+// tras pagar el transporte, así que se corta aquí con motivo visible).
+const MAX_RENDERER_BLOB_BYTES = 256 * 1024 * 1024
+
+async function collectDroppedPaths(event) {
+  const out = { paths: [], blobs: [], localSkipped: [], sawFolder: false }
+  const dt = event.dataTransfer
+  const files = Array.from(dt?.files || [])
+  const fromFiles = []
+  for (const f of files) {
+    if (f && typeof f.path === 'string' && f.path) { fromFiles.push(f.path); continue }
+    // Archivo en memoria sin ruta (orígenes virtuales, adjuntos, Firefox):
+    // se mandan los bytes y main los valida igual (staging + pipeline).
+    if (!f || typeof f.arrayBuffer !== 'function') continue
+    const name = (f.name && String(f.name).slice(0, 120)) || 'archivo'
+    if ((f.size || 0) > MAX_RENDERER_BLOB_BYTES) { out.localSkipped.push({ file: name, reason: 'too-large' }); continue }
+    try {
+      const buf = await f.arrayBuffer()
+      if (!(buf instanceof ArrayBuffer) || !buf.byteLength) continue
+      out.blobs.push({ name, bytes: new Uint8Array(buf) })
+    } catch {}
+  }
+  if (fromFiles.length) out.paths = fromFiles
+  // Sin early-return: un drop mixto puede traer archivos con ruta, blobs en
+  // memoria y texto a la vez; cada rama aporta lo suyo sin duplicar (los
+  // File con path ya salieron por fromFiles; sus entradas se ignoran abajo).
+  const items = Array.from(dt?.items || [])
+  for (const item of items) {
+    let entry = null
+    try { entry = item && typeof item.webkitGetAsEntry === 'function' ? item.webkitGetAsEntry() : null } catch {}
+    if (entry && entry.isDirectory) { out.sawFolder = true; continue }
+    if (!item || item.kind !== 'string') continue
+    if (item.type !== 'text/uri-list' && item.type !== 'text/plain') continue
+    let text = ''
+    try { text = await new Promise(resolve => { item.getAsString(s => resolve(s || '')) }) } catch {}
+    for (const line of String(text).split(/\r?\n/)) {
+      const p = fileUriToPath(line)
+      if (p && !out.paths.includes(p)) out.paths.push(p)
+    }
+  }
+  return out
+}
+
+// Un drop fuera de la zona navegaría la ventana al file:// soltado (permitido
+// por hardenWindowNavigation) y dejaría la vista en blanco: se anula a nivel
+// ventana sin interferir con el handler de la zona (corre antes, por bubbling).
+function guardWindowDropNavigation() {
+  if (window.__kindyrDropGuard) return
+  window.__kindyrDropGuard = true
+  ;['dragover', 'drop'].forEach(type => window.addEventListener(type, (event) => {
+    event.preventDefault()
+  }))
+}
+
+async function uploadDroppedFiles(paths, instanceId, collected = {}) {
+  const targetId = instanceId || selectedInstance
+  if (!targetId) return
+  setStatus(t('instance.uploading'))
+  const hint = instanceContentFilter.kind !== 'all' ? instanceContentFilter.kind : 'mod'
+  const payload = { instanceId: targetId, kindHint: hint }
+  if (Array.isArray(paths) && paths.length) payload.filePaths = paths
+  const blobs = Array.isArray(collected.blobs) ? collected.blobs : []
+  if (blobs.length) payload.fileBlobs = blobs
+  let result
+  try {
+    result = await window.kindyrAPI.instances.uploadFiles(payload)
+  } catch (error) {
+    setStatus((error && error.message) || String(error))
+    return
+  }
+  if (result.cancelled) { setStatus(t('app.ready')); return }
+  if (!result.ok) { setStatus(result.error); return }
+  // Skips decididos en renderer (p. ej. blob gigante) se suman a los de main.
+  const localSkipped = Array.isArray(collected.localSkipped) ? collected.localSkipped : []
+  setStatus(uploadResultStatus({ copied: result.copied || [], skipped: [...(result.skipped || []), ...localSkipped] }))
+  // La subida siempre es a la instancia abierta (único destino posible).
+  if (targetId === selectedInstance) refreshInstancePanel()
+}
+
+async function updateSingleInstanceContent(item) {
+  setStatus(t('instance.updating', { name: item.baseName }))
+  const result = await window.kindyrAPI.instances.updateContent({ instanceId: selectedInstance, kind: item.kind, file: item.file })
+  setStatus(result.ok ? t('instance.updatedOk', { name: item.baseName }) : (result.error || t('instance.updateError')))
+  if (result.ok) refreshInstancePanel()
+}
+
+async function updateAllInstanceContent() {
+  if (!instanceUpdatesCache.size) {
+    // Intentar chequeo fresco antes de decir que no hay nada
+    await checkInstanceContentUpdates(instanceContentGen)
+    if (!instanceUpdatesCache.size) { setStatus(t('instance.noUpdates')); return }
+  }
+  setStatus(t('instance.updatingAll', { count: instanceUpdatesCache.size }))
+  const result = await window.kindyrAPI.instances.updateAllContent({ instanceId: selectedInstance })
+  setStatus(result.ok ? t('instance.updatedAll', { count: result.updated }) : result.error)
+  if (result.ok) refreshInstancePanel()
+}
+
+// ===== Modal "Update version" (⬇ y ⇄ abren el mismo) =====
+// Izquierda: buscador + lista de versiones con badge de canal (A/B/R) y "Current".
+// Derecha: número + pill de canal + fecha, changelog, loaders/versiones.
+// Footer: aviso de backup + Cancel + "Update to X".
+let contentVersionsState = null
+const contentVersionDetailCache = new Map()
+
+function versionChannelOf(v) {
+  const raw = String(v?.version_type || v?.versionType || 'release').toLowerCase()
+  if (raw === 'alpha') return { id: 'alpha', letter: 'A', label: 'Alpha' }
+  if (raw === 'beta') return { id: 'beta', letter: 'B', label: 'Beta' }
+  return { id: 'release', letter: 'R', label: 'Release' }
+}
+
+function formatVersionDate(iso) {
+  const ms = Date.parse(iso || '')
+  if (!Number.isFinite(ms)) return ''
+  try {
+    return new Date(ms).toLocaleDateString(settings.language === 'en' ? 'en-US' : 'es-ES', { year: 'numeric', month: 'long', day: 'numeric' })
+  } catch { return String(iso).slice(0, 10) }
+}
+
+function ensureContentVersionsModal() {
+  let modal = document.getElementById('content-versions-modal')
+  if (modal) return modal
+  modal = document.createElement('div')
+  modal.className = 'modal-backdrop'
+  modal.id = 'content-versions-modal'
+  modal.innerHTML = '<div class="account-modal content-versions-modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()">' +
+    '<div class="modal-head content-versions-head"><span class="content-versions-pfp" id="content-versions-pfp"></span>' +
+    '<div class="modal-title" id="content-versions-title"></div>' +
+    '<button type="button" class="content-versions-close" onclick="closeInstanceContentVersions()" aria-label="×"><i class="fa-solid fa-xmark"></i></button></div>' +
+    '<div class="content-versions-body">' +
+    '<div class="content-versions-side"><label class="content-versions-search"><i class="fa-solid fa-magnifying-glass"></i>' +
+    '<input id="content-versions-search" autocomplete="off"></label>' +
+    '<div id="content-versions-list" class="content-versions-list"></div>' +
+    '<button type="button" class="content-versions-incompat" id="content-versions-incompat" onclick="toggleContentVersionsIncompatible()"></button></div>' +
+    '<div class="content-versions-main" id="content-versions-main"></div>' +
+    '</div>' +
+    '<div class="content-versions-foot"><div class="content-versions-warn"><i class="fa-solid fa-triangle-exclamation"></i><span id="content-versions-warn-text"></span></div>' +
+    '<div class="content-versions-footbtns"><button type="button" class="secondary-btn" onclick="closeInstanceContentVersions()" id="content-versions-cancel"></button>' +
+    '<button type="button" class="primary-btn content-versions-update" id="content-versions-update"></button></div></div></div>'
+  modal.addEventListener('click', (ev) => { if (ev.target === modal) closeInstanceContentVersions() })
+  document.body.appendChild(modal)
+  return modal
+}
+
+function closeInstanceContentVersions() {
+  document.getElementById('content-versions-modal')?.classList.remove('active')
+  contentVersionsState = null
+}
+
+function toggleContentVersionsIncompatible() {
+  if (!contentVersionsState) return
+  contentVersionsState.showIncompatible = !contentVersionsState.showIncompatible
+  renderContentVersionsList()
+}
+
+function filterContentVersionsList() {
+  if (!contentVersionsState) return
+  contentVersionsState.q = String(document.getElementById('content-versions-search')?.value || '').trim().toLowerCase()
+  renderContentVersionsList()
+}
+
+function getVisibleContentVersions() {
+  const st = contentVersionsState
+  if (!st) return []
+  return st.versions.filter(v => {
+    if (!st.showIncompatible && !v._compat) return false
+    if (st.q && !String(v.version_number || v.name || '').toLowerCase().includes(st.q)) return false
+    return true
+  })
+}
+
+function renderContentVersionsList() {
+  const st = contentVersionsState
+  if (!st) return
+  const listEl = document.getElementById('content-versions-list')
+  const incompatBtn = document.getElementById('content-versions-incompat')
+  if (incompatBtn) {
+    incompatBtn.innerHTML = '<i class="fa-regular fa-eye' + (st.showIncompatible ? '-slash' : '') + '"></i> ' + escapeHtml(st.showIncompatible ? t('instance.hideIncompatible') : t('instance.showIncompatible'))
+    incompatBtn.classList.toggle('active', st.showIncompatible)
+  }
+  const visible = getVisibleContentVersions()
+  if (!visible.length) {
+    listEl.innerHTML = '<div class="muted-empty">' + escapeHtml(t('discover.noResults')) + '</div>'
+    return
+  }
+  listEl.innerHTML = ''
+  const frag = document.createDocumentFragment()
+  visible.forEach(v => {
+    const ch = versionChannelOf(v)
+    const isCurrent = v.id === st.item.versionId
+    const isSelected = v.id === st.selectedId
+    const row = document.createElement('button')
+    row.type = 'button'
+    row.className = 'content-versions-item' + (isSelected ? ' selected' : '') + (isCurrent ? ' is-current' : '')
+    row.innerHTML = '<span class="content-versions-channel channel-' + ch.id + '">' + ch.letter + '</span>' +
+      '<span class="content-versions-itemname">' + escapeHtml(v.version_number || v.name || v.id) + '</span>' +
+      (isCurrent ? '<span class="content-versions-current">' + escapeHtml(t('instance.current')) + '</span>' : '')
+    row.addEventListener('click', () => selectContentVersion(v.id))
+    frag.appendChild(row)
+  })
+  listEl.appendChild(frag)
+  const selectedEl = listEl.querySelector('.content-versions-item.selected')
+  if (selectedEl && typeof selectedEl.scrollIntoView === 'function') {
+    try { selectedEl.scrollIntoView({ block: 'nearest' }) } catch {}
+  }
+}
+
+async function selectContentVersion(versionId) {
+  const st = contentVersionsState
+  if (!st) return
+  st.selectedId = versionId
+  renderContentVersionsList()
+  const mainEl = document.getElementById('content-versions-main')
+  const updateBtn = document.getElementById('content-versions-update')
+  const v = st.versions.find(x => x.id === versionId)
+  if (!v) return
+  const ch = versionChannelOf(v)
+  const isCurrent = v.id === st.item.versionId
+  mainEl.innerHTML = '<div class="content-versions-maintop"><strong>' + escapeHtml(v.version_number || v.name || '') + '</strong>' +
+    '<span class="content-versions-channelpill channel-' + ch.id + '">' + escapeHtml(ch.label) + '</span>' +
+    '<span class="content-versions-date">' + escapeHtml(formatVersionDate(v.date_published)) + '</span></div>' +
+    '<div class="content-versions-sub"><i class="fa-regular fa-file-lines"></i> ' + escapeHtml(t('instance.changelogTitle')) + ' · ' + escapeHtml((v.loaders || []).join(' + ') || 'Minecraft') + ' · ' + escapeHtml((v.game_versions || []).slice(0, 3).join(', ')) + '</div>' +
+    '<div class="content-versions-changelog" id="content-versions-changelog"><div class="muted-empty">' + escapeHtml(t('install.loadingVersions')) + '</div></div>'
+  if (updateBtn) {
+    updateBtn.innerHTML = '<i class="fa-solid fa-download"></i> ' + escapeHtml(t('instance.updateTo', { version: v.version_number || v.name || '' }))
+    updateBtn.disabled = isCurrent
+    updateBtn.onclick = () => installSelectedContentVersion()
+  }
+  // Detalle con changelog (cacheado por versión)
+  let detail = contentVersionDetailCache.get(versionId)
+  if (!detail) {
+    try {
+      const res = await window.kindyrAPI.modrinth.version({ versionId })
+      if (!contentVersionsState || contentVersionsState.selectedId !== versionId) return
+      if (res && res.ok && res.version) {
+        detail = res.version
+        contentVersionDetailCache.set(versionId, detail)
+      }
+    } catch {}
+  }
+  if (!contentVersionsState || contentVersionsState.selectedId !== versionId) return
+  const box = document.getElementById('content-versions-changelog')
+  if (!box) return
+  const html = detail?.changelogHtml || ''
+  if (html) {
+    // S1: nunca innerHTML directo con HTML de proveedor (XSS vía
+    // <img onerror>, <svg onload>, javascript:). Se sanea primero.
+    box.innerHTML = sanitizeChangelogHtml(html) || '<div class="muted-empty">' + escapeHtml(t('instance.noChangelog')) + '</div>'
+    box.querySelectorAll('a').forEach(a => {
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+    })
+  } else {
+    box.innerHTML = '<div class="muted-empty">' + escapeHtml(t('instance.noChangelog')) + '</div>'
+  }
+}
+
+async function installSelectedContentVersion() {
+  const st = contentVersionsState
+  if (!st || !st.selectedId || st.selectedId === st.item.versionId) return
+  const updateBtn = document.getElementById('content-versions-update')
+  if (updateBtn) updateBtn.disabled = true
+  setStatus(t('install.installing'))
+  const r = await window.kindyrAPI.instances.setContentVersion({ instanceId: selectedInstance, kind: st.item.kind, file: st.item.file, versionId: st.selectedId })
+  setStatus(r.ok ? t('instance.updatedOk', { name: st.item.baseName }) : (r.error || t('instance.updateError')))
+  if (r.ok) { closeInstanceContentVersions(); refreshInstancePanel() }
+  else if (updateBtn) updateBtn.disabled = false
+}
+
+async function openInstanceContentVersions(item, preselectLatest = false) {
+  if (!item.projectId) { setStatus(t('instance.uploadedHint')); return }
+  const modal = ensureContentVersionsModal()
+  const proj = instanceProjectCache.get(item.projectId) || { title: item.baseName }
+  const pfp = document.getElementById('content-versions-pfp')
+  if (pfp) {
+    pfp.innerHTML = proj.iconUrl
+      ? '<img src="' + escapeHtml(proj.iconUrl) + '" alt="" onerror="this.remove()">'
+      : '<i class="fa-solid ' + contentKindIcon(item.kind) + '"></i>'
+    pfp.classList.toggle('has-img', Boolean(proj.iconUrl))
+  }
+  document.getElementById('content-versions-title').textContent = t('instance.updateVersion')
+  document.getElementById('content-versions-warn-text').textContent = t('instance.updateWarning')
+  document.getElementById('content-versions-cancel').textContent = t('install.cancel')
+  const search = document.getElementById('content-versions-search')
+  if (search) {
+    search.placeholder = t('instance.searchVersion')
+    search.value = ''
+    search.oninput = filterContentVersionsList
+  }
+  document.getElementById('content-versions-list').innerHTML = '<div class="muted-empty">' + escapeHtml(t('install.loadingVersions')) + '</div>'
+  document.getElementById('content-versions-main').innerHTML = ''
+  const updateBtn = document.getElementById('content-versions-update')
+  if (updateBtn) { updateBtn.innerHTML = ''; updateBtn.disabled = true; updateBtn.onclick = null }
+  modal.classList.add('active')
+  try {
+    const instance = launcherInstances.find(i => i.id === selectedInstance)
+    const res = await window.kindyrAPI.modrinth.versions({ projectId: item.projectId })
+    if (!document.getElementById('content-versions-modal')?.classList.contains('active')) return
+    if (!res.ok) {
+      document.getElementById('content-versions-list').innerHTML = '<div class="muted-empty">' + escapeHtml(res.error || t('home.searchFailed')) + '</div>'
+      return
+    }
+    const all = res.versions || []
+    if (!all.length) {
+      document.getElementById('content-versions-list').innerHTML = '<div class="muted-empty">' + escapeHtml(t('install.noVersions')) + '</div>'
+      return
+    }
+    const mcVersion = instance?.version || ''
+    const versions = all.map(v => ({ ...v, _compat: !mcVersion || (v.game_versions || []).includes(mcVersion) }))
+    const latestUpdate = instanceUpdatesCache.get(item.id)
+    let selectedId = item.versionId
+    if (preselectLatest && latestUpdate?.latestVersionId && versions.some(v => v.id === latestUpdate.latestVersionId)) {
+      selectedId = latestUpdate.latestVersionId
+    }
+    if (!versions.some(v => v.id === selectedId)) {
+      const firstCompat = versions.find(v => v._compat)
+      selectedId = (firstCompat || versions[0]).id
+    }
+    contentVersionsState = { item, versions, selectedId, showIncompatible: false, q: '' }
+    // Si la actual es incompatible, mostrar todo para no dejar la lista vacía
+    if (!versions.some(v => v.id === selectedId && v._compat)) contentVersionsState.showIncompatible = true
+    renderContentVersionsList()
+    selectContentVersion(selectedId)
+  } catch (e) {
+    document.getElementById('content-versions-list').innerHTML = '<div class="muted-empty">' + escapeHtml(e.message || String(e)) + '</div>'
+  }
+}
+
+function openInstanceContentMenu(item, anchorBtn) {
+  document.querySelectorAll('.content-hub-menu').forEach(m => m.remove())
+  const menu = document.createElement('div')
+  menu.className = 'content-hub-menu'
+  const proj = instanceProjectCache.get(item.projectId || '')
+  menu.innerHTML =
+    (item.projectId ? '<button type="button" data-m="open"><i class="fa-solid fa-arrow-up-right-from-square"></i> ' + escapeHtml(t('instance.viewOnModrinth')) + '</button>' : '') +
+    '<button type="button" data-m="folder"><i class="fa-regular fa-folder-open"></i> ' + escapeHtml(t('instance.openFolder')) + '</button>' +
+    '<button type="button" data-m="copy"><i class="fa-regular fa-copy"></i> ' + escapeHtml(t('instance.copyName')) + '</button>'
+  document.body.appendChild(menu)
+  const rect = anchorBtn.getBoundingClientRect()
+  menu.style.top = (rect.bottom + window.scrollY + 4) + 'px'
+  menu.style.left = Math.max(8, rect.right + window.scrollX - 210) + 'px'
+  const close = (ev) => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', close) } }
+  setTimeout(() => document.addEventListener('click', close), 0)
+  menu.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('[data-m]')
+    if (!btn) return
+    const act = btn.dataset.m
+    menu.remove()
+    if (act === 'folder') {
+      const map = { mod: 'mods', resourcepack: 'resourcepacks', shader: 'shaderpacks', datapack: 'datapacks' }
+      openInstanceTarget(map[item.kind] || 'mods')
+    } else if (act === 'copy') {
+      try { await navigator.clipboard.writeText(item.file) } catch {}
+      setStatus(item.file)
+    } else if (act === 'open') {
+      const url = proj?.url || ('https://modrinth.com/project/' + encodeURIComponent(item.projectId))
+      if (window.kindyrAPI?.modrinth?.openProject) window.kindyrAPI.modrinth.openProject(url)
+      else window.open?.(url, '_blank')
+    }
+  })
 }
 
 let createLoader = 'vanilla'
@@ -870,17 +2142,31 @@ async function createImportMrpack() {
   } finally {
     window.kindyrAPI.instances.offImportProgress()
   }
-  if (result.ok) {
-    if (result.warnings) {
-      setStatus(t('instances.importSuccess', { name: result.name }) + ` (${result.warnings} mod(s) fallaron)`)
-    } else {
-      setStatus(t('instances.importSuccess', { name: result.name }))
+  await afterModpackImport(result)
+}
+
+// Post-import .mrpack: refresh + preparación eager (Java+MC) si está
+// activada + vista de la instancia. Con la opción apagada, comportamiento
+// anterior (quedarse en la lista con el estado).
+async function afterModpackImport(result) {
+  if (!result) return
+  if (!result.ok) {
+    if (result.cancelled) setStatus(t('app.ready'))
+    else setStatus(result.error || t('instances.importError'))
+    return
+  }
+  if (typeof refreshLauncherInstances === 'function') await refreshLauncherInstances()
+  if (result.instanceId) {
+    const prepState = await runEagerPrepare(result.instanceId, result.name)
+    if (prepState !== 'off') {
+      openInstanceView(result.instanceId)
+      return
     }
-    if (typeof refreshLauncherInstances === 'function') refreshLauncherInstances()
-  } else if (result.cancelled) {
-    setStatus(t('app.ready'))
+  }
+  if (result.warnings) {
+    setStatus(t('instances.importSuccess', { name: result.name }) + ` (${result.warnings} mod(s) fallaron)`)
   } else {
-    setStatus(result.error || t('instances.importError'))
+    setStatus(t('instances.importSuccess', { name: result.name }))
   }
 }
 
@@ -958,6 +2244,79 @@ function selectCreateVersion(versionId) {
   loadCreateLoaderVersions()
 }
 
+// Preparación eager (Java + Minecraft) con toast de progreso, para creación
+// e instalación de instancias y modpacks. Respeta el ajuste
+// settings.eagerPrepareOnCreate. No navega: el llamador decide.
+// Devuelve 'ready' (lista), 'failed' (se intentó, falló) u 'off' (desactivado).
+async function runEagerPrepare(instanceId, instanceName) {
+  if (!settings.eagerPrepareOnCreate || !window.kindyrAPI?.instances?.prepare) return 'off'
+  const displayName = instanceName || instanceId
+  showPrepareToast(displayName, t('settings.prepare.preparing', { name: displayName }))
+  setStatus(t('settings.prepare.preparing', { name: displayName }))
+  let lastPercent = 5
+  updatePrepareToast(lastPercent, t('settings.prepare.preparing', { name: displayName }), 'Iniciando')
+  const off = window.kindyrAPI.launcher.onStatus((ev) => {
+    if (!ev || !ev.message) return
+    const msg = ev.message
+    const m = msg.match(/(\d+)\/(\d+)/)
+    if (m) {
+      const cur = parseInt(m[1], 10), tot = parseInt(m[2], 10)
+      if (tot > 0) {
+        const pct = Math.min(95, Math.max(lastPercent, Math.round((cur / tot) * 70 + 20)))
+        updatePrepareToast(pct, msg, `${cur}/${tot}`)
+        lastPercent = pct
+      }
+    } else if (msg.includes('Descargando Java')) {
+      updatePrepareToast(10, msg, 'Java')
+      lastPercent = 10
+    } else if (msg.includes('Instancia lista')) {
+      updatePrepareToast(100, msg, 'Listo')
+      lastPercent = 100
+    } else if (msg.includes('Preparando')) {
+      updatePrepareToast(lastPercent, msg, 'Preparando')
+    } else if (ev.type === 'error') {
+      updatePrepareToast(lastPercent, msg, 'Error')
+    }
+  })
+  try {
+    const prep = await window.kindyrAPI.instances.prepare(instanceId)
+    if (!prep || !prep.ok) {
+      const err = prep?.error || t('settings.prepare.failed', { name: displayName })
+      updatePrepareToast(lastPercent, err, 'Error')
+      setStatus(err)
+      setTimeout(() => hidePrepareToast(), 3000)
+      await new Promise(r => setTimeout(r, 1200))
+      hidePrepareToast(true)
+      await refreshLauncherInstances()
+      return 'failed'
+    }
+    // Esperar a que termine la preparación en segundo plano
+    let attempts = 0
+    while (attempts < 360) {
+      await new Promise(r => setTimeout(r, 500))
+      try {
+        const st = await window.kindyrAPI.instances.prepareStatus()
+        if (!st.preparing.includes(instanceId)) break
+      } catch {}
+      attempts++
+    }
+    updatePrepareToast(100, t('settings.prepare.prepared', { name: displayName }), 'Listo')
+    setStatus(t('settings.prepare.prepared', { name: displayName }))
+    await new Promise(r => setTimeout(r, 700))
+    hidePrepareToast(true)
+    await refreshLauncherInstances()
+    return 'ready'
+  } catch (e) {
+    updatePrepareToast(lastPercent, e.message || t('settings.prepare.failed', { name: displayName }), 'Error')
+    setStatus(t('settings.prepare.failed', { name: displayName }))
+    setTimeout(() => hidePrepareToast(true), 3000)
+    await refreshLauncherInstances()
+    return 'failed'
+  } finally {
+    try { off() } catch {}
+  }
+}
+
 async function createSelectedInstance() {
   if (!createSelectedVersion) {
     setStatus(t('create.pickVersion'))
@@ -1018,76 +2377,9 @@ async function createSelectedInstance() {
   await refreshLauncherInstances()
   closeCreateInstanceModal()
 
-  if (settings.eagerPrepareOnCreate && window.kindyrAPI?.instances?.prepare) {
-    showPrepareToast(result.instance.name, t('settings.beta.preparing', { name: result.instance.name }))
-    setStatus(t('settings.beta.preparing', { name: result.instance.name }))
-    let lastPercent = 5
-    updatePrepareToast(lastPercent, t('settings.beta.preparing', { name: result.instance.name }), 'Iniciando')
-    const off = window.kindyrAPI.launcher.onStatus((ev) => {
-      if (!ev || !ev.message) return
-      const msg = ev.message
-      const m = msg.match(/(\d+)\/(\d+)/)
-      if (m) {
-        const cur = parseInt(m[1], 10), tot = parseInt(m[2], 10)
-        if (tot > 0) {
-          const pct = Math.min(95, Math.max(lastPercent, Math.round((cur / tot) * 70 + 20)))
-          updatePrepareToast(pct, msg, `${cur}/${tot}`)
-          lastPercent = pct
-        }
-      } else if (msg.includes('Descargando Java')) {
-        updatePrepareToast(10, msg, 'Java')
-        lastPercent = 10
-      } else if (msg.includes('Instancia lista')) {
-        updatePrepareToast(100, msg, 'Listo')
-        lastPercent = 100
-      } else if (msg.includes('Preparando')) {
-        updatePrepareToast(lastPercent, msg, 'Preparando')
-      } else if (ev.type === 'error') {
-        updatePrepareToast(lastPercent, msg, 'Error')
-      }
-    })
-    try {
-      const prep = await window.kindyrAPI.instances.prepare(result.instance.id)
-      if (!prep || !prep.ok) {
-        const err = prep?.error || t('settings.beta.failed', { name: result.instance.name })
-        updatePrepareToast(lastPercent, err, 'Error')
-        setStatus(err)
-        setTimeout(() => hidePrepareToast(), 3000)
-        await new Promise(r => setTimeout(r, 1200))
-        hidePrepareToast(true)
-        await refreshLauncherInstances()
-        openInstanceView(result.instance.id)
-        return
-      }
-      // Esperar a que termine la preparación en segundo plano
-      let attempts = 0
-      while (attempts < 360) {
-        await new Promise(r => setTimeout(r, 500))
-        try {
-          const st = await window.kindyrAPI.instances.prepareStatus()
-          if (!st.preparing.includes(result.instance.id)) break
-        } catch {}
-        attempts++
-      }
-      updatePrepareToast(100, t('settings.beta.prepared', { name: result.instance.name }), 'Listo')
-      setStatus(t('settings.beta.prepared', { name: result.instance.name }))
-      await new Promise(r => setTimeout(r, 700))
-      hidePrepareToast(true)
-      await refreshLauncherInstances()
-      openInstanceView(result.instance.id)
-    } catch (e) {
-      updatePrepareToast(lastPercent, e.message || t('settings.beta.failed', { name: result.instance.name }), 'Error')
-      setStatus(t('settings.beta.failed', { name: result.instance.name }))
-      setTimeout(() => hidePrepareToast(true), 3000)
-      await refreshLauncherInstances()
-      openInstanceView(result.instance.id)
-    } finally {
-      try { off() } catch {}
-    }
-  } else {
-    openInstanceView(result.instance.id)
-    setStatus(t('create.created', { name: result.instance.name }))
-  }
+  const prepState = await runEagerPrepare(result.instance.id, result.instance.name)
+  openInstanceView(result.instance.id)
+  if (prepState === 'off') setStatus(t('create.created', { name: result.instance.name }))
 }
 
 async function refreshLauncherInstances() {

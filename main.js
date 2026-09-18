@@ -20,6 +20,7 @@ const { createCurseForgeStore } = require('./curseforge-store')
 const { MAX_SKIN_BYTES, sanitizeSkinName, validateSkinPng, validateSkinSourceUrl } = require('./skin-security')
 const { extractZipEntries, readZipEntryBuffer, writeZip } = require('./archive-utils')
 const { getClientMrpackFiles, verifyMrpackFile, normalizeMrpackPath } = require('./mrpack-utils')
+const { classifyContentFile, writeStagedBlob } = require('./content-sniff')
 const { parseCurseForgeManifest, curseForgeHashesToMap, mapCurseForgeOverrideEntry } = require('./curseforge-modpack')
 let discordRPC = null
 try {
@@ -87,8 +88,65 @@ try {
     return originalResolveFilename.apply(this, arguments)
   }
 } catch {}
+let fatalErrorInProgress = false
+// Error fatal: antes se logueaba y se seguía ejecutando con estado
+// potencialmente corrupto (stores a medio escribir, tareas colgadas),
+// lo que producía pérdidas de datos irreproducibles. Ahora: vuelca logs,
+// guarda reporte de crash, avisa al usuario y sale con código 1.
+// No se escriben stores aquí a propósito: el estado en memoria puede estar
+// corrupto y los writes atómicos (tmp+rename) ya protegen los ficheros.
+function handleFatalError(source, error) {
+  if (fatalErrorInProgress) return
+  fatalErrorInProgress = true
+  const detail = (error && error.stack) || String(error)
+  try {
+    console.error(`[Kindyr][fatal:${source}]`, detail)
+  } catch {}
+  try {
+    if (typeof flushLaunchLogSync === 'function') flushLaunchLogSync()
+  } catch {}
+  // Best-effort: no dejar la JVM huérfana al morir el launcher.
+  try {
+    if (typeof minecraftProcess !== 'undefined' && minecraftProcess) minecraftProcess.kill('SIGTERM')
+  } catch {}
+  let crashFile = ''
+  try {
+    const dir = getKindyrDataRoot()
+    fs.mkdirSync(dir, { recursive: true })
+    crashFile = path.join(dir, `crash-${new Date().toISOString().replace(/[:.]/g, '-')}.log`)
+    let appVersion = ''
+    try {
+      appVersion = app.getVersion()
+    } catch {}
+    fs.writeFileSync(crashFile, [
+      `Kindyr Launcher crash report (${source})`,
+      `Fecha: ${new Date().toISOString()}`,
+      appVersion ? `Versión: ${appVersion}` : '',
+      `Plataforma: ${process.platform} ${process.arch}`,
+      '',
+      detail,
+      ''
+    ].filter(line => line !== '').join('\n'))
+  } catch {}
+  try {
+    dialog.showMessageBoxSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined, {
+      type: 'error',
+      title: 'Kindyr Launcher encontró un error grave',
+      message: 'El launcher encontró un error grave y debe cerrarse para no dañar tus instancias o configuración.',
+      detail: crashFile
+        ? `Se guardó un reporte en:\n${crashFile}\n\nTus instancias y mundos no fueron modificados por este cierre.`
+        : 'Tus instancias y mundos no fueron modificados por este cierre.'
+    })
+  } catch {}
+  try {
+    process.exit(1)
+  } catch {}
+}
 process.on('uncaughtException', (error) => {
-  console.error('Error:', error)
+  handleFatalError('uncaughtException', error)
+})
+process.on('unhandledRejection', (reason) => {
+  handleFatalError('unhandledRejection', reason)
 })
 
 if (process.platform === 'linux' && process.env.KINDYR_ENABLE_GPU !== '1') {
@@ -341,7 +399,7 @@ const defaultInstances = [
 ]
 
 const MODRINTH_API = 'https://api.modrinth.com/v2'
-const MODRINTH_USER_AGENT = 'KindyrLauncher/0.1.0 (Minecraft launcher)'
+const MODRINTH_USER_AGENT = 'KindyrLauncher/0.2.0 (Minecraft launcher)'
 const CURSEFORGE_API = 'https://api.curseforge.com/v1'
 const MOJANG_VERSION_MANIFEST = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'
 const FABRIC_META = 'https://meta.fabricmc.net/v2'
@@ -763,6 +821,18 @@ function normalizeMessage(message, maxLength = 1200) {
   return String(message).replace(/\s+/g, ' ').slice(0, maxLength)
 }
 
+// S5: validación de forma en el borde main. Los ids que viajan por IPC
+// (projectId, versionId, modId, slugs) solo necesitan ser strings cortos no
+// vacíos: el proveedor responde 404 a lo inexistente, pero sin cota un
+// renderer comprometido puede forzar URLs/keys de caché gigantes o log-spam.
+// Lanza si no cumple; los llamadores legítimos siempre envían ids cortos.
+function requireTrimmedString(value, label, maxLen = 128) {
+  const clean = String(value ?? '').trim()
+  if (!clean) throw new Error(`${label || 'Valor'} inválido.`)
+  if (clean.length > maxLen) throw new Error(`${label || 'Valor'} demasiado largo.`)
+  return clean
+}
+
 function normalizeDiscoverQuery(value) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 80)
 }
@@ -776,6 +846,12 @@ function normalizeVersion(value) {
   return clean
 }
 
+function normalizeDiscoverCategory(value) {
+  const clean = String(value || '').toLowerCase().trim()
+  if (!clean || !/^[a-z0-9][a-z0-9-]*$/.test(clean) || clean.length > 40) return ''
+  return clean
+}
+
 function buildModrinthFacets(payload) {
   const type = String(payload.type || 'all')
   const facets = [...(modrinthTypeFilters[type] || [])]
@@ -786,6 +862,8 @@ function buildModrinthFacets(payload) {
   if (['fabric', 'forge', 'neoforge', 'quilt'].includes(loader) && loaderAllowedTypes.has(type)) {
     facets.push(['categories:' + loader])
   }
+  const category = normalizeDiscoverCategory(payload.category)
+  if (category) facets.push(['categories:' + category])
   return facets
 }
 
@@ -806,6 +884,8 @@ function buildModrinthNewFilters(payload) {
   if (['fabric', 'forge', 'neoforge', 'quilt'].includes(loader) && loaderAllowedTypes.has(type)) {
     parts.push(`loaders = ${loader}`)
   }
+  const category = normalizeDiscoverCategory(payload.category)
+  if (category) parts.push(`categories = ${category}`)
   return parts.join(' AND ')
 }
 
@@ -902,12 +982,97 @@ async function searchModrinth(payload = {}, opts = {}) {
 
 // --- CurseForge (key nunca en renderer, solo main) ---
 const CURSEFORGE_GAME_ID_MINECRAFT = 432
-const curseClassIdByType = { mod: 6, modpack: 4471, resourcepack: 12, shader: 6552, datapack: 4546, plugin: 5 }
-const curseClassIdToType = { 6: 'mod', 4471: 'modpack', 12: 'resourcepack', 6552: 'shader', 4546: 'datapack', 5: 'plugin' }
+// Clases oficiales CurseForge para Minecraft (gameId 432), verificadas contra GET /v1/categories?gameId=432:
+// 6 Mods, 4471 Modpacks, 12 Resource Packs, 6552 Shaders, 6945 Data Packs, 5 Bukkit Plugins.
+// (4546 es Customization, 17 Worlds y 4559 Addons no se exponen como tipos buscables todavía.)
+const curseClassIdByType = { mod: 6, modpack: 4471, resourcepack: 12, shader: 6552, datapack: 6945, plugin: 5 }
+const curseClassIdToType = { 6: 'mod', 4471: 'modpack', 12: 'resourcepack', 6552: 'shader', 6945: 'datapack', 5: 'plugin' }
 const curseSortFieldByModrinth = { relevance: 1, downloads: 6, follows: 2, updated: 3, newest: 11 }
 
 function getCurseForgeSortField(sort) {
   return curseSortFieldByModrinth[String(sort || '').toLowerCase()] || 1
+}
+
+function normalizeCurseForgeHit(m, type) {
+  // normalizar a shape Modrinth para reutilizar UI
+  return {
+    project_id: String(m.id),
+    slug: m.slug || String(m.id),
+    title: m.name || 'Sin título',
+    description: m.summary || '',
+    author: m.authors?.[0]?.name || 'CurseForge',
+    icon_url: m.logo?.thumbnailUrl || m.logo?.url || '',
+    categories: (m.categories || []).map(c => c.name).slice(0, 4),
+    display_categories: (m.categories || []).map(c => c.name).slice(0, 4),
+    project_type: type === 'all' ? (curseClassIdToType[m.classId] || 'mod') : type,
+    downloads: m.downloadCount || 0,
+    follows: 0,
+    date_modified: m.dateModified || m.dateCreated || '',
+    // Si es false, la API no da downloadUrl en ningún archivo: la UI lo
+    // marca "Solo web" desde la card en vez de dejar intentar en vano.
+    allowModDistribution: m.allowModDistribution !== false,
+    _curseForge: true,
+    _curseUrl: m.links?.websiteUrl || `https://www.curseforge.com/minecraft/mc-mods/${m.slug}`
+  }
+}
+
+async function fetchCurseForgeSearchPage({ apiKey, query, classId, categoryId, gameVersion, modLoaderType, applyLoader, sortField, limit, offset, signal }) {
+  // CurseForge pagination usa index (offset)
+  const url = new URL(CURSEFORGE_API + '/mods/search')
+  url.searchParams.set('gameId', String(CURSEFORGE_GAME_ID_MINECRAFT))
+  if (query) url.searchParams.set('searchFilter', query)
+  if (classId) url.searchParams.set('classId', String(classId))
+  if (categoryId) url.searchParams.set('categoryId', String(categoryId))
+  if (gameVersion) url.searchParams.set('gameVersion', gameVersion)
+  if (modLoaderType && applyLoader) {
+    url.searchParams.set('modLoaderType', String(modLoaderType))
+  }
+  url.searchParams.set('sortField', String(sortField))
+  url.searchParams.set('sortOrder', 'desc')
+  url.searchParams.set('pageSize', String(limit))
+  url.searchParams.set('index', String(offset))
+  const response = await fetch(url, {
+    headers: { 'x-api-key': apiKey, Accept: 'application/json', 'User-Agent': MODRINTH_USER_AGENT },
+    signal
+  })
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(body.error || body.message || 'CurseForge no respondió bien.')
+  return body
+}
+
+// Un chip de "Todo" puede agrupar la misma categoría en varias clases (ej. Fantasy en
+// Shaders + Data Packs). La API solo acepta UN categoryId por request, así que se hace
+// fan-out en paralelo y se fusiona. Páginas profundas son aproximadas: cada sub-query
+// pagina por su cuenta y se fusiona la ventana.
+function mergeCurseForgeCategoryPages(pages, sortField, limit) {
+  const seen = new Set()
+  const merged = []
+  let totalHits = 0
+  for (const page of pages) {
+    totalHits += Number(page.total) || 0
+    for (const hit of page.hits) {
+      if (!hit || seen.has(hit.project_id)) continue
+      seen.add(hit.project_id)
+      merged.push(hit)
+    }
+  }
+  if (sortField === 6) {
+    merged.sort((a, b) => (b.downloads || 0) - (a.downloads || 0))
+  } else if (sortField === 3 || sortField === 11) {
+    // newest (11) no expone fecha de creación en el hit: se aproxima con date_modified
+    merged.sort((a, b) => (Date.parse(b.date_modified) || 0) - (Date.parse(a.date_modified) || 0))
+  }
+  return { hits: merged.slice(0, Math.max(1, limit)), totalHits }
+}
+
+function normalizeCurseForgeCategoryIds(value) {
+  const list = Array.isArray(value) ? value : [value]
+  const ids = []
+  for (const item of list) {
+    const id = Number(item)
+    if (Number.isInteger(id) && id > 0 && !ids.includes(id)) ids.push(id)
+  }
+  return ids.slice(0, 8)
 }
 
 async function searchCurseForge(payload = {}, opts = {}) {
@@ -927,45 +1092,24 @@ async function searchCurseForge(payload = {}, opts = {}) {
   const type = String(payload.type || 'all')
   const classId = curseClassIdByType[type] || undefined
   const sortField = getCurseForgeSortField(payload.sort)
-  // CurseForge pagination usa index (offset)
-  const url = new URL(CURSEFORGE_API + '/mods/search')
-  url.searchParams.set('gameId', String(CURSEFORGE_GAME_ID_MINECRAFT))
-  if (query) url.searchParams.set('searchFilter', query)
-  if (classId) url.searchParams.set('classId', String(classId))
-  if (gameVersion) url.searchParams.set('gameVersion', gameVersion)
   const modLoaderType = getCurseForgeModLoaderType(payload.loader)
   const loaderAllowedForCF = new Set(['mod', 'modpack', 'plugin'])
-  if (modLoaderType && loaderAllowedForCF.has(type)) {
-    url.searchParams.set('modLoaderType', String(modLoaderType))
+  const applyLoader = Boolean(modLoaderType) && loaderAllowedForCF.has(type)
+  const baseParams = { apiKey, query, classId, gameVersion, modLoaderType, applyLoader, sortField, limit, offset, signal }
+  const categoryIds = normalizeCurseForgeCategoryIds(payload.categoryIds ?? payload.categoryId)
+  if (categoryIds.length > 1) {
+    const pages = await Promise.all(categoryIds.map(async (categoryId) => {
+      const body = await fetchCurseForgeSearchPage({ ...baseParams, categoryId })
+      const data = Array.isArray(body.data) ? body.data : []
+      return { hits: data.map(m => normalizeCurseForgeHit(m, type)), total: (body.pagination || {}).totalCount || 0 }
+    }))
+    const merged = mergeCurseForgeCategoryPages(pages, sortField, limit)
+    if (localController && curseSearchAbortController === localController) curseSearchAbortController = null
+    return { hits: merged.hits, offset, limit, totalHits: merged.totalHits }
   }
-  url.searchParams.set('sortField', String(sortField))
-  url.searchParams.set('sortOrder', 'desc')
-  url.searchParams.set('pageSize', String(limit))
-  url.searchParams.set('index', String(offset))
-  const response = await fetch(url, {
-    headers: { 'x-api-key': apiKey, Accept: 'application/json', 'User-Agent': MODRINTH_USER_AGENT },
-    signal
-  })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || body.message || 'CurseForge no respondió bien.')
+  const body = await fetchCurseForgeSearchPage({ ...baseParams, categoryId: categoryIds[0] })
   const data = Array.isArray(body.data) ? body.data : []
-  // normalizar a shape Modrinth para reutilizar UI
-  const hits = data.map(m => ({
-    project_id: String(m.id),
-    slug: m.slug || String(m.id),
-    title: m.name || 'Sin título',
-    description: m.summary || '',
-    author: m.authors?.[0]?.name || 'CurseForge',
-    icon_url: m.logo?.thumbnailUrl || m.logo?.url || '',
-    categories: (m.categories || []).map(c => c.name).slice(0, 4),
-    display_categories: (m.categories || []).map(c => c.name).slice(0, 4),
-    project_type: type === 'all' ? (curseClassIdToType[m.classId] || 'mod') : type,
-    downloads: m.downloadCount || 0,
-    follows: 0,
-    date_modified: m.dateModified || m.dateCreated || '',
-    _curseForge: true,
-    _curseUrl: m.links?.websiteUrl || `https://www.curseforge.com/minecraft/mc-mods/${m.slug}`
-  }))
+  const hits = data.map(m => normalizeCurseForgeHit(m, type))
   const pagination = body.pagination || {}
   if (localController && curseSearchAbortController === localController) curseSearchAbortController = null
   return { hits, offset, limit, totalHits: pagination.totalCount || hits.length }
@@ -980,11 +1124,167 @@ function getCurseForgeModLoaderType(loader) {
   return map[String(loader || '').toLowerCase()] || 0
 }
 
+// Categorías oficiales CurseForge (GET /v1/categories?gameId=432), cacheadas 24h en memoria.
+// El renderer las usa para pintar los chips de CATEGORÍAS por tipo de contenido.
+let curseForgeCategoriesCache = null
+let curseForgeCategoriesRequest = null
+const CURSEFORGE_CATEGORIES_TTL_MS = 24 * 60 * 60 * 1000
+
+async function getCurseForgeCategories() {
+  if (curseForgeCategoriesCache && Date.now() - curseForgeCategoriesCache.cachedAt < CURSEFORGE_CATEGORIES_TTL_MS) {
+    return curseForgeCategoriesCache.items
+  }
+  if (curseForgeCategoriesRequest) return curseForgeCategoriesRequest
+  curseForgeCategoriesRequest = (async () => {
+    const apiKey = getCurseForgeApiKey()
+    if (!apiKey) throw new Error('CurseForge no configurado.')
+    const res = await fetch(CURSEFORGE_API + '/categories?gameId=' + CURSEFORGE_GAME_ID_MINECRAFT, {
+      headers: { 'x-api-key': apiKey, Accept: 'application/json', 'User-Agent': MODRINTH_USER_AGENT }
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(body.error || body.message || 'CurseForge no respondió bien.')
+    const items = (Array.isArray(body.data) ? body.data : [])
+      .filter(c => c && !c.isClass)
+      .map(c => ({ id: c.id, name: c.name, slug: c.slug || '', classId: c.classId }))
+    curseForgeCategoriesCache = { items, cachedAt: Date.now() }
+    return items
+  })()
+  try {
+    return await curseForgeCategoriesRequest
+  } finally {
+    curseForgeCategoriesRequest = null
+  }
+}
+
+let markedInstancePromise = null
+async function renderMarkdownToHtml(markdown) {
+  const text = String(markdown || '')
+  if (!text.trim()) return ''
+  if (!markedInstancePromise) markedInstancePromise = import('marked').catch(() => null)
+  const mod = await markedInstancePromise
+  try {
+    if (mod && mod.marked && typeof mod.marked.parse === 'function') return String(await mod.marked.parse(text))
+    if (mod && typeof mod.parse === 'function') return String(await mod.parse(text))
+  } catch {}
+  return ''
+}
+
+// Detalle completo Modrinth: mismo contenido que la página (body markdown -> HTML, galería).
+async function getModrinthProjectDetails(payload = {}) {
+  const projectId = requireTrimmedString(payload.projectId || payload.slug, 'Proyecto', 128)
+  const res = await fetch(MODRINTH_API + '/project/' + encodeURIComponent(projectId), {
+    headers: { 'User-Agent': MODRINTH_USER_AGENT, Accept: 'application/json' }
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(body.description || body.error || 'Modrinth no respondió bien.')
+  const gallery = (Array.isArray(body.gallery) ? body.gallery : [])
+    .filter(g => g && g.url)
+    .sort((a, b) => (a.ordering || 0) - (b.ordering || 0))
+    .map(g => ({ url: g.url, title: g.title || '', description: g.description || '' }))
+  const donations = (Array.isArray(body.donation_urls) ? body.donation_urls : [])
+    .filter(d => d && d.url)
+    .map(d => ({ platform: d.platform || '', url: d.url }))
+  let creators = []
+  try {
+    if (body.team) {
+      const teamRes = await fetch(MODRINTH_API + '/team/' + encodeURIComponent(body.team) + '/members', {
+        headers: { 'User-Agent': MODRINTH_USER_AGENT, Accept: 'application/json' }
+      })
+      const teamBody = await teamRes.json().catch(() => ([]))
+      if (teamRes.ok && Array.isArray(teamBody)) {
+        creators = teamBody.map(m => ({
+          name: (m.user && m.user.username) || '',
+          avatarUrl: (m.user && m.user.avatar_url) || '',
+          role: m.role || '',
+          url: (m.user && m.user.username) ? 'https://modrinth.com/user/' + m.user.username : ''
+        })).filter(c => c.name)
+      }
+    }
+  } catch {}
+  return {
+    provider: 'modrinth',
+    projectId: body.id || projectId,
+    slug: body.slug || projectId,
+    title: body.title || '',
+    summary: body.description || '',
+    iconUrl: body.icon_url || '',
+    projectType: body.project_type || 'mod',
+    downloads: body.downloads || 0,
+    follows: body.followers || 0,
+    categories: [...(body.categories || []), ...(body.additional_categories || [])],
+    loaders: body.loaders || [],
+    gameVersions: body.game_versions || [],
+    side: { client: body.client_side || '', server: body.server_side || '' },
+    datePublished: body.published || '',
+    dateUpdated: body.updated || '',
+    license: (body.license && (body.license.id || body.license.name)) || '',
+    links: {
+      discord: body.discord_url || '',
+      source: body.source_url || '',
+      issues: body.issues_url || '',
+      wiki: body.wiki_url || ''
+    },
+    donations,
+    creators,
+    gallery,
+    bodyHtml: await renderMarkdownToHtml(body.body),
+    url: 'https://modrinth.com/' + encodeURIComponent(body.project_type || 'mod') + '/' + encodeURIComponent(body.slug || projectId)
+  }
+}
+
+// Detalle completo CurseForge: misma descripción HTML que la página + screenshots.
+async function getCurseForgeProjectDetails(payload = {}) {
+  const apiKey = getCurseForgeApiKey()
+  if (!apiKey) throw new Error('CurseForge no configurado.')
+  const modId = requireTrimmedString(payload.modId || payload.projectId, 'Proyecto CurseForge', 128)
+  const headers = { 'x-api-key': apiKey, Accept: 'application/json', 'User-Agent': MODRINTH_USER_AGENT }
+  const [infoRes, descRes] = await Promise.all([
+    fetch(CURSEFORGE_API + '/mods/' + encodeURIComponent(modId), { headers }),
+    fetch(CURSEFORGE_API + '/mods/' + encodeURIComponent(modId) + '/description', { headers })
+  ])
+  const info = await infoRes.json().catch(() => ({}))
+  const desc = await descRes.json().catch(() => ({}))
+  if (!infoRes.ok) throw new Error(info.error || info.message || 'CurseForge no respondió bien.')
+  const m = info.data || {}
+  const gameVersions = [...new Set((m.latestFilesIndexes || []).map(f => f.gameVersion).filter(v => /^\d+\.\d+/.test(String(v || ''))))].slice(0, 8)
+  return {
+    provider: 'curseforge',
+    projectId: String(m.id || modId),
+    slug: m.slug || String(modId),
+    title: m.name || '',
+    summary: m.summary || '',
+    author: (m.authors && m.authors[0] && m.authors[0].name) || 'CurseForge',
+    iconUrl: (m.logo && (m.logo.thumbnailUrl || m.logo.url)) || '',
+    projectType: curseClassIdToType[m.classId] || 'mod',
+    downloads: m.downloadCount || 0,
+    follows: 0,
+    categories: (m.categories || []).map(c => c.name),
+    loaders: [],
+    gameVersions,
+    side: { client: '', server: '' },
+    datePublished: m.dateCreated || '',
+    dateUpdated: m.dateModified || '',
+    license: '',
+    links: { website: (m.links && m.links.websiteUrl) || '' },
+    donations: [],
+    creators: (m.authors || []).map(a => ({
+      name: (a && a.name) || '',
+      avatarUrl: '',
+      role: 'author',
+      url: (a && a.url) || ''
+    })).filter(c => c.name),
+    gallery: (Array.isArray(m.screenshots) ? m.screenshots : [])
+      .filter(s => s && (s.url || s.thumbnailUrl))
+      .map(s => ({ url: s.url || s.thumbnailUrl, thumb: s.thumbnailUrl || s.url, title: s.title || '' })),
+    bodyHtml: typeof desc.data === 'string' ? desc.data : '',
+    url: (m.links && m.links.websiteUrl) || ('https://www.curseforge.com/minecraft/mc-mods/' + encodeURIComponent(m.slug || modId))
+  }
+}
+
 async function getCurseForgeFiles(payload = {}) {
   const apiKey = getCurseForgeApiKey()
   if (!apiKey) throw new Error('CurseForge no configurado.')
-  const modId = String(payload.modId || payload.projectId || '').trim()
-  if (!modId) throw new Error('Proyecto CurseForge inválido.')
+  const modId = requireTrimmedString(payload.modId || payload.projectId, 'Proyecto CurseForge', 128)
   const gameVersion = normalizeVersion(payload.gameVersion) || undefined
   const modLoaderType = getCurseForgeModLoaderType(payload.loader)
   const url = new URL(CURSEFORGE_API + '/mods/' + encodeURIComponent(modId) + '/files')
@@ -1001,13 +1301,18 @@ async function getCurseForgeFiles(payload = {}) {
 function pickCurseForgePrimaryFile(files) {
   const list = Array.isArray(files) ? files : []
   if (!list.length) throw new Error('CurseForge: sin archivos compatibles.')
-  let best = list[0]
+  // Solo se puede descargar lo que la API expone con URL: elegir el más
+  // nuevo ENTRE los descargables, no a ciegas. Si ninguno tiene URL, el
+  // autor desactivó la distribución por API (allowModDistribution=false) y
+  // ningún reintento lo va a arreglar: error específico y accionable.
+  const downloadable = list.filter(f => f && f.downloadUrl)
+  if (!downloadable.length) throw new Error('CurseForge: el proyecto no permite descargas por API (solo web).')
+  let best = downloadable[0]
   let bestTs = Date.parse(best.datePublished || best.fileDate || '') || 0
-  for (const f of list) {
+  for (const f of downloadable) {
     const ts = Date.parse(f.datePublished || f.fileDate || '') || 0
     if (ts > bestTs) { best = f; bestTs = ts }
   }
-  if (!best.downloadUrl) throw new Error('CurseForge: archivo sin downloadUrl.')
   return best
 }
 
@@ -1039,8 +1344,12 @@ function normalizeCurseForgeFileForUI(file) {
     version_type: 'release',
     game_versions: gameVersions.length ? gameVersions : (file.gameVersions || []).slice(0, 4),
     loaders: loaders.length ? loaders : ['minecraft'],
-    files: [{ filename: file.fileName, url: file.downloadUrl }],
+    downloads: file.downloadCount || 0,
     date_published: file.datePublished || file.fileDate || '',
+    // webOnly: el autor desactivó la distribución por API y CurseForge no da
+    // downloadUrl. La UI lo marca "Solo web" en vez de dejar intentar en vano.
+    webOnly: !file.downloadUrl,
+    files: [{ filename: file.fileName, url: file.downloadUrl }],
     _cfRaw: file
   }
 }
@@ -1063,21 +1372,29 @@ async function installCurseForgeProject(payload = {}) {
     file = files.find(f => String(f.id) === versionId) || null
     if (!file) throw new Error('Versión CurseForge no encontrada.')
   } else {
-    const files = await getCurseForgeFiles({ modId, gameVersion, loader })
+    // Igual que en Modrinth: el loader de la instancia solo filtra en mods/
+    // modpacks. En resourcepacks/shaders/datapacks/plugins excluiría archivos
+    // que no declaran modloader aunque sean compatibles con la versión.
+    const effectiveKind = getProjectInstallKindFromProject({ ...project, project_type: projectType })
+    const files = await getCurseForgeFiles({
+      modId,
+      gameVersion,
+      loader: (effectiveKind === 'mod' || effectiveKind === 'modpack') ? loader : ''
+    })
     file = pickCurseForgePrimaryFile(files)
   }
 
   if (destination === 'downloads') {
     const downloadsDir = resolveLocalDownloadDir(payload.downloadDir || payload.downloadPath || payload.localPath)
     const target = path.join(downloadsDir, sanitizeFileName(file.fileName || file.displayName || project.slug || 'curseforge-file'))
-    const downloaded = await downloadToFile(file.downloadUrl, target)
+    const downloaded = await downloadSingleFileVerified(file.downloadUrl, target, file.hashes, file.fileName || file.displayName || 'Archivo CurseForge')
     return { type: 'download', path: downloaded.path, version: file, file }
   }
   if (projectType === 'modpack') {
     if (destination === 'downloads') {
       const downloadsDir = resolveLocalDownloadDir(payload.downloadDir || payload.downloadPath || payload.localPath)
       const target = path.join(downloadsDir, sanitizeFileName(file.fileName || project.slug + '.zip'))
-      const downloaded = await downloadToFile(file.downloadUrl, target)
+      const downloaded = await downloadSingleFileVerified(file.downloadUrl, target, file.hashes, file.fileName || project.slug || 'Modpack CurseForge')
       return { type: 'download', path: downloaded.path, version: file, file }
     }
     const installed = await installCurseForgeModpackInstance(file, project)
@@ -1088,7 +1405,7 @@ async function installCurseForgeProject(payload = {}) {
   ensureInstanceFolders(instance)
   const folder = getInstallFolder(projectType, installKind, instance.id)
   const target = path.join(folder, sanitizeFileName(file.fileName || file.displayName || project.slug || 'curseforge-file'))
-  const downloaded = await downloadToFile(file.downloadUrl, target)
+  const downloaded = await downloadSingleFileVerified(file.downloadUrl, target, file.hashes, file.fileName || file.displayName || 'Archivo CurseForge')
   return { type: 'content', path: downloaded.path, instance, version: file, file }
 }
 
@@ -1122,20 +1439,21 @@ async function downloadCurseForgeModpackEntry(entry, modsDir) {
   const detail = await getCurseForgeSingleFile(entry.projectID, entry.fileID)
   if (!detail || !detail.downloadUrl) return false
   const destination = path.join(modsDir, sanitizeFileName(detail.fileName || `cf-${entry.projectID}-${entry.fileID}.jar`))
-  await downloadToFile(detail.downloadUrl, destination)
-  const hashes = curseForgeHashesToMap(detail.hashes)
-  if (hashes.sha1 || hashes.sha512) {
-    const ok = await verifyMrpackFile(destination, hashes)
-    if (!ok) {
-      await fs.promises.rm(destination, { force: true }).catch(() => {})
-      return false
-    }
-  }
+  // Fail-closed (S9): igual que el resto de single-file, una entrada sin hash
+  // verificable del proveedor no se instala. downloadSingleFileVerified lanza
+  // con mensaje específico ("bloqueada por seguridad"), que el llamador
+  // agrega a failedDownloads y aborta la instalación limpiando instanceDir.
+  await downloadSingleFileVerified(
+    detail.downloadUrl,
+    destination,
+    detail.hashes,
+    `CurseForge project ${entry.projectID} file ${entry.fileID} (${detail.fileName || 'mod'})`
+  )
   return true
 }
 
 async function installCurseForgeModpackInstance(file, project) {
-  if (!file || !file.downloadUrl) throw new Error('CurseForge: archivo sin downloadUrl.')
+  if (!file || !file.downloadUrl) throw new Error('CurseForge: el proyecto no permite descargas por API (solo web).')
   const baseName = sanitizeInstanceId(project.slug || project.title || file.displayName || 'curseforge-modpack')
   const instanceId = (baseName + '-' + Date.now().toString(36)).slice(0, 60)
   const instanceDir = getInstanceDir(instanceId)
@@ -1144,7 +1462,7 @@ async function installCurseForgeModpackInstance(file, project) {
   fs.mkdirSync(minecraftRoot, { recursive: true })
   try {
     const zipPath = path.join(instanceDir, sanitizeFileName(file.fileName || project.slug || 'modpack') + '.zip')
-    await downloadToFile(file.downloadUrl, zipPath)
+    await downloadSingleFileVerified(file.downloadUrl, zipPath, file.hashes, file.fileName || file.displayName || 'Modpack CurseForge')
     const manifestBytes = await readZipEntryBuffer(zipPath, 'manifest.json')
     if (!manifestBytes) throw new Error('El modpack de CurseForge no trae manifest.json.')
     const manifest = parseCurseForgeManifest(manifestBytes)
@@ -1552,9 +1870,9 @@ function pickLatestLoaderVersion(loader, minecraftVersion, supported) {
 }
 
 async function listCreatableInstances(payload = {}) {
-  const loader = String(payload.loader || 'vanilla')
+  const loader = String(payload.loader || 'vanilla').slice(0, 32)
   const includeSnapshots = Boolean(payload.includeSnapshots)
-  const query = String(payload.query || '').trim().toLowerCase()
+  const query = String(payload.query || '').trim().toLowerCase().slice(0, 80)
   const mojangPromise = getMojangVersions()
   const supportedPromise = loader === 'vanilla'
     ? mojangPromise.then(versions => versions.map(item => ({ minecraft: item.id })))
@@ -1807,17 +2125,284 @@ async function ensureInstanceLoaderVersion(instance) {
 }
 
 async function getModrinthVersions(payload = {}) {
-  const projectId = String(payload.projectId || payload.slug || '').trim()
-  if (!projectId) throw new Error('Proyecto invalido.')
+  const projectId = requireTrimmedString(payload.projectId || payload.slug, 'Proyecto', 128)
   const gameVersion = normalizeVersion(payload.gameVersion)
-  const loader = String(payload.loader || '').trim()
-  const versionType = String(payload.versionType || '').trim()
+  const loader = String(payload.loader || '').trim().slice(0, 32)
+  const versionType = String(payload.versionType || '').trim().slice(0, 32)
   const params = { include_changelog: 'false' }
   if (gameVersion) params.game_versions = JSON.stringify([gameVersion])
   if (loader && loader !== 'any') params.loaders = JSON.stringify([loader])
   const versions = await modrinthJson('/project/' + encodeURIComponent(projectId) + '/version', params)
   const list = Array.isArray(versions) ? versions : []
   return versionType ? list.filter(version => version.version_type === versionType) : list
+}
+
+// Detalle de UNA versión Modrinth con changelog (la lista lo trae apagado).
+async function getModrinthVersionDetails(payload = {}) {
+  const versionId = requireTrimmedString(payload.versionId, 'Versión', 128)
+  const body = await modrinthJson('/version/' + encodeURIComponent(versionId))
+  if (!body || !body.id) throw new Error('Versión no encontrada.')
+  return {
+    id: body.id,
+    projectId: body.project_id || '',
+    name: body.name || '',
+    versionNumber: body.version_number || body.name || '',
+    versionType: body.version_type || 'release',
+    changelog: body.changelog || '',
+    changelogHtml: await renderMarkdownToHtml(body.changelog || ''),
+    datePublished: body.published || body.date_published || '',
+    gameVersions: Array.isArray(body.game_versions) ? body.game_versions : [],
+    loaders: Array.isArray(body.loaders) ? body.loaders : [],
+    files: (Array.isArray(body.files) ? body.files : []).map(f => ({
+      filename: f.filename || '',
+      url: f.url || '',
+      size: f.size || 0,
+      primary: Boolean(f.primary)
+    }))
+  }
+}
+
+// Ficha liviana de proyecto (para identificar archivos sin meta: pfp/título/autor).
+async function getModrinthProjectMini(projectId) {
+  const clean = String(projectId || '').trim()
+  if (!clean) throw new Error('Proyecto inválido.')
+  const res = await fetch(MODRINTH_API + '/project/' + encodeURIComponent(clean), {
+    headers: { 'User-Agent': MODRINTH_USER_AGENT, Accept: 'application/json' }
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(body.description || body.error || 'Modrinth no respondió bien.')
+  let author = ''
+  try {
+    if (body.team) {
+      const teamRes = await fetch(MODRINTH_API + '/team/' + encodeURIComponent(body.team) + '/members', {
+        headers: { 'User-Agent': MODRINTH_USER_AGENT, Accept: 'application/json' }
+      })
+      const teamBody = await teamRes.json().catch(() => ([]))
+      if (teamRes.ok && Array.isArray(teamBody) && teamBody.length) {
+        author = (teamBody[0].user && teamBody[0].user.username) || ''
+      }
+    }
+  } catch {}
+  return {
+    projectId: body.id || clean,
+    slug: body.slug || clean,
+    title: body.title || clean,
+    iconUrl: body.icon_url || '',
+    author,
+    projectType: body.project_type || 'mod',
+    url: 'https://modrinth.com/' + encodeURIComponent(body.project_type || 'mod') + '/' + encodeURIComponent(body.slug || clean)
+  }
+}
+
+// Rescate cross-provider: si un proyecto de CurseForge bloqueó la
+// distribución por API pero el MISMO proyecto existe en Modrinth, devuelve su
+// ficha lista para instalar. Verificación estricta (slug exacto + tipo +
+// título + autor del team): ante cualquier duda devuelve found:false y se
+// sigue el camino manual. Nunca sustituye en silencio: el renderer siempre
+// pide confirmación mostrando ambas fuentes.
+const modrinthTwinCache = new Map()
+
+function normalizeTwinText(value) {
+  return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+async function getModrinthTwinProject(payload = {}) {
+  const cfId = String(payload.modId || '').trim().slice(0, 64)
+  const slug = String(payload.slug || '').trim().slice(0, 128)
+  const cfKind = String(payload.kind || 'mod').toLowerCase().slice(0, 32)
+  if (!slug) return { found: false, reason: 'no-slug' }
+  // Modpacks cambian la semántica (crean instancia) y plugins no tienen tipo
+  // espejo en Modrinth: fuera de alcance, camino manual.
+  if (cfKind === 'modpack' || cfKind === 'plugin') return { found: false, reason: 'kind' }
+  const cacheKey = cfId || slug
+  if (modrinthTwinCache.has(cacheKey)) return modrinthTwinCache.get(cacheKey)
+  const result = await findModrinthTwinUncached({ slug, cfKind, title: String(payload.title || '').slice(0, 256), author: String(payload.author || '').slice(0, 128) })
+  modrinthTwinCache.set(cacheKey, result)
+  return result
+}
+
+async function findModrinthTwinUncached({ slug, cfKind, title, author }) {
+  // Paso 1: slug exacto (barato y preciso).
+  let lastReason = 'missing'
+  try {
+    const res = await fetch(MODRINTH_API + '/project/' + encodeURIComponent(slug), {
+      headers: { 'User-Agent': MODRINTH_USER_AGENT, Accept: 'application/json' }
+    })
+    if (res.ok) {
+      const body = await res.json().catch(() => null)
+      if (body && body.id) {
+        const verified = await verifyTwinCandidate(body, { cfKind, title, author })
+        if (verified.ok) return twinFoundResult(body, verified.author)
+        lastReason = verified.reason || lastReason
+      }
+    }
+  } catch {
+    return { found: false, reason: 'network' }
+  }
+  // Paso 2: el slug no coincide exacto (nombres ligeramente distintos):
+  // búsqueda por título y misma verificación estricta (tipo + título + autor).
+  // El autor es el ancla: sin match de autor no hay gemelo.
+  try {
+    const res = await fetch(MODRINTH_API + '/search?query=' + encodeURIComponent(String(title || slug)) + '&limit=10', {
+      headers: { 'User-Agent': MODRINTH_USER_AGENT, Accept: 'application/json' }
+    })
+    if (!res.ok) return { found: false, reason: 'missing' }
+    const searchBody = await res.json().catch(() => ({}))
+    const hits = (searchBody && Array.isArray(searchBody.hits) ? searchBody.hits : []).slice(0, 8)
+    for (const hit of hits) {
+      const hitSlug = hit && hit.slug
+      if (!hitSlug || hitSlug === slug) continue // el exacto ya se evaluó
+      let full = null
+      try {
+        const hitRes = await fetch(MODRINTH_API + '/project/' + encodeURIComponent(hitSlug), {
+          headers: { 'User-Agent': MODRINTH_USER_AGENT, Accept: 'application/json' }
+        })
+        if (!hitRes.ok) continue
+        full = await hitRes.json().catch(() => null)
+      } catch { continue }
+      if (!full || !full.id) continue
+      const verified = await verifyTwinCandidate(full, { cfKind, title, author })
+      if (verified.ok) return twinFoundResult(full, verified.author)
+      lastReason = verified.reason || lastReason
+    }
+  } catch {
+    return { found: false, reason: 'network' }
+  }
+  return { found: false, reason: lastReason }
+}
+
+// Similitud de títulos (normalizados): contenencia o solape de tokens.
+// Tolera sufijos tipo "Reimagined", "RP", "+FA version" sin abrir falsos positivos.
+function titlesSimilar(a, b) {
+  const x = normalizeTwinText(a)
+  const y = normalizeTwinText(b)
+  if (!x || !y) return false
+  if (x.includes(y) || y.includes(x)) return true
+  const tx = new Set(x.split(' ').filter(w => w.length >= 3))
+  const ty = new Set(y.split(' ').filter(w => w.length >= 3))
+  if (!tx.size || !ty.size) return false
+  let shared = 0
+  for (const w of tx) if (ty.has(w)) shared++
+  return shared >= 2 && shared / Math.min(tx.size, ty.size) >= 0.5
+}
+
+async function verifyTwinCandidate(body, { cfKind, title, author }) {
+  // Tipo: los datapacks de Modrinth son project_type mod + categoría datapack.
+  const mrCats = [...(body.categories || []), ...(body.additional_categories || [])]
+  const mrKind = mrCats.includes('datapack') ? 'datapack' : String(body.project_type || '')
+  if (mrKind !== cfKind) return { ok: false, reason: 'kind' }
+  if (!titlesSimilar(title, body.title)) return { ok: false, reason: 'title' }
+  // Autor: username del team de Modrinth igual al autor de CurseForge.
+  const wantAuthor = normalizeTwinText(author)
+  let twinAuthor = ''
+  try {
+    if (wantAuthor && body.team) {
+      const teamRes = await fetch(MODRINTH_API + '/team/' + encodeURIComponent(body.team) + '/members', {
+        headers: { 'User-Agent': MODRINTH_USER_AGENT, Accept: 'application/json' }
+      })
+      const teamBody = await teamRes.json().catch(() => ([]))
+      if (teamRes.ok && Array.isArray(teamBody)) {
+        const match = teamBody.find(m => normalizeTwinText(m.user && m.user.username) === wantAuthor)
+        if (match && match.user) twinAuthor = match.user.username || ''
+      }
+    }
+  } catch {}
+  if (!twinAuthor) return { ok: false, reason: 'author' }
+  return { ok: true, author: twinAuthor }
+}
+
+function twinFoundResult(body, twinAuthor) {
+  const mrCats = [...(body.categories || []), ...(body.additional_categories || [])]
+  return {
+    found: true,
+    author: twinAuthor,
+    project: {
+      project_id: body.id,
+      id: body.id,
+      slug: body.slug,
+      title: body.title,
+      project_type: body.project_type,
+      categories: mrCats,
+      display_categories: mrCats,
+      icon_url: body.icon_url || '',
+      downloads: body.downloads || 0,
+      follows: body.followers || 0
+    }
+  }
+}
+
+function hashLocalFile(filePath, algo = 'sha1') {
+  return new Promise((resolve, reject) => {
+    const h = crypto.createHash(algo)
+    const s = fs.createReadStream(filePath)
+    s.on('data', d => h.update(d))
+    s.on('end', () => resolve(h.digest('hex')))
+    s.on('error', reject)
+  })
+}
+
+// Identifica archivos subidos a mano (sin meta) por hash sha1 contra Modrinth:
+// así recuperan pfp/título/autor/versión y entran al flujo de updates.
+async function identifyInstanceContentFiles(instanceId, limit = 30) {
+  const instance = getInstance(instanceId)
+  if (!instance) throw new Error('No existe la instancia seleccionada.')
+  ensureInstanceFolders(instance)
+  const candidates = listInstanceContent(instanceId)
+    .filter(i => !i.projectId && i.entryType !== 'folder')
+    .filter(i => Number(i.size) > 0 && Number(i.size) <= 400 * 1024 * 1024)
+    .slice(0, Math.max(1, Math.min(Number(limit) || 30, 60)))
+  const identified = []
+  const maxConcurrent = 3
+  let idx = 0
+  async function worker() {
+    while (idx < candidates.length) {
+      const item = candidates[idx++]
+      try {
+        const resolved = resolveContentDir(instanceId, item.kind)
+        const fullPath = path.join(resolved.folder, item.file)
+        if (!fs.existsSync(fullPath)) continue
+        const sha1 = await hashLocalFile(fullPath, 'sha1')
+        let version = null
+        try {
+          version = await modrinthJson('/version_file/' + encodeURIComponent(sha1), { algorithm: 'sha1' })
+        } catch { version = null }
+        if (!version || !version.id || !version.project_id) continue
+        const files = Array.isArray(version.files) ? version.files : []
+        const match = files.find(f => String((f.hashes || {}).sha1 || '').toLowerCase() === sha1.toLowerCase()) || files.find(f => f.primary) || files[0]
+        if (!match || !match.url) continue
+        let mini = null
+        try { mini = await getModrinthProjectMini(version.project_id) } catch { mini = null }
+        try {
+          persistModrinthFileMeta(instanceId, {
+            path: item.dir + '/' + item.file,
+            hashes: match.hashes || { sha1 },
+            fileSize: fs.statSync(fullPath).size,
+            downloads: [match.url],
+            env: { client: 'required' },
+            projectId: String(version.project_id || ''),
+            versionId: String(version.id || ''),
+            filename: item.file,
+            primary: Boolean(match.primary)
+          })
+        } catch {}
+        identified.push({
+          id: item.id,
+          kind: item.kind,
+          file: item.file,
+          projectId: String(version.project_id || ''),
+          versionId: String(version.id || ''),
+          versionNumber: version.version_number || version.name || '',
+          title: mini ? mini.title : '',
+          iconUrl: mini ? mini.iconUrl : '',
+          author: mini ? mini.author : '',
+          projectType: mini ? mini.projectType : '',
+          url: mini ? mini.url : ''
+        })
+      } catch {}
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(maxConcurrent, Math.max(1, candidates.length)) }, () => worker()))
+  return { identified, checked: candidates.length }
 }
 
 async function downloadToFile(url, destination, opts = {}) {
@@ -1925,6 +2510,38 @@ function pickPrimaryFile(version) {
   const file = files.find(item => item.primary) || files[0]
   if (!file || !file.url) throw new Error('La version elegida no tiene archivo descargable.')
   return file
+}
+
+// Descarga verificada para archivos individuales (mods, resourcepacks, zips de
+// modpack). Fail-closed: exige hash sha1/sha512 del proveedor y elimina el
+// archivo si falta el hash o no coincide. Antes los single-file se instalaban
+// sin verificar (Modrinth verificaba pero no rechazaba, CF ni verificaba).
+function normalizeVerifiableHashes(hashes) {
+  if (!hashes || typeof hashes !== 'object') return {}
+  if (Array.isArray(hashes)) return curseForgeHashesToMap(hashes)
+  const map = {}
+  if (typeof hashes.sha1 === 'string' && /^[a-f0-9]{40}$/i.test(hashes.sha1)) map.sha1 = hashes.sha1.toLowerCase()
+  if (typeof hashes.sha512 === 'string' && /^[a-f0-9]{128}$/i.test(hashes.sha512)) map.sha512 = hashes.sha512.toLowerCase()
+  return map
+}
+
+async function downloadSingleFileVerified(url, destination, hashes, label = 'Archivo') {
+  const map = normalizeVerifiableHashes(hashes)
+  if (!map.sha1 && !map.sha512) {
+    throw new Error(`${label}: el proveedor no informó hash verificable (sha1/sha512 requerido). Instalación bloqueada por seguridad.`)
+  }
+  const downloaded = await downloadToFile(url, destination)
+  let ok = false
+  try {
+    ok = await verifyMrpackFile(destination, map)
+  } catch {
+    ok = false
+  }
+  if (!ok) {
+    await fs.promises.rm(destination, { force: true }).catch(() => {})
+    throw new Error(`${label}: el hash del archivo descargado no coincide con el del proveedor. Archivo eliminado, no se instaló nada.`)
+  }
+  return downloaded
 }
 
 function pickLatestVersion(versions, versionType) {
@@ -2096,7 +2713,7 @@ async function installMrpackInstance(version, project, options = {}) {
 
   try {
   const mrpackPath = path.join(instanceDir, sanitizeFileName(file.filename || project.slug || 'modpack') + '.mrpack')
-  await downloadToFile(file.url, mrpackPath)
+  await downloadSingleFileVerified(file.url, mrpackPath, file.hashes, file.filename || project.title || 'Modpack Modrinth')
   const maxDownloads = Math.max(
     1,
     Math.min(Number(loadLauncherSettings().maxConcurrentDownloads) || 6, 20)
@@ -2157,6 +2774,11 @@ async function installModrinthProject(payload = {}) {
   const projectType = String(project.project_type || payload.projectType || 'mod')
   const installKind = String(payload.installKind || projectType)
   const destination = String(payload.destination || 'downloads')
+  // El loader que filtra versiones depende del TIPO, no de la instancia:
+  // resourcepacks/shaders/datapacks declaran loader "minecraft" en Modrinth,
+  // así que un loader de mods (fabric/...) o "vanilla" los dejaría sin
+  // resultados ("No hay versiones compatibles") aunque sean compatibles.
+  const versionLoader = normalizeVersionLoaderForKind(getProjectInstallKindFromProject(project), payload.loader)
 
   let version = null
   if (versionId) {
@@ -2170,7 +2792,7 @@ async function installModrinthProject(payload = {}) {
     const versions = await getModrinthVersions({
       projectId: project.project_id || project.id || project.slug,
       gameVersion: payload.gameVersion,
-      loader: payload.loader,
+      loader: versionLoader,
       versionType: payload.versionType
     })
     version = pickLatestVersion(versions, payload.versionType)
@@ -2182,7 +2804,7 @@ async function installModrinthProject(payload = {}) {
   if (destination === 'downloads') {
     const downloadsDir = resolveLocalDownloadDir(payload.downloadDir || payload.downloadPath || payload.localPath)
     const target = path.join(downloadsDir, sanitizeFileName(file.filename || project.slug || project.title || 'modrinth-file'))
-    const downloaded = await downloadToFile(file.url, target)
+    const downloaded = await downloadSingleFileVerified(file.url, target, file.hashes, file.filename || project.title || 'Archivo Modrinth')
     return { type: 'download', path: downloaded.path, version }
   }
 
@@ -2198,30 +2820,25 @@ async function installModrinthProject(payload = {}) {
   ensureInstanceFolders(instance)
   const folder = getInstallFolder(projectType, installKind, instance.id)
   const target = path.join(folder, sanitizeFileName(file.filename || project.slug || project.title || 'modrinth-file'))
-  const downloaded = await downloadToFile(file.url, target)
-  // P0-1: persistir metadata solo tras descarga+verificación exitosa (fileSize como comprobación rápida, hash como verdad)
+  const downloaded = await downloadSingleFileVerified(file.url, target, file.hashes, file.filename || project.title || 'Archivo Modrinth')
+  // La descarga ya fue verificada contra el hash del proveedor: persistir metadata
+  // para exportar el .mrpack y re-resolver URLs si el CDN rota.
   try {
     const hashes = file.hashes || {}
-    const hasHash = (typeof hashes.sha1 === 'string' && hashes.sha1) || (typeof hashes.sha512 === 'string' && hashes.sha512)
-    if (hasHash) {
-      const ok = await verifyMrpackFile(target, hashes)
-      if (ok) {
-        const rel = path.relative(getMinecraftRoot(instance.id), target).replace(/\\/g, '/')
-        // Verificar env Modrinth: version/files no traen env; project.client_side/server_side no es por-file, fallback documentado
-        const env = { client: 'required' }
-        persistModrinthFileMeta(instance.id, {
-          path: rel,
-          hashes,
-          fileSize: file.size || fs.statSync(target).size,
-          downloads: [file.url],
-          env,
-          projectId: String(project.project_id || project.id || ''),
-          versionId: String(version.id || ''),
-          filename: file.filename || path.basename(target),
-          primary: Boolean(file.primary)
-        })
-      }
-    }
+    const rel = path.relative(getMinecraftRoot(instance.id), target).replace(/\\/g, '/')
+    // Verificar env Modrinth: version/files no traen env; project.client_side/server_side no es por-file, fallback documentado
+    const env = { client: 'required' }
+    persistModrinthFileMeta(instance.id, {
+      path: rel,
+      hashes,
+      fileSize: file.size || fs.statSync(target).size,
+      downloads: [file.url],
+      env,
+      projectId: String(project.project_id || project.id || ''),
+      versionId: String(version.id || ''),
+      filename: file.filename || path.basename(target),
+      primary: Boolean(file.primary)
+    })
   } catch {}
   return { type: 'content', path: downloaded.path, instance, version }
 }
@@ -2293,16 +2910,26 @@ async function installLatestReleaseProject(payload = {}) {
   }
 
   try {
-    return await installModrinthProject({
+    const baseArgs = {
       project,
       installKind,
       destination: 'instance',
       instanceId: instance.id,
       gameVersion: instance.version,
       loader,
-      versionId,
-      versionType: 'release'
-    })
+      versionId
+    }
+    try {
+      return await installModrinthProject({ ...baseArgs, versionType: 'release' })
+    } catch (error) {
+      // Muchos proyectos (sobre todo resourcepacks/shaders) publican todo
+      // como beta/alpha y nunca como release: si no hay release compatible,
+      // reintentar con cualquier canal antes de rendirse. Solo aplica al
+      // error de "sin compatibles", no a fallos reales (red, hash, disco).
+      const noCompatible = /no hay versiones compatibles/i.test((error && error.message) || '')
+      if (versionId || !noCompatible) throw error
+      return await installModrinthProject(baseArgs)
+    }
   } catch (error) {
     if (previousCustomInstances) {
       saveCustomInstances(previousCustomInstances)
@@ -2314,14 +2941,38 @@ async function installLatestReleaseProject(payload = {}) {
 }
 
 function getProjectInstallKindFromProject(project) {
-  const categories = project.categories || project.display_categories || []
+  const categories = (project && (project.categories || project.display_categories)) || []
   if (categories.includes('datapack')) return 'datapack'
-  return String(project.project_type || 'mod')
+  return String((project && project.project_type) || 'mod')
+}
+
+const MOD_LOADER_IDS = new Set(['fabric', 'forge', 'neoforge', 'quilt'])
+
+// Normaliza el loader con el que se filtran versiones según el tipo de
+// proyecto. Los callers suelen pasar el loader de la INSTANCIA (ej. fabric),
+// que no existe en versiones de resourcepacks/shaders/datapacks (usan
+// "minecraft") ni en plugins de servidor: sin esto el filtro devuelve vacío
+// aunque haya versiones compatibles con la versión de Minecraft.
+function normalizeVersionLoaderForKind(installKind, loader) {
+  const normalized = String(loader || '').toLowerCase().trim()
+  const kind = String(installKind || 'mod').toLowerCase()
+  if (kind === 'resourcepack' || kind === 'shader' || kind === 'datapack') {
+    if (!normalized || normalized === 'any' || normalized === 'minecraft') return normalized || 'minecraft'
+    return 'minecraft'
+  }
+  if (kind === 'plugin') {
+    if (!normalized || normalized === 'any') return normalized
+    if (MOD_LOADER_IDS.has(normalized) || normalized === 'vanilla' || normalized === 'minecraft') return 'any'
+    return normalized
+  }
+  return loader
 }
 
 function sendLauncherStatus(type, message) {
   if (!mainWindow || mainWindow.isDestroyed()) return
-  mainWindow.webContents.send('launcher-status', { type, message: normalizeMessage(message) })
+  try {
+    mainWindow.webContents.send('launcher-status', { type, message: normalizeMessage(message), instanceId: runningInstanceId || activeLaunchInstanceId || null })
+  } catch {}
 }
 
 function flushLaunchLog(afterFlush = null) {
@@ -2414,12 +3065,27 @@ function validateMemory(minRam, maxRam) {
 }
 
 function sanitizeCustomArgs(args) {
-  const blockedPrefixes = ['-agentlib', '-javaagent', '-Xbootclasspath', '-Djdk.', '-Dcom.sun.', '-XX:+DisableAttachMechanism', '-XX:+EnableDynamicAgentLoading']
+  // S11: blocklist ampliada. Estos args van a extraMCArgs (args del juego),
+  // donde la mayoría son inertes, pero se filtran igual en defensa en
+  // profundidad y porque el mismo helper se usa al guardar y al lanzar:
+  // - agentes/instrumentación (-agentlib/-agentpath/-javaagent)
+  // - manipulación de classpath/módulos (-cp, -p, --module-path,
+  //   --patch-module, --upgrade-module-path, --add-opens/exports/reads)
+  // - props del sistema que cargan código nativo o reconfiguran la JVM
+  //   (-Djava./-Dsun./-Djdk./-Dcom.sun., CDS con -Xshare:/SharedArchiveFile)
+  // - @argfiles: harían que la JVM lea args de un fichero, burlando
+  //   todo este filtrado.
+  const blockedPrefixes = ['-agentlib', '-agentpath', '-javaagent', '-Xbootclasspath', '-Xshare:', '-XX:SharedArchiveFile', '-Djdk.', '-Dcom.sun.', '-Djava.', '-Dsun.', '-cp', '-classpath', '--class-path', '-p', '--module-path', '--patch-module', '--upgrade-module-path', '--add-opens', '--add-exports', '--add-reads', '-XX:+DisableAttachMechanism', '-XX:+EnableDynamicAgentLoading']
   const filtered = []
   for (const arg of Array.isArray(args) ? args : []) {
     const clean = String(arg).trim()
     if (!clean) continue
     if (clean.length > 512) continue
+    if (clean.startsWith('@')) continue
+    // startsWith plano a propósito: ningún arg legítimo del juego colisiona
+    // con estos prefijos (los args MC son --username/--gameDir/--uuid/...),
+    // y el matching exacto dejaría fuera variantes como -Djava.x=... o
+    // -Xbootclasspath/p:... que continúan justo tras el prefijo.
     if (blockedPrefixes.some(prefix => clean.startsWith(prefix))) continue
     if (/[\0\n\r]/.test(clean)) continue
     filtered.push(clean)
@@ -2692,6 +3358,62 @@ function getAdoptiumDownloadUrl(javaMajor) {
   return `https://api.adoptium.net/v3/binary/latest/${javaMajor}/ga/${getCurrentJavaPlatform()}/${getCurrentJavaArch()}/jre/hotspot/normal/eclipse?project=jdk`
 }
 
+const MAX_JRE_EXTRACTED_BYTES = 2 * 1024 * 1024 * 1024
+
+// Metadatos del JRE desde la API de Adoptium (misma plataforma/arch que el
+// binario): checksum sha256 y tamaño exacto para verificar antes de extraer.
+async function getAdoptiumJreAsset(javaMajor) {
+  const url = `https://api.adoptium.net/v3/assets/latest/${encodeURIComponent(String(javaMajor))}/hotspot`
+    + `?os=${encodeURIComponent(getCurrentJavaPlatform())}`
+    + `&architecture=${encodeURIComponent(getCurrentJavaArch())}`
+    + '&image_type=jre'
+  const controller = new AbortController()
+  const timer = setTimeout(() => {
+    try { controller.abort(new Error('Timeout consultando metadatos del JRE en Adoptium.')) } catch {}
+  }, 15000)
+  if (timer && typeof timer.unref === 'function') {
+    try { timer.unref() } catch {}
+  }
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': MODRINTH_USER_AGENT, Accept: 'application/json' },
+      signal: controller.signal
+    })
+    const body = await response.json().catch(() => ([]))
+    if (!response.ok) throw new Error('Adoptium no devolvió metadatos del JRE: HTTP ' + response.status)
+    const entry = Array.isArray(body) ? body[0] : null
+    const binaries = entry ? (entry.binaries || (entry.binary ? [entry.binary] : [])) : []
+    const pkg = binaries.map(item => item && item.package).find(item => item && item.checksum && item.size)
+    if (!pkg) throw new Error('Adoptium no informó checksum del JRE.')
+    const checksum = String(pkg.checksum).trim().toLowerCase()
+    if (!/^[a-f0-9]{64}$/.test(checksum)) throw new Error('Checksum del JRE con formato inválido.')
+    return { sha256: checksum, size: Number(pkg.size) >>> 0 }
+  } finally {
+    try { clearTimeout(timer) } catch {}
+  }
+}
+
+function sha256OfFile(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256')
+    const stream = fs.createReadStream(filePath)
+    stream.on('data', chunk => hash.update(chunk))
+    stream.on('end', () => resolve(hash.digest('hex')))
+    stream.on('error', reject)
+  })
+}
+
+// Filtro anti-tar-slip para el JRE: sin absolutos, sin `..`, sin symlinks ni
+// hardlinks (defensa en profundidad; strict:true ya rechaza parte de esto).
+function isSafeTarEntry(entryPath, entry) {
+  const raw = String(entryPath || '')
+  if (!raw || path.isAbsolute(raw)) return false
+  if (raw.split(/[\\/]/).includes('..')) return false
+  const type = entry && entry.header && entry.header.type
+  if (type === 'SymbolicLink' || type === 'Link') return false
+  return true
+}
+
 const JAVA_MAJORS = [25, 21, 17, 8]
 let launcherSettingsCache = null
 
@@ -2703,7 +3425,12 @@ function getDefaultLauncherSettings() {
   return {
     javaInstalls: { '8': '', '17': '', '21': '', '25': '' },
     maxConcurrentDownloads: 6,
-    discordEnabled: true
+    discordEnabled: true,
+    // S11: binarios java aprobados por el usuario vía diálogo nativo
+    // (settings-browse-java) o detectados por el launcher. Un javaHome por
+    // instancia solo se ejecuta si su binario canónico está aquí o es un
+    // runtime gestionado. Ver isTrustedJavaBinary().
+    approvedJavaBinaries: []
   }
 }
 
@@ -2711,14 +3438,15 @@ function loadLauncherSettings() {
   if (launcherSettingsCache) {
     return {
       ...launcherSettingsCache,
-      javaInstalls: { ...launcherSettingsCache.javaInstalls }
+      javaInstalls: { ...launcherSettingsCache.javaInstalls },
+      approvedJavaBinaries: [...(launcherSettingsCache.approvedJavaBinaries || [])]
     }
   }
 
   const file = getLauncherSettingsFile()
   const defaults = getDefaultLauncherSettings()
   if (!fs.existsSync(file)) {
-    launcherSettingsCache = { ...defaults, javaInstalls: { ...defaults.javaInstalls } }
+    launcherSettingsCache = { ...defaults, javaInstalls: { ...defaults.javaInstalls }, approvedJavaBinaries: [] }
     return { ...launcherSettingsCache, javaInstalls: { ...launcherSettingsCache.javaInstalls } }
   }
   try {
@@ -2726,11 +3454,12 @@ function loadLauncherSettings() {
     launcherSettingsCache = {
       ...defaults,
       ...data,
-      javaInstalls: { ...defaults.javaInstalls, ...(data.javaInstalls || {}) }
+      javaInstalls: { ...defaults.javaInstalls, ...(data.javaInstalls || {}) },
+      approvedJavaBinaries: sanitizeApprovedJavaBinaries(data.approvedJavaBinaries)
     }
     return { ...launcherSettingsCache, javaInstalls: { ...launcherSettingsCache.javaInstalls } }
   } catch {
-    launcherSettingsCache = { ...defaults, javaInstalls: { ...defaults.javaInstalls } }
+    launcherSettingsCache = { ...defaults, javaInstalls: { ...defaults.javaInstalls }, approvedJavaBinaries: [] }
     return { ...launcherSettingsCache, javaInstalls: { ...launcherSettingsCache.javaInstalls } }
   }
 }
@@ -2743,7 +3472,8 @@ function saveLauncherSettings(data) {
     javaInstalls: {
       ...defaults.javaInstalls,
       ...(data.javaInstalls || {})
-    }
+    },
+    approvedJavaBinaries: sanitizeApprovedJavaBinaries(data.approvedJavaBinaries)
   }
   fs.mkdirSync(getKindyrDataRoot(), { recursive: true })
   fs.writeFileSync(getLauncherSettingsFile(), JSON.stringify(launcherSettingsCache, null, 2))
@@ -2852,6 +3582,75 @@ function validateJavaHome(homeDir) {
   } catch {
     return { valid: false, path: '', home: homeDir }
   }
+}
+
+// S11: procedencia del binario java antes de ejecutarlo. Un javaHome por
+// instancia solo llega a spawn si es de procedencia confiable:
+//  - runtime gestionado por el launcher (descargado + verificado por main), o
+//  - ruta elegida por el usuario en el diálogo nativo (settings-browse-java)
+//    o devuelta por la detección del sistema (settings-detect-java), que main
+//    registra en approvedJavaBinaries.
+// Un renderer comprometido puede invocar los IPC pero no puede forjar estas
+// entradas sin que el usuario elija la carpeta en el diálogo del SO.
+const MAX_APPROVED_JAVA_BINARIES = 20
+
+function sanitizeApprovedJavaBinaries(value) {
+  const out = []
+  for (const item of Array.isArray(value) ? value : []) {
+    const clean = String(item || '').trim()
+    if (!clean || clean.length > 1024 || /[\0\n\r]/.test(clean)) continue
+    if (!out.includes(clean)) out.push(clean)
+    if (out.length >= MAX_APPROVED_JAVA_BINARIES) break
+  }
+  return out
+}
+
+// Ruta canónica del binario (resuelve symlinks): es lo que se compara y lo
+// que se ejecuta, para que un enlace no oculte el destino real.
+function canonicalJavaBinary(javaPath) {
+  const clean = String(javaPath || '').trim().replace(/^"|"$/g, '')
+  if (!clean) return ''
+  try {
+    return fs.realpathSync(clean)
+  } catch {
+    return path.resolve(clean)
+  }
+}
+
+function isManagedJavaBinary(canonicalPath) {
+  if (!canonicalPath) return false
+  const runtimeRoot = path.resolve(path.join(getKindyrDataRoot(), 'runtime')) + path.sep
+  return String(canonicalPath).startsWith(runtimeRoot)
+}
+
+function isTrustedJavaBinary(javaPath) {
+  const canonical = canonicalJavaBinary(javaPath)
+  if (!canonical) return { trusted: false, canonical: '' }
+  if (isManagedJavaBinary(canonical)) return { trusted: true, canonical }
+  // Las entradas que ya no existen no son confiables: evita que una ruta
+  // aprobada y luego recreada por terceros herede la autorización, y obliga
+  // a re-elegir tras desinstalar un JDK.
+  try {
+    if (!fs.existsSync(canonical)) return { trusted: false, canonical }
+  } catch {
+    return { trusted: false, canonical }
+  }
+  const approved = loadLauncherSettings().approvedJavaBinaries || []
+  if (approved.includes(canonical)) return { trusted: true, canonical }
+  return { trusted: false, canonical }
+}
+
+function approveJavaBinary(javaPath) {
+  const canonical = canonicalJavaBinary(javaPath)
+  if (!canonical) return ''
+  const settings = loadLauncherSettings()
+  const rest = (settings.approvedJavaBinaries || []).filter(item => item !== canonical)
+  // Evicción por antigüedad: si la lista está llena sale la más vieja, nunca
+  // se descarta en silencio la aprobación recién otorgada.
+  const next = sanitizeApprovedJavaBinaries([...rest.slice(-(MAX_APPROVED_JAVA_BINARIES - 1)), canonical])
+  settings.approvedJavaBinaries = next
+  saveLauncherSettings(settings)
+  return canonical
 }
 
 function getConfiguredJavaHome(javaMajor) {
@@ -3075,6 +3874,30 @@ async function downloadManagedJava(javaMajor, progressFn) {
   let backupDir = ''
   try {
     await downloadToFile(url, archivePath)
+    // Verificación obligatoria pre-extracción: sha256 de la API de Adoptium
+    // (misma plataforma/arch). Sin checksum no se extrae a ciegas.
+    let asset = null
+    try {
+      asset = await getAdoptiumJreAsset(javaMajor)
+    } catch (error) {
+      await fs.promises.rm(archivePath, { force: true }).catch(() => {})
+      throw new Error(`No se pudo verificar el JRE de Adoptium (${error.message || String(error)}). Archivo eliminado, no se instaló nada.`)
+    }
+    const archiveStat = await fs.promises.stat(archivePath).catch(() => null)
+    if (!archiveStat || !archiveStat.isFile() || archiveStat.size === 0) {
+      await fs.promises.rm(archivePath, { force: true }).catch(() => {})
+      throw new Error('El JRE descargado está vacío o no es un archivo válido.')
+    }
+    if (asset.size && archiveStat.size !== asset.size) {
+      await fs.promises.rm(archivePath, { force: true }).catch(() => {})
+      throw new Error(`El JRE descargado no coincide en tamaño con el publicado por Adoptium (${archiveStat.size} vs ${asset.size} bytes). Archivo eliminado.`)
+    }
+    const actualSha256 = await sha256OfFile(archivePath)
+    if (actualSha256 !== asset.sha256) {
+      await fs.promises.rm(archivePath, { force: true }).catch(() => {})
+      throw new Error('El JRE descargado no coincide con el sha256 publicado por Adoptium. Archivo eliminado, no se instaló nada.')
+    }
+    writeLaunchLog(`JRE ${javaMajor} verificado contra sha256 de Adoptium.`)
     await yieldToEventLoop()
     report('progress', `Extrayendo Java ${javaMajor}...`)
 
@@ -3086,7 +3909,19 @@ async function downloadManagedJava(javaMajor, progressFn) {
       })
     } else {
       const tar = require('tar')
-      await tar.x({ file: archivePath, cwd: stagingDir, strict: true })
+      await tar.x({
+        file: archivePath,
+        cwd: stagingDir,
+        strict: true,
+        preservePaths: false,
+        filter: (entryPath, entry) => isSafeTarEntry(entryPath, entry)
+      })
+    }
+    // Techo anti gzip-bomb: un JRE ocupa cientos de MB; si lo extraído supera
+    // el límite se descarta todo antes de buscar el binario java.
+    const extractedBytes = await getDirSizeBytes(stagingDir)
+    if (extractedBytes > MAX_JRE_EXTRACTED_BYTES) {
+      throw new Error('El JRE extraído supera el tamaño máximo permitido; archivo descartado.')
     }
     await yieldToEventLoop()
 
@@ -3365,6 +4200,7 @@ function configureAutoUpdater(updater) {
   updater.on('update-available', async (updateInfo) => {
     // Guardar versión actual como previa antes de actualizar (para downgrade manual)
     try { savePreviousVersion(app.getVersion()) } catch {}
+    updateDownloadedReady = false
     lastUpdateInfo = updateInfo
     // Notificar al renderer para mostrar botón "Actualizar" en topnav — sin descargar
     try { mainWindow?.webContents.send('update-available-notify', updateInfo) } catch {}
@@ -3386,6 +4222,7 @@ function configureAutoUpdater(updater) {
 
   updater.on('update-downloaded', () => {
     // No auto-instala. Avisa y espera a que el usuario haga clic en "Reiniciar para actualizar"
+    updateDownloadedReady = true
     splashWindow?.webContents.send('update-status', 'Actualización lista — reinicia para instalar')
     try { mainWindow?.webContents.send('update-downloaded-notify', lastUpdateInfo) } catch {}
   })
@@ -3396,6 +4233,10 @@ function configureAutoUpdater(updater) {
 }
 
 let lastUpdateInfo = null
+// S5: install-update solo tiene sentido tras una descarga completa avisada
+// por 'update-downloaded'. Sin este gate, un renderer comprometido podía
+// forzar quitAndInstall (cierre de la app) en cualquier momento.
+let updateDownloadedReady = false
 ipcMain.handle('show-update-notice', () => {
   const info = pendingUpdateInfo || lastUpdateInfo
   if (info) {
@@ -3569,6 +4410,7 @@ ipcMain.on('update-confirm', (_event, accepted) => {
   updateConfirmationWindow?.close()
 })
 ipcMain.handle('install-update', () => {
+  if (!updateDownloadedReady) return { ok: false, error: 'No hay actualización descargada pendiente de instalar.' }
   try { getAutoUpdater().quitAndInstall() } catch (e) { console.error('quitAndInstall failed', e) }
   return { ok: true }
 })
@@ -3731,7 +4573,21 @@ app.whenReady().then(() => {
   }
 })
 
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
+  if (appQuitAfterShutdown) return
+  // Si Minecraft se está ejecutando o instalando, no salir dejando una JVM
+  // huérfana: se retrasa el quit hasta apagar el juego (TERM, KILL a los 5s).
+  if (minecraftProcess || xmclLaunchTask || launchRequestInProgress) {
+    event.preventDefault()
+    shutdownForAppQuit()
+      .catch(() => {})
+      .finally(() => {
+        appQuitAfterShutdown = true
+        app.quit()
+      })
+    return
+  }
+  flushLaunchLogSync()
   try {
     if (discordRPC && typeof discordRPC.shutdownDiscordRPC === 'function') {
       discordRPC.shutdownDiscordRPC().catch(() => {})
@@ -3759,13 +4615,14 @@ ipcMain.on('minimize', () => {
   mainWindow?.minimize()
 })
 
-ipcMain.handle('finish-onboarding', (_event, config) => {
+ipcMain.handle('finish-onboarding', (_event, config = {}) => {
   markOnboardingDone()
+  const safe = (config && typeof config === 'object') ? config : {}
   const settings = {
-    username: config.username || '',
-    language: config.language || 'es',
-    theme: config.theme || 'midnight',
-    accountType: config.accountType || 'offline',
+    username: String(safe.username || '').slice(0, 64),
+    language: String(safe.language || 'es').slice(0, 16),
+    theme: String(safe.theme || 'midnight').slice(0, 32),
+    accountType: String(safe.accountType || 'offline').slice(0, 32),
     minRam: '2G',
     maxRam: '4G',
     minRamMb: 2048,
@@ -4023,6 +4880,14 @@ ipcMain.handle('settings-browse-java', async () => {
   if (result.canceled || !result.filePaths.length) return { ok: false, cancelled: true }
   const home = javaHomeFromCandidate(result.filePaths[0])
   if (!home) return { ok: false, error: `No se encontro un runtime Java compatible con ${process.platform} en esa carpeta.` }
+  // S11: la carpeta fue elegida por el usuario en el diálogo nativo del SO
+  // (el renderer no puede forjar este resultado en silencio), así que su
+  // binario queda registrado como procedencia confiable para futuros
+  // javaHome por instancia.
+  try {
+    const check = validateJavaHome(home)
+    if (check.valid && check.path) approveJavaBinary(check.path)
+  } catch {}
   return { ok: true, path: home }
 })
 
@@ -4163,11 +5028,25 @@ ipcMain.handle('rollback-to-version', async (_event, tag) => {
     const cleanTag = String(tag || '').trim()
     if (!cleanTag) throw new Error('Tag inválido')
     const current = app.getVersion()
+    const semver = getSemver()
+    const curValid = semver.valid(String(current).replace(/^[vV]/, ''), { loose: true })
     const res = await fetch(`https://api.github.com/repos/iDontrixss/KindyrLauncher/releases/tags/${encodeURIComponent(cleanTag.replace(/^[vV]/, 'v'))}`, {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'KindyrLauncher/' + current }
     })
     if (!res.ok) throw new Error('Release no encontrada: ' + cleanTag)
     const release = await res.json()
+    // HALLAZGO NUEVO (downgrade arbitrario): el tag venía del renderer sin
+    // cotejar. Un renderer comprometido podía abrir el instalador de
+    // CUALQUIER tag: drafts no publicados o versiones no menores que la
+    // actual. Misma política que get-previous-versions: release publicada
+    // (no draft) con semver válido y estrictamente menor que la actual.
+    // Las prereleases SE permiten a propósito: la UI las lista con badge
+    // BETA (ajustes) y ofrece rollback a ellas; bloquearlas rompería el
+    // flujo legítimo.
+    const relVersion = semver.valid(String(release.tag_name || '').replace(/^[vV]/, ''), { loose: true })
+    if (release.draft || !relVersion || !curValid || !semver.lt(relVersion, curValid)) {
+      throw new Error('Solo se puede volver a una versión publicada anterior a la actual: ' + cleanTag)
+    }
     const asset = (release.assets || []).find(a => /Setup.*\.exe$/i.test(a.name) || /\.exe$/i.test(a.name)) || (release.assets || [])[0]
     if (!asset || !asset.browser_download_url) throw new Error('No hay instalador para ' + cleanTag)
     await shell.openExternal(assertSafeReleaseDownloadUrl(asset.browser_download_url))
@@ -4399,6 +5278,224 @@ ipcMain.handle('open-instance-folder', (_event, instanceId) => {
   return { ok: true }
 })
 
+function stripDisabledSuffix(name) {
+  return String(name || '').replace(/\.disabled$/i, '')
+}
+
+function isContentEnabled(name) {
+  return !/\.disabled$/i.test(String(name || ''))
+}
+
+// Centro de control: contenido unificado (mods, resourcepacks, shaders, datapacks).
+// Cada entrada expone kind + meta Modrinth (projectId/versionId) cuando existe,
+// para que el frontend pueda mostrar pfp/título/autor y chequear updates
+// compatibles con la versión de la instancia.
+const INSTANCE_CONTENT_KINDS = {
+  mod: { dir: 'mods', label: 'Mod' },
+  resourcepack: { dir: 'resourcepacks', label: 'Resource pack' },
+  shader: { dir: 'shaderpacks', label: 'Shader' },
+  datapack: { dir: 'datapacks', label: 'Datapack' }
+}
+
+// Subida de archivos (diálogo + drag&drop): cotas compartidas.
+const MAX_UPLOAD_FILES = 20
+const MAX_UPLOAD_FILE_BYTES = 2 * 1024 * 1024 * 1024
+const UPLOAD_ALLOWED_EXTS = new Set(['.jar', '.zip', '.mrpack'])
+
+// Forma + extensión de UNA ruta propuesta por el renderer (vía drop). Solo
+// validación barata sin FS: lo dependiente de disco (existencia, tipo,
+// tamaño) se verifica en el momento de copiar. El traversal muere aquí:
+// basename descarta directorios y sanitizeFileName la sintaxis hostil.
+function dropFileBase(src) {
+  if (typeof src !== 'string' || !src.trim()) return { ok: false, file: '?', reason: 'empty' }
+  const base = sanitizeFileName(path.basename(src))
+  const ext = path.extname(base.replace(/\.disabled$/i, '')).toLowerCase()
+  if (!UPLOAD_ALLOWED_EXTS.has(ext)) return { ok: false, file: base, reason: 'type' }
+  return { ok: true, file: base, src }
+}
+
+function resolveContentDir(instanceId, kind) {
+  const def = INSTANCE_CONTENT_KINDS[String(kind || '').toLowerCase()]
+  if (!def) throw new Error('Tipo de contenido inválido.')
+  return { ...def, kind: String(kind).toLowerCase(), folder: instanceFolders[def.dir](instanceId) }
+}
+
+function findContentMeta(metaList, rel, fileName) {
+  if (!Array.isArray(metaList)) return null
+  const base = stripDisabledSuffix(fileName)
+  const relBase = String(rel || '').replace(/\.disabled$/i, '')
+  return metaList.find(m => m && (m.path === rel || m.path === relBase)) ||
+    metaList.find(m => m && stripDisabledSuffix(m.filename) === base) ||
+    null
+}
+
+function removeContentMeta(instanceId, rel, fileName) {
+  try {
+    const list = loadModrinthFilesMeta(instanceId)
+    if (!list.length) return
+    const base = stripDisabledSuffix(fileName)
+    const relBase = String(rel || '').replace(/\.disabled$/i, '')
+    const filtered = list.filter(m => {
+      if (!m) return false
+      if (m.path === rel || m.path === relBase) return false
+      if (stripDisabledSuffix(m.filename) === base && String(m.path || '').split('/')[0] === String(rel || '').split('/')[0]) return false
+      return true
+    })
+    if (filtered.length !== list.length) saveModrinthFilesMetaAtomic(instanceId, filtered)
+  } catch {}
+}
+
+function listInstanceContent(instanceId) {
+  const metaList = loadModrinthFilesMeta(instanceId)
+  const content = []
+  for (const [kind, def] of Object.entries(INSTANCE_CONTENT_KINDS)) {
+    const folder = instanceFolders[def.dir](instanceId)
+    if (!fs.existsSync(folder)) continue
+    const entries = listFiles(folder, entry => {
+      if (entry.isDirectory()) return true
+      return /\.(jar|zip)(\.disabled)?$/i.test(entry.name)
+    })
+    for (const entry of entries) {
+      const rel = def.dir + '/' + entry.name
+      const meta = findContentMeta(metaList, rel, entry.name)
+      content.push({
+        id: kind + ':' + entry.name,
+        kind,
+        kindLabel: def.label,
+        dir: def.dir,
+        file: entry.name,
+        baseName: stripDisabledSuffix(entry.name),
+        rel,
+        entryType: entry.type,
+        size: entry.size,
+        updatedAt: entry.updatedAt,
+        enabled: entry.type === 'folder' ? true : isContentEnabled(entry.name),
+        uploaded: !meta,
+        projectId: meta ? String(meta.projectId || '') : '',
+        versionId: meta ? String(meta.versionId || '') : ''
+      })
+    }
+  }
+  content.sort((a, b) => String(a.baseName || a.file).localeCompare(String(b.baseName || b.file), undefined, { sensitivity: 'base' }))
+  return content
+}
+
+function toggleInstanceContentFile(instanceId, kind, fileName) {
+  const instance = getInstance(instanceId)
+  if (!instance) throw new Error('No existe la instancia seleccionada.')
+  ensureInstanceFolders(instance)
+  const resolved = resolveContentDir(instanceId, kind)
+  const cleanName = safeFileName(fileName)
+  const currentPath = path.join(resolved.folder, cleanName)
+  if (!fs.existsSync(currentPath)) throw new Error('No existe el contenido seleccionado.')
+  const nextName = isContentEnabled(cleanName)
+    ? cleanName + '.disabled'
+    : stripDisabledSuffix(cleanName)
+  if (nextName === cleanName) throw new Error('Archivo no válido.')
+  const nextPath = path.join(resolved.folder, nextName)
+  if (fs.existsSync(nextPath)) throw new Error('Ya existe un archivo con ese nombre.')
+  fs.renameSync(currentPath, nextPath)
+  return { ok: true, file: nextName }
+}
+
+function deleteInstanceContentFile(instanceId, kind, fileName) {
+  const instance = getInstance(instanceId)
+  if (!instance) throw new Error('No existe la instancia seleccionada.')
+  ensureInstanceFolders(instance)
+  const resolved = resolveContentDir(instanceId, kind)
+  const cleanName = safeFileName(fileName)
+  const target = path.join(resolved.folder, cleanName)
+  if (!fs.existsSync(target)) throw new Error('No existe el contenido seleccionado.')
+  const stat = fs.statSync(target)
+  if (stat.isDirectory()) {
+    fs.rmSync(target, { recursive: true, force: true })
+  } else {
+    fs.unlinkSync(target)
+  }
+  removeContentMeta(instanceId, resolved.dir + '/' + cleanName, cleanName)
+  // Limpiar variante .disabled opuesta si quedó huérfana en meta
+  removeContentMeta(instanceId, resolved.dir + '/' + stripDisabledSuffix(cleanName), stripDisabledSuffix(cleanName))
+  return { ok: true }
+}
+
+function pickCompatibleLoaderForInstance(instance, kind) {
+  if (String(kind) !== 'mod') return 'minecraft'
+  const loader = String(instance.loader || '').toLowerCase()
+  return ['fabric', 'forge', 'neoforge', 'quilt'].includes(loader) ? loader : 'minecraft'
+}
+
+async function getContentLatestCompatible(instance, item) {
+  const projectId = String(item.projectId || '').trim()
+  if (!projectId) return { hasUpdate: false, reason: 'uploaded' }
+  // Solo filtrar por loader en mods con loader real; en vanilla o en
+  // resourcepacks/shaders/datapacks el filtro escondería versiones válidas.
+  const loader = pickCompatibleLoaderForInstance(instance, item.kind)
+  const useLoader = item.kind === 'mod' && ['fabric', 'forge', 'neoforge', 'quilt'].includes(loader)
+  const versions = await getModrinthVersions({
+    projectId,
+    gameVersion: instance.version,
+    loader: useLoader ? loader : undefined
+  })
+  if (!versions.length) return { hasUpdate: false, reason: 'no-compatible' }
+  const latest = pickLatestVersion(versions, '')
+  if (!latest) return { hasUpdate: false, reason: 'no-compatible' }
+  const currentId = String(item.versionId || '')
+  if (currentId && latest.id === currentId) return { hasUpdate: false, latestVersionId: latest.id, latestNumber: latest.version_number || '' }
+  // Si no hay versionId local (instalado a mano pero con meta parcial), igual reportar latest
+  return {
+    hasUpdate: !currentId || latest.id !== currentId,
+    latestVersionId: latest.id,
+    latestNumber: latest.version_number || latest.name || '',
+    latestName: latest.name || '',
+    gameVersions: latest.game_versions || [],
+    loaders: latest.loaders || []
+  }
+}
+
+async function installSpecificContentVersion(instance, item, versionId) {
+  const projectId = String(item.projectId || '').trim()
+  const targetVersionId = String(versionId || '').trim()
+  if (!projectId || !targetVersionId) throw new Error('Proyecto o versión inválida.')
+  const allVersions = await getModrinthVersions({ projectId })
+  const version = allVersions.find(v => v.id === targetVersionId)
+  if (!version) throw new Error('La versión elegida ya no existe.')
+  const file = pickPrimaryFile(version)
+  const resolved = resolveContentDir(instance.id, item.kind)
+  fs.mkdirSync(resolved.folder, { recursive: true })
+  const target = path.join(resolved.folder, sanitizeFileName(file.filename || item.baseName || 'modrinth-file'))
+  const downloaded = await downloadSingleFileVerified(file.url, target, file.hashes, file.filename || 'Archivo Modrinth')
+  // Borrar archivo anterior (ambas variantes enabled/disabled, y nombre viejo si cambió).
+  // Primero limpiar su meta vieja para no borrar la que persistimos abajo
+  // (si el nombre no cambió, ambas comparten path).
+  removeContentMeta(instance.id, resolved.dir + '/' + item.file, item.file)
+  removeContentMeta(instance.id, resolved.dir + '/' + item.baseName, item.baseName)
+  // Borrar archivo anterior (ambas variantes enabled/disabled, y nombre viejo si cambió)
+  for (const candidate of new Set([item.file, item.baseName, item.baseName + '.disabled', stripDisabledSuffix(item.file), stripDisabledSuffix(item.file) + '.disabled'])) {
+    if (!candidate || path.basename(candidate) !== candidate) continue
+    const p = path.join(resolved.folder, candidate)
+    if (p !== downloaded.path && fs.existsSync(p)) {
+      const st = fs.statSync(p)
+      if (st.isDirectory()) continue
+      fs.unlinkSync(p)
+    }
+  }
+  try {
+    const rel = resolved.dir + '/' + path.basename(downloaded.path)
+    persistModrinthFileMeta(instance.id, {
+      path: rel,
+      hashes: file.hashes || {},
+      fileSize: file.size || fs.statSync(downloaded.path).size,
+      downloads: [file.url],
+      env: { client: 'required' },
+      projectId,
+      versionId: String(version.id || ''),
+      filename: path.basename(downloaded.path),
+      primary: Boolean(file.primary)
+    })
+  } catch {}
+  return { path: downloaded.path, file: path.basename(downloaded.path), version }
+}
+
 ipcMain.handle('get-instance-details', (_event, instanceId) => {
   const instance = getInstance(instanceId)
   if (!instance) return { ok: false, error: 'No existe la instancia seleccionada.' }
@@ -4410,16 +5507,22 @@ ipcMain.handle('get-instance-details', (_event, instanceId) => {
     ...listFiles(instanceFolders.logs(instanceId), entry => entry.isFile() && /\.log(\.gz)?$/i.test(entry.name)),
     ...listFiles(instanceFolders.launcherLogs(instanceId), entry => entry.isFile() && /\.log$/i.test(entry.name)).map(item => ({ ...item, name: 'launcher-logs/' + item.name }))
   ]
+  let content = []
+  try {
+    content = listInstanceContent(instanceId)
+  } catch { content = [] }
 
   return {
     ok: true,
     instance,
     counts: {
       mods: mods.length,
+      content: content.length,
       worlds: worlds.length,
       logs: logs.length
     },
     mods,
+    content,
     worlds,
     logs
   }
@@ -4464,6 +5567,290 @@ ipcMain.handle('toggle-instance-mod', (_event, instanceId, fileName) => {
   }
 })
 
+ipcMain.handle('toggle-instance-content', (_event, payload = {}) => {
+  try {
+    const result = toggleInstanceContentFile(payload.instanceId, payload.kind, payload.file)
+    invalidateStorageCache()
+    return { ok: true, ...result }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+ipcMain.handle('delete-instance-content', (_event, payload = {}) => {
+  try {
+    const result = deleteInstanceContentFile(payload.instanceId, payload.kind, payload.file)
+    invalidateStorageCache()
+    return { ok: true, ...result }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+// Forense temporal del debug DnD (quitar al estabilizar): deja en
+// %APPDATA%/KindyrLauncher/upload-debug.log qué rama tomó cada invoke del
+// canal upload y con qué conteos. Solo metadatos (claves, conteos, motivos),
+// nunca contenido ni rutas completas.
+function debugUploadLog(line) {
+  try {
+    fs.appendFileSync(
+      path.join(getKindyrDataRoot(), 'upload-debug.log'),
+      `[${new Date().toISOString()}] ${String(line).slice(0, 500)}\n`
+    )
+  } catch {}
+}
+
+ipcMain.handle('upload-instance-files', async (_event, payload = {}) => {
+  let stagedDir = null
+  const stageCleanup = async () => {
+    if (stagedDir) await fs.promises.rm(stagedDir, { recursive: true, force: true }).catch(() => {})
+    stagedDir = null
+  }
+  try {
+    debugUploadLog(`invoke keys=[${Object.keys(payload || {}).join(',')}]`)
+    const instance = getInstance(payload.instanceId)
+    if (!instance) throw new Error('No existe la instancia seleccionada.')
+    ensureInstanceFolders(instance)
+    const hint = String(payload.kindHint || 'mod').toLowerCase()
+    const fallback = INSTANCE_CONTENT_KINDS[hint] ? hint : 'mod'
+    let dropMode = false
+    let sources
+    const skipped = []
+    if (payload.filePaths !== undefined || payload.fileBlobs !== undefined) {
+      // Drop directo sobre la vista: rutas y/o bytes los propone el renderer
+      // y se validan uno por uno en main. Lo inválido se reporta en `skipped`
+      // sin abortar el lote. El diálogo nativo conserva su conducta histórica
+      // y SOLO corre en la rama else: un drop jamás debe abrirlo.
+      dropMode = true
+      sources = []
+      if (payload.filePaths !== undefined) {
+        if (!Array.isArray(payload.filePaths)) throw new Error('filePaths debe ser un array.')
+        for (const src of payload.filePaths.slice(0, MAX_UPLOAD_FILES)) {
+          const checked = dropFileBase(src)
+          if (!checked.ok) { skipped.push({ file: checked.file, reason: checked.reason }); continue }
+          sources.push(checked)
+        }
+      }
+    } else {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Subir archivos a la instancia',
+        properties: ['openFile', 'multiSelections'],
+        filters: [{ name: 'Contenido Minecraft', extensions: ['jar', 'zip', 'mrpack', 'disabled'] }]
+      })
+      debugUploadLog(`dialog picked=${result.filePaths.length} cancelled=${result.canceled}`)
+      if (result.canceled || !result.filePaths.length) { await stageCleanup(); return { ok: false, cancelled: true } }
+      sources = result.filePaths.slice(0, MAX_UPLOAD_FILES)
+    }
+    // Drops sin ruta (orígenes virtuales, adjuntos, Firefox): el renderer
+    // manda {name, bytes} y main los valida igual que un archivo en disco:
+    // el staging entra al MISMO pipeline (stat → sniff → copy) de abajo.
+    if (payload.fileBlobs !== undefined) {
+      if (!Array.isArray(payload.fileBlobs)) throw new Error('fileBlobs debe ser un array.')
+      dropMode = true
+      if (!Array.isArray(sources)) sources = []
+      const room = Math.max(0, MAX_UPLOAD_FILES - sources.length)
+      for (const blob of payload.fileBlobs.slice(0, room)) {
+        const checked = dropFileBase(blob && blob.name)
+        if (!checked.ok) { skipped.push({ file: checked.file, reason: checked.reason }); continue }
+        try {
+          if (!stagedDir) {
+            stagedDir = path.join(require('os').tmpdir(), `kindyr-upload-${process.pid}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`)
+          }
+          const src = writeStagedBlob(stagedDir, checked.file, blob && blob.bytes)
+          sources.push({ src, file: checked.file })
+        } catch (error) {
+          skipped.push({ file: checked.file, reason: (error && error.reason) || 'unreadable' })
+        }
+      }
+    }
+    const copied = []
+    for (const item of sources) {
+      const src = dropMode ? item.src : item
+      const base = dropMode ? item.file : sanitizeFileName(path.basename(src))
+      // Verificación en el momento de copiar (vale para ambas vías): existe,
+      // archivo regular y tope anti disk-fill. En diálogo solo rechaza lo
+      // absurdo (>2 GiB); la extensión la eligió el usuario en la UI nativa.
+      let stat = null
+      try { stat = fs.statSync(src) } catch { skipped.push({ file: base, reason: 'missing' }); continue }
+      if (!stat.isFile()) { skipped.push({ file: base, reason: 'not-file' }); continue }
+      if (stat.size > MAX_UPLOAD_FILE_BYTES) { skipped.push({ file: base, reason: 'too-large' }); continue }
+      const lower = base.toLowerCase()
+      const isJar = lower.endsWith('.jar') || lower.endsWith('.jar.disabled')
+      // .mrpack ES un zip (formato Modrinth): entra al circuito zip para que
+      // la clasificación lo detecte como modpack y dispare la guía (antes
+      // moría en la puerta por extensión y el redirect nunca se veía).
+      const isZip = !isJar && (lower.endsWith('.zip') || lower.endsWith('.zip.disabled') || lower.endsWith('.mrpack') || lower.endsWith('.mrpack.disabled'))
+      let kind = fallback
+      let loader = ''
+      if (isJar || isZip) {
+        // Detección por contenido (diálogo y drop por igual): un .jar solo
+        // entra a mods/ si trae descriptor de mod reconocido; un .zip que
+        // sea modpack se rechaza con guía al instalador; resourcepack,
+        // shader y datapack deciden su propio kind por contenido (el hint
+        // solo desempata lo ambiguo). Lo no reconocido no se copia a ciegas.
+        let sniffed
+        try {
+          sniffed = await classifyContentFile(src, isJar ? '.jar' : '.zip')
+        } catch {
+          skipped.push({ file: base, reason: 'unreadable' })
+          continue
+        }
+        if (sniffed.kind === 'unknown') { skipped.push({ file: base, reason: 'unrecognized' }); continue }
+        if (sniffed.kind === 'modpack') { skipped.push({ file: base, reason: 'is-modpack' }); continue }
+        if (sniffed.kind === 'mod') { kind = 'mod'; loader = sniffed.loader || '' }
+        else if (sniffed.kind === 'resourcepack' || sniffed.kind === 'shader' || sniffed.kind === 'datapack') { kind = sniffed.kind }
+        // Nota: 'datapack'/'shader'/'resourcepack' usan las claves de
+        // INSTANCE_CONTENT_KINDS que resolveContentDir ya valida.
+      }
+      const resolved = resolveContentDir(instance.id, kind)
+      fs.mkdirSync(resolved.folder, { recursive: true })
+      const dest = path.join(resolved.folder, base)
+      if (fs.existsSync(dest)) { skipped.push({ file: base, reason: 'exists' }); continue }
+      await fs.promises.copyFile(src, dest)
+      copied.push(loader ? { kind, file: base, loader } : { kind, file: base })
+    }
+    invalidateStorageCache()
+    debugUploadLog(`done dropMode=${dropMode} copied=${copied.length} skipped=[${skipped.map(s => s && s.reason).join(',')}]`)
+    return { ok: true, copied, skipped }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  } finally {
+    await stageCleanup()
+  }
+})
+
+ipcMain.handle('check-content-updates', async (_event, payload = {}) => {
+  try {
+    const instance = getInstance(payload.instanceId)
+    if (!instance) throw new Error('No existe la instancia seleccionada.')
+    const items = listInstanceContent(instance.id).filter(i => i.projectId)
+    const updates = []
+    const maxConcurrent = 4
+    let idx = 0
+    async function worker() {
+      while (idx < items.length) {
+        const item = items[idx++]
+        try {
+          const info = await getContentLatestCompatible(instance, item)
+          if (info.hasUpdate) {
+            updates.push({ id: item.id, kind: item.kind, file: item.file, ...info })
+          }
+        } catch {}
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(maxConcurrent, Math.max(1, items.length)) }, () => worker()))
+    return { ok: true, updates, checked: items.length }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+ipcMain.handle('update-instance-content', async (_event, payload = {}) => {
+  try {
+    const instance = getInstance(payload.instanceId)
+    if (!instance) throw new Error('No existe la instancia seleccionada.')
+    const kind = requireTrimmedString(payload.kind, 'Tipo de contenido', 32)
+    const file = requireTrimmedString(payload.file, 'Archivo', 256)
+    const items = listInstanceContent(instance.id)
+    const item = items.find(i => i.id === kind + ':' + file) ||
+      items.find(i => i.file === file && i.kind === kind)
+    if (!item) throw new Error('No existe el contenido seleccionado.')
+    if (!item.projectId) throw new Error('Este archivo fue subido manualmente, no tiene updates.')
+    const info = await getContentLatestCompatible(instance, item)
+    if (!info.hasUpdate || !info.latestVersionId) throw new Error('Ya está actualizado.')
+    const installed = await installSpecificContentVersion(instance, item, info.latestVersionId)
+    invalidateStorageCache()
+    return { ok: true, file: installed.file, version: installed.version }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+ipcMain.handle('update-all-instance-content', async (_event, payload = {}) => {
+  try {
+    const instance = getInstance(payload.instanceId)
+    if (!instance) throw new Error('No existe la instancia seleccionada.')
+    const items = listInstanceContent(instance.id).filter(i => i.projectId)
+    let updated = 0
+    const failed = []
+    for (const item of items) {
+      try {
+        const info = await getContentLatestCompatible(instance, item)
+        if (!info.hasUpdate || !info.latestVersionId) continue
+        await installSpecificContentVersion(instance, item, info.latestVersionId)
+        updated++
+      } catch (error) {
+        failed.push(item.file)
+      }
+    }
+    invalidateStorageCache()
+    return { ok: true, updated, failed }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+ipcMain.handle('set-instance-content-version', async (_event, payload = {}) => {
+  try {
+    const instance = getInstance(payload.instanceId)
+    if (!instance) throw new Error('No existe la instancia seleccionada.')
+    const kind = requireTrimmedString(payload.kind, 'Tipo de contenido', 32)
+    const file = requireTrimmedString(payload.file, 'Archivo', 256)
+    const versionId = requireTrimmedString(payload.versionId, 'Versión', 128)
+    const items = listInstanceContent(instance.id)
+    const item = items.find(i => i.id === kind + ':' + file) ||
+      items.find(i => i.file === file && i.kind === kind)
+    if (!item) throw new Error('No existe el contenido seleccionado.')
+    const installed = await installSpecificContentVersion(instance, item, versionId)
+    invalidateStorageCache()
+    return { ok: true, file: installed.file, version: installed.version }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+// Consola read-only del Centro de control: cola del launcher-log SIN filtrar
+// (el panel legacy colapsa espacios, trunca a 180 chars y topea líneas).
+// Lectura incremental por byte para polling en vivo + cola inicial acotada.
+const INSTANCE_CONSOLE_TAIL_BYTES = 256 * 1024
+const INSTANCE_CONSOLE_CHUNK_BYTES = 512 * 1024
+
+ipcMain.handle('read-instance-console', (_event, payload = {}) => {
+  try {
+    const instance = getInstance(payload.instanceId)
+    if (!instance) throw new Error('No existe la instancia seleccionada.')
+    const file = path.join(getLauncherLogsDir(instance.id), 'latest.log')
+    if (!fs.existsSync(file)) return { ok: true, exists: false, text: '', nextByte: 0, size: 0, reset: true }
+    const size = fs.statSync(file).size
+    // sizeOnly: drenar hasta EOF sin traer texto (limpiar vista al cerrar).
+    if (payload.sizeOnly) return { ok: true, exists: true, text: '', nextByte: size, size, reset: false }
+    const fromByte = Math.max(0, Math.floor(Number(payload.fromByte) || 0))
+    // Log recreado/rotado desde la última lectura: empezar de cero.
+    const reset = fromByte > size
+    const base = reset ? 0 : fromByte
+    let start = base
+    if (start === 0 && size > INSTANCE_CONSOLE_TAIL_BYTES) start = size - INSTANCE_CONSOLE_TAIL_BYTES
+    if (size - start > INSTANCE_CONSOLE_CHUNK_BYTES) start = size - INSTANCE_CONSOLE_CHUNK_BYTES
+    if (start >= size) return { ok: true, exists: true, text: '', nextByte: size, size, reset }
+    const fd = fs.openSync(file, 'r')
+    try {
+      const buf = Buffer.alloc(size - start)
+      fs.readSync(fd, buf, 0, buf.length, start)
+      let text = buf.toString('utf8')
+      // No partir una línea a la mitad al recortar por el inicio.
+      if (start > base) {
+        const nl = text.indexOf('\n')
+        text = nl >= 0 ? text.slice(nl + 1) : ''
+      }
+      return { ok: true, exists: true, text, nextByte: size, size, reset }
+    } finally {
+      fs.closeSync(fd)
+    }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
 ipcMain.handle('modrinth-search', async (_event, payload) => {
   try {
     const result = await searchModrinth(payload)
@@ -4491,10 +5878,40 @@ ipcMain.handle('curseforge-status', () => {
   }
 })
 
+ipcMain.handle('curseforge-categories', async () => {
+  try {
+    const categories = await getCurseForgeCategories()
+    return { ok: true, categories }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+ipcMain.handle('modrinth-details', async (_event, payload) => {
+  try {
+    const details = await getModrinthProjectDetails(payload)
+    return { ok: true, details }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+ipcMain.handle('curseforge-details', async (_event, payload) => {
+  try {
+    const details = await getCurseForgeProjectDetails(payload)
+    return { ok: true, details }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
 ipcMain.handle('curseforge-set-key', (_event, apiKey) => {
   try {
     const key = String(apiKey || '').trim()
-    if (!key || key.length < 10) return { ok: false, error: 'API key inválida.' }
+    // S5: las keys reales de CurseForge rondan los 60 caracteres; cota alta
+    // para no romper formatos futuros, pero acotada (va al store cifrado y
+    // al header x-api-key de cada request).
+    if (!key || key.length < 10 || key.length > 256 || /[\s\x00-\x1F\x7F]/.test(key)) return { ok: false, error: 'API key inválida.' }
     getCurseForgeStore().save(key)
     return { ok: true }
   } catch (error) {
@@ -4534,6 +5951,33 @@ ipcMain.handle('modrinth-versions', async (_event, payload) => {
   try {
     const versions = await getModrinthVersions(payload)
     return { ok: true, versions }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+ipcMain.handle('modrinth-version', async (_event, payload) => {
+  try {
+    const version = await getModrinthVersionDetails(payload)
+    return { ok: true, version }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+ipcMain.handle('curseforge-find-twin', async (_event, payload = {}) => {
+  try {
+    const twin = await getModrinthTwinProject(payload)
+    return { ok: true, ...twin }
+  } catch (error) {
+    return { ok: false, error: error.message || String(error) }
+  }
+})
+
+ipcMain.handle('identify-instance-content', async (_event, payload = {}) => {
+  try {
+    const result = await identifyInstanceContentFiles(payload.instanceId, payload.limit)
+    return { ok: true, ...result }
   } catch (error) {
     return { ok: false, error: error.message || String(error) }
   }
@@ -4779,11 +6223,22 @@ ipcMain.handle('instance-set-launch-opts', (_event, payload = {}) => {
       throw new Error('La RAM mínima no puede ser mayor que la máxima.')
     }
     const javaHome = String(payload.javaHome || '').trim()
-    if (javaHome) resolveJavaPath(javaHome)
+    let canonicalJavaHome = ''
+    if (javaHome) {
+      // Valida estructura (existe, nombre de binario, plataforma/arq).
+      const resolved = resolveJavaPath(javaHome)
+      const trust = isTrustedJavaBinary(resolved)
+      if (!trust.trusted) {
+        throw new Error('Esa ruta de Java no fue elegida con Examinar ni es un runtime gestionado. Elegila de nuevo con Examinar para autorizarla.')
+      }
+      canonicalJavaHome = trust.canonical
+    }
     instance.memoryMinMb = memoryMinMb
     instance.memoryMaxMb = memoryMaxMb
-    instance.javaHome = javaHome
-    instance.javaArgs = String(payload.javaArgs || '').slice(0, 500)
+    instance.javaHome = canonicalJavaHome
+    // S11: se persiste ya sanitizado (mismo filtro que en lanzamiento), para
+    // que el valor guardado nunca contenga vectores de agente/classpath.
+    instance.javaArgs = sanitizeCustomArgs(String(payload.javaArgs || '').split(/\s+/).map(item => item.trim()).filter(Boolean)).join(' ').slice(0, 500)
     persistCustomInstance(instance)
     return { ok: true, instance }
   } catch (error) {
@@ -5009,7 +6464,7 @@ ipcMain.handle('import-mrpack', async (event) => {
     else instances.push(instance)
     saveCustomInstances(instances)
 
-    return { ok: true, name: packName, warnings: failedDownloads.length }
+    return { ok: true, name: packName, warnings: failedDownloads.length, instanceId }
   } catch (err) {
     if (instanceDir) try { fs.rmSync(instanceDir, { recursive: true, force: true }) } catch { }
     console.error('[import-mrpack] fallo:', mrpackPath, err && err.message, err && err.stack)
@@ -5385,6 +6840,84 @@ function isHttp404Error(error) {
   return /HTTP 404\b/.test(String(error && error.message || error || ''))
 }
 
+// Verificación del instalador de Forge ANTES de ejecutarlo con spawn().
+// 1) Si el repo Maven publica sidecar `.sha1` (estándar Maven), se exige
+//    coincidencia exacta del sha1 del jar descargado; ante mismatch se borra
+//    y se aborta. 2) Sin sidecar (Forge no siempre lo publica), validación
+//    estructural obligatoria: ZIP legible con `version.json` (moderno) o
+//    `install_profile.json` parseable (legacy). Nada se ejecuta sin pasar
+//    por aquí, incluido el instalador reutilizado de caché.
+function sha1OfFile(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha1')
+    const stream = fs.createReadStream(filePath)
+    stream.on('data', chunk => hash.update(chunk))
+    stream.on('end', () => resolve(hash.digest('hex')))
+    stream.on('error', reject)
+  })
+}
+
+async function fetchMavenSha1Hex(artifactUrl) {
+  try {
+    const res = await fetch(String(artifactUrl) + '.sha1', {
+      headers: { 'User-Agent': MODRINTH_USER_AGENT, Accept: 'text/plain' }
+    })
+    if (!res.ok) return ''
+    const token = String(await res.text()).trim().split(/\s+/)[0] || ''
+    return /^[a-f0-9]{40}$/i.test(token) ? token.toLowerCase() : ''
+  } catch {
+    return ''
+  }
+}
+
+async function inspectForgeInstaller(installerPath) {
+  const [modernJson, legacyProfile] = await Promise.all([
+    readZipEntryBuffer(installerPath, 'version.json').catch(() => null),
+    readZipEntryBuffer(installerPath, 'install_profile.json').catch(() => null)
+  ])
+  if (modernJson) return { kind: 'modern' }
+  if (legacyProfile) {
+    try {
+      const profile = JSON.parse(legacyProfile.toString('utf8'))
+      if (profile && profile.versionInfo && Array.isArray(profile.versionInfo.libraries)) {
+        return { kind: 'legacy' }
+      }
+    } catch {}
+  }
+  return { kind: 'invalid' }
+}
+
+async function verifyForgeInstallerFile(installerPath, installerUrl) {
+  let stat = null
+  try {
+    stat = await fs.promises.stat(installerPath)
+  } catch {
+    throw new Error('El instalador de Forge no se descargó correctamente (archivo ausente).')
+  }
+  if (!stat.isFile() || stat.size === 0) {
+    await fs.promises.rm(installerPath, { force: true }).catch(() => {})
+    throw new Error('El instalador de Forge descargado está vacío o no es un archivo válido.')
+  }
+  const expected = installerUrl ? await fetchMavenSha1Hex(installerUrl) : ''
+  if (expected) {
+    const actual = await sha1OfFile(installerPath)
+    if (actual !== expected) {
+      await fs.promises.rm(installerPath, { force: true }).catch(() => {})
+      await fs.promises.rm(`${installerPath}.part`, { force: true }).catch(() => {})
+      throw new Error('El instalador de Forge no coincide con el sha1 publicado por el repositorio Maven. Archivo eliminado, no se ejecutó nada.')
+    }
+    writeLaunchLog('Instalador de Forge verificado contra sha1 del repositorio Maven.')
+  } else {
+    writeLaunchLog('El repositorio Maven no publicó sha1 para el instalador de Forge; se aplica validación estructural.')
+  }
+  const inspected = await inspectForgeInstaller(installerPath)
+  if (inspected.kind === 'invalid') {
+    await fs.promises.rm(installerPath, { force: true }).catch(() => {})
+    throw new Error('El instalador de Forge descargado no es un instalador válido (ZIP sin version.json ni install_profile.json usable). Archivo eliminado, no se ejecutó nada.')
+  }
+  return inspected.kind
+}
+
 // Instaladores Forge viejos (era 1.7-1.12, ej. 1.8.9-11.15.1.2318) no traen
 // `version.json` ni aceptan `--installClient` (solo GUI o --installServer).
 // En ese caso se instala de forma nativa: el `install_profile.json` ya trae
@@ -5445,14 +6978,26 @@ async function installForgeWithOfficialInstaller(instance, minecraftRoot, javaPa
 
   let installerPath = null
   let artifactVersion = ''
-  // Reutilizar instalador ya descargado de cualquiera de las variantes.
+  let installerKind = ''
+  // Reutilizar instalador ya descargado de cualquiera de las variantes, pero
+  // NUNCA a ciegas: se valida estructura antes de ejecutar (antes bastaba size>0).
   for (const candidate of artifactCandidates) {
     const candidatePath = path.join(minecraftRoot, 'libraries', 'net', 'minecraftforge', 'forge', candidate, `forge-${candidate}-installer.jar`)
     const stat = await fs.promises.stat(candidatePath).catch(() => null)
     if (stat && stat.size > 0) {
-      installerPath = candidatePath
-      artifactVersion = candidate
-      break
+      try {
+        const inspected = await inspectForgeInstaller(candidatePath)
+        if (inspected.kind === 'invalid') {
+          await fs.promises.rm(candidatePath, { force: true }).catch(() => {})
+          continue
+        }
+        installerPath = candidatePath
+        artifactVersion = candidate
+        installerKind = inspected.kind
+      } catch {
+        await fs.promises.rm(candidatePath, { force: true }).catch(() => {})
+      }
+      if (installerPath) break
     }
   }
 
@@ -5465,6 +7010,9 @@ async function installForgeWithOfficialInstaller(instance, minecraftRoot, javaPa
       for (const installerUrl of buildForgeInstallerUrls(candidate)) {
         try {
           await downloadToFile(installerUrl, candidatePath)
+          // Verificación obligatoria pre-ejecución: sha1 del repo si existe,
+          // más validación estructural. Borra y aborta ante mismatch.
+          installerKind = await verifyForgeInstallerFile(candidatePath, installerUrl)
           installerPath = candidatePath
           artifactVersion = candidate
           downloaded = true
@@ -5473,14 +7021,15 @@ async function installForgeWithOfficialInstaller(instance, minecraftRoot, javaPa
           lastError = error
           await fs.promises.rm(candidatePath, { force: true }).catch(() => {})
           await fs.promises.rm(`${candidatePath}.part`, { force: true }).catch(() => {})
+          if (/sha1|no es un instalador válido|vacío/i.test(String(error && error.message || ''))) break
           // Solo tiene sentido probar la siguiente URL/variante ante un 404.
           // Un error de red real se reintenta a nivel de runXmclTaskWithRetry.
           if (!isHttp404Error(error)) break
         }
       }
       if (downloaded) break
-      // Si el fallo no fue 404 (red, disco...), no seguir probando variantes.
-      if (lastError && !isHttp404Error(lastError)) break
+      // Si el fallo no fue 404 (red, disco...) ni verificación, no seguir probando variantes.
+      if (lastError && !isHttp404Error(lastError) && !/sha1|no es un instalador válido|vacío/i.test(String(lastError && lastError.message || ''))) break
     }
     if (!downloaded) {
       if (lastError && !isHttp404Error(lastError)) throw lastError
@@ -5496,19 +7045,18 @@ async function installForgeWithOfficialInstaller(instance, minecraftRoot, javaPa
 
   // Los instaladores viejos no soportan --installClient (mueren con
   // "UnrecognizedOptionException"). Se detectan por ausencia de version.json
-  // + presencia de install_profile.json y se instalan de forma nativa.
-  let isLegacyInstaller = false
-  try {
-    const [modernJson, legacyProfile] = await Promise.all([
-      readZipEntryBuffer(installerPath, 'version.json').catch(() => null),
-      readZipEntryBuffer(installerPath, 'install_profile.json').catch(() => null)
-    ])
-    isLegacyInstaller = !modernJson && !!legacyProfile
-  } catch {
-    isLegacyInstaller = false
+  // + presencia de install_profile.json (ya validado en verifyForgeInstallerFile
+  // o en la reutilización de caché) y se instalan de forma nativa.
+  if (!installerKind) {
+    const inspected = await inspectForgeInstaller(installerPath)
+    if (inspected.kind === 'invalid') {
+      await fs.promises.rm(installerPath, { force: true }).catch(() => {})
+      throw new Error('El instalador de Forge no es un instalador válido (ZIP sin version.json ni install_profile.json usable). Archivo eliminado, no se ejecutó nada.')
+    }
+    installerKind = inspected.kind
   }
 
-  if (isLegacyInstaller) {
+  if (installerKind === 'legacy') {
     sendLauncherStatus('progress', `Instalando Forge ${forgeVersion}...`)
     const legacyVersionId = await installLegacyForgeFromInstaller(installerPath, minecraftRoot, forgeVersion)
     const xmclCore = await getXmclCore()
@@ -6022,9 +7570,20 @@ ipcMain.handle('launch-game', async (_event, payload) => {
   let javaPath = ''
   try {
     const customJavaHome = String(payload.javaHome || '').trim()
-    javaPath = customJavaHome
-      ? resolveJavaPath(customJavaHome)
-      : await resolveLaunchJavaPath(instance.version)
+    if (customJavaHome) {
+      // S11: no basta con que la ruta "parezca" un Java (cualquier binario
+      // plantado con nombre java/javaw.exe pasa resolveJavaPath). Se exige
+      // procedencia confiable: runtime gestionado o carpeta elegida por el
+      // usuario en el diálogo nativo. Se ejecuta la ruta canónica (realpath)
+      // re-validada, cerrando swaps por symlink entre guardado y lanzamiento.
+      const trust = isTrustedJavaBinary(customJavaHome)
+      if (!trust.trusted) {
+        throw new Error('La ruta de Java no está autorizada. Elegila de nuevo con Examinar en los ajustes de la instancia (vacío = automático).')
+      }
+      javaPath = resolveJavaPath(trust.canonical)
+    } else {
+      javaPath = await resolveLaunchJavaPath(instance.version)
+    }
   } catch (error) {
     logAndSend('error', error.stack || error.message || String(error))
     flushLaunchLog()
@@ -6097,7 +7656,8 @@ ipcMain.handle('ms-login', async () => {
 
 ipcMain.handle('ms-logout', async (_event, accountId) => {
   try {
-    await withMicrosoftAccounts(async (accounts) => accounts.filter(a => a.id !== accountId))
+    const id = requireTrimmedString(accountId, 'Cuenta', 128)
+    await withMicrosoftAccounts(async (accounts) => accounts.filter(a => a.id !== id))
     return { ok: true }
   } catch (error) {
     return { ok: false, error: error.message || String(error) }
@@ -6115,7 +7675,10 @@ ipcMain.handle('ms-accounts-list', () => {
 
 ipcMain.handle('ms-set-active', async (_event, accountId) => {
   try {
-    await withMicrosoftAccounts(async (accounts) => accounts.map(a => ({ ...a, active: a.id === accountId })))
+    const id = requireTrimmedString(accountId, 'Cuenta', 128)
+    const known = loadMicrosoftAccounts().some(a => a && a.id === id)
+    if (!known) throw new Error('La cuenta seleccionada no existe.')
+    await withMicrosoftAccounts(async (accounts) => accounts.map(a => ({ ...a, active: a.id === id })))
     return { ok: true }
   } catch (error) {
     return { ok: false, error: error.message || String(error) }
@@ -6123,10 +7686,24 @@ ipcMain.handle('ms-set-active', async (_event, accountId) => {
 })
 
 ipcMain.handle('kill-minecraft', () => {
+  const stopped = requestMinecraftStop()
+  if (stopped) {
+    setTimeout(() => {
+      if (minecraftProcess === stopped) {
+        try { stopped.kill('SIGKILL') } catch {}
+      }
+    }, 5000)
+  }
+  return { ok: true }
+})
+
+// Apagado ordenado compartido por `kill-minecraft` y el cierre de la app.
+// Cancela instalaciones XMCL en curso y pide cierre graceful a la JVM.
+// Devuelve el proceso detenido o null si no había nada en marcha.
+function requestMinecraftStop() {
   inicioCancelado = true
 
   if (xmclLaunchTask) {
-
     xmclCancellationRequested = true
     try {
       xmclLaunchTask.cancel().catch(() => { })
@@ -6136,19 +7713,70 @@ ipcMain.handle('kill-minecraft', () => {
     xmclLaunchTask = null
   }
 
-  if (minecraftProcess) {
-    const processToStop = minecraftProcess
-    minecraftStopRequested = true
+  if (!minecraftProcess) return null
+  const processToStop = minecraftProcess
+  minecraftStopRequested = true
+  try {
     processToStop.kill('SIGTERM')
-    setTimeout(() => {
-      if (minecraftProcess === processToStop) {
-        processToStop.kill('SIGKILL')
-      }
-    }, 5000)
-    return { ok: true }
+  } catch {}
+  return processToStop
+}
+
+// Vacía la cola de log a disco de forma síncrona: el flush asíncrono
+// (flushLaunchLog) puede perderse si la app sale antes del callback.
+function flushLaunchLogSync() {
+  if (!currentLogFile || pendingLogLines.length === 0) return
+  const chunk = pendingLogLines.join('')
+  pendingLogLines = []
+  pendingLogBytes = 0
+  if (logFlushTimer) {
+    try { clearTimeout(logFlushTimer) } catch {}
+    logFlushTimer = null
   }
-  return { ok: true }
-})
+  try {
+    fs.appendFileSync(currentLogFile, chunk)
+  } catch {}
+}
+
+let appQuitAfterShutdown = false
+
+// Secuencia de salida: cancela tareas, espera cierre graceful de Minecraft
+// (con SIGKILL de respaldo a los 5s), vuelca logs y apaga Discord RPC.
+// Nunca rechaza: el quit debe completarse aunque algo falle.
+async function shutdownForAppQuit() {
+  const stopped = requestMinecraftStop()
+  if (stopped) {
+    await new Promise((resolve) => {
+      let settled = false
+      const finish = () => {
+        if (settled) return
+        settled = true
+        resolve()
+      }
+      try {
+        stopped.once('close', finish)
+      } catch {
+        finish()
+        return
+      }
+      setTimeout(() => {
+        try {
+          stopped.kill('SIGKILL')
+        } catch {}
+        finish()
+      }, 5000)
+    })
+    if (minecraftProcess === stopped) minecraftProcess = null
+    runningInstanceId = null
+    currentLogFile = null
+  }
+  flushLaunchLogSync()
+  try {
+    if (discordRPC && typeof discordRPC.shutdownDiscordRPC === 'function') {
+      await discordRPC.shutdownDiscordRPC()
+    }
+  } catch {}
+}
 
 ipcMain.handle('mc-status', () => {
   return {
@@ -6272,6 +7900,13 @@ ipcMain.handle('skin-apply-online', async (_event, skinUrl, model, skinBytes) =>
 })
 
 async function resolveSkinBytes(skinUrl, skinBytes) {
+  // S5/B2: skinBytes llega por IPC como array/Buffer. Medir ANTES de
+  // Buffer.from: un array gigante agotaría memoria antes de que
+  // validateSkinPng pudiera rechazarlo. El preload ya corta en 6 MiB; esta
+  // es la barrera autoritativa en main (el preload puede bypasearse).
+  if (skinBytes && skinBytes.length > MAX_SKIN_BYTES) {
+    throw new Error('La skin supera el límite de 5 MiB.')
+  }
   const bytes = validateSkinPng(skinBytes || await downloadUrlToBuffer(skinUrl))
   const image = nativeImage.createFromBuffer(bytes)
   const size = image.isEmpty() ? null : image.getSize()

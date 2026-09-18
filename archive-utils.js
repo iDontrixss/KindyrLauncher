@@ -219,6 +219,28 @@ async function extractZipEntries(archivePath, destinationRoot, options = {}) {
   return { entries: extracted, totalBytes }
 }
 
+// Lista nombres normalizados de entradas (sin extraer nada). A diferencia de
+// extractZipEntries, una entrada hostil aislada no aborta el listado: se omite
+// y sigue (clasificar no escribe nada, así que el traversal no es amenaza
+// aquí; el llamador solo busca nombres conocidos). Los symlinks tampoco
+// abortan por la misma razón. Lanza si el archivo no es un ZIP legible.
+async function listZipEntries(archivePath, { maxEntries = 20000 } = {}) {
+  const names = []
+  await withZip(archivePath, async zip => {
+    let visited = 0
+    for await (const entry of walkEntriesGenerator(zip)) {
+      if (++visited > maxEntries) throw new Error('El ZIP contiene demasiadas entradas.')
+      if (entry.fileName.endsWith('/')) continue
+      try {
+        names.push(normalizeZipPath(entry.fileName))
+      } catch {
+        continue
+      }
+    }
+  })
+  return names
+}
+
 async function writeZip(destination, configure) {
   const zip = new ZipFile()
   await configure({
@@ -252,6 +274,7 @@ async function writeZip(destination, configure) {
 
 module.exports = {
   extractZipEntries,
+  listZipEntries,
   normalizeZipPath,
   readZipEntryBuffer,
   writeZip

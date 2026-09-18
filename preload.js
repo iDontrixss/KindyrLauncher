@@ -7,6 +7,37 @@
 
 const { contextBridge, ipcRenderer } = require('electron')
 
+// S5: el preload NO revalida shapes (main es autoritativo y un preload
+// estricto rompería flujos que main tolera a propósito). Única excepción:
+// skinBytes viaja como blob binario por IPC — un array gigante agotaría
+// memoria en el transporte antes de que main pueda rechazarlo (B2). Corte
+// temprano aquí (6 MiB, por encima del límite real de 5 MiB en main para no
+// ser nunca más estricto que main).
+const MAX_PRELOAD_SKIN_BYTES = 6 * 1024 * 1024
+const MAX_PRELOAD_UPLOAD_PATHS = 50
+// Blobs en memoria pesan en el transporte (no son strings baratos): cota
+// igual a MAX_UPLOAD_FILES de main, ni uno más.
+const MAX_PRELOAD_UPLOAD_BLOBS = 20
+function capUploadPayload(payload) {
+  // S5/transporte: un array gigante de rutas costaría la serialización IPC
+  // antes de que main lo recorte a MAX_UPLOAD_FILES (20). Cota holgada aquí
+  // (50) para no ser nunca más estricta que main; main sigue siendo
+  // autoritativo y valida cada ruta.
+  if (payload && Array.isArray(payload.filePaths) && payload.filePaths.length > MAX_PRELOAD_UPLOAD_PATHS) {
+    payload = { ...payload, filePaths: payload.filePaths.slice(0, MAX_PRELOAD_UPLOAD_PATHS) }
+  }
+  if (payload && Array.isArray(payload.fileBlobs) && payload.fileBlobs.length > MAX_PRELOAD_UPLOAD_BLOBS) {
+    payload = { ...payload, fileBlobs: payload.fileBlobs.slice(0, MAX_PRELOAD_UPLOAD_BLOBS) }
+  }
+  return payload
+}
+function assertSkinBytesSize(skinBytes) {
+  if (skinBytes && typeof skinBytes.length === 'number' && skinBytes.length > MAX_PRELOAD_SKIN_BYTES) {
+    throw new Error('Skin demasiado grande para enviar al proceso principal.')
+  }
+  return skinBytes
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   updateConfirm: (accepted) => ipcRenderer.send('update-confirm', accepted)
 })
@@ -46,6 +77,15 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
     getDetails: (instanceId) => ipcRenderer.invoke('get-instance-details', instanceId),
     openTarget: (instanceId, target) => ipcRenderer.invoke('open-instance-target', instanceId, target),
     toggleMod: (instanceId, fileName) => ipcRenderer.invoke('toggle-instance-mod', instanceId, fileName),
+    toggleContent: (payload) => ipcRenderer.invoke('toggle-instance-content', payload),
+    deleteContent: (payload) => ipcRenderer.invoke('delete-instance-content', payload),
+    uploadFiles: (payload) => ipcRenderer.invoke('upload-instance-files', capUploadPayload(payload)),
+    checkUpdates: (payload) => ipcRenderer.invoke('check-content-updates', payload),
+    identifyContent: (payload) => ipcRenderer.invoke('identify-instance-content', payload),
+    updateContent: (payload) => ipcRenderer.invoke('update-instance-content', payload),
+    updateAllContent: (payload) => ipcRenderer.invoke('update-all-instance-content', payload),
+    setContentVersion: (payload) => ipcRenderer.invoke('set-instance-content-version', payload),
+    readConsole: (payload) => ipcRenderer.invoke('read-instance-console', payload),
     importMrpack: () => ipcRenderer.invoke('import-mrpack'),
     onImportProgress: (callback) => ipcRenderer.on('mrpack-progress', (_event, data) => callback(data)),
     offImportProgress: () => ipcRenderer.removeAllListeners('mrpack-progress'),
@@ -53,7 +93,9 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
   },
   modrinth: {
     search: (payload) => ipcRenderer.invoke('modrinth-search', payload),
+    details: (payload) => ipcRenderer.invoke('modrinth-details', payload),
     versions: (payload) => ipcRenderer.invoke('modrinth-versions', payload),
+    version: (payload) => ipcRenderer.invoke('modrinth-version', payload),
     install: (payload) => ipcRenderer.invoke('modrinth-install', payload),
     installLatestRelease: (payload) => ipcRenderer.invoke('modrinth-install-latest-release', payload),
     openProject: (url) => ipcRenderer.invoke('open-external-url', url),
@@ -62,11 +104,14 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
   },
   curseforge: {
     search: (payload) => ipcRenderer.invoke('curseforge-search', payload),
+    details: (payload) => ipcRenderer.invoke('curseforge-details', payload),
     versions: (payload) => ipcRenderer.invoke('curseforge-versions', payload),
     install: (payload) => ipcRenderer.invoke('curseforge-install', payload),
     installLatestRelease: (payload) => ipcRenderer.invoke('curseforge-install-latest-release', payload),
     status: () => ipcRenderer.invoke('curseforge-status'),
     setKey: (apiKey) => ipcRenderer.invoke('curseforge-set-key', apiKey),
+    categories: () => ipcRenderer.invoke('curseforge-categories'),
+    findTwin: (payload) => ipcRenderer.invoke('curseforge-find-twin', payload),
     openProject: (url) => ipcRenderer.invoke('open-external-url', url),
     getDownloadsDir: () => ipcRenderer.invoke('get-downloads-dir'),
     browseDownloadDir: (current) => ipcRenderer.invoke('browse-download-dir', { current })
@@ -156,10 +201,10 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
   },
   skins: {
     saveLocal: (skinUrl, skinName, skinBytes) =>
-      ipcRenderer.invoke('skin-save-local', skinUrl, skinName, skinBytes),
+      ipcRenderer.invoke('skin-save-local', skinUrl, skinName, assertSkinBytesSize(skinBytes)),
 
     applyOnline: (skinUrl, model, skinBytes) =>
-      ipcRenderer.invoke('skin-apply-online', skinUrl, model, skinBytes)
+      ipcRenderer.invoke('skin-apply-online', skinUrl, model, assertSkinBytesSize(skinBytes))
   }
 })
 window.addEventListener('DOMContentLoaded', () => {

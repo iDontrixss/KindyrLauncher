@@ -25,7 +25,7 @@ Según la función utilizada, la aplicación se comunica directamente con los si
 | **mc-heads.net** | Avatares y previsualización de skins | `https://mc-heads.net` |
 | **jsDelivr / skinview3d** | Librería de render 3D de skins | `https://cdn.jsdelivr.net/npm/skinview3d@3.4.1` |
 
-Estos servicios reciben la información técnica normal de una conexión (IP, User-Agent `KindyrLauncher/0.1.0-beta.1`), sin identificadores propios de Kindyr.
+Estos servicios reciben la información técnica normal de una conexión (IP, User-Agent `KindyrLauncher/0.2.0`), sin identificadores propios de Kindyr.
 
 ## 2. Paquetes npm incluidos en el build
 

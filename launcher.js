@@ -72,8 +72,6 @@ async function launchGame() {
     }
     status.textContent = 'Descargando archivos...'
     log.textContent = ''
-    clearConsole()
-    appendConsole('info', 'Iniciando ' + selectedInstance)
     const launchInstance = (typeof launcherInstances !== 'undefined' && Array.isArray(launcherInstances))
       ? launcherInstances.find(item => item.id === selectedInstance)
       : null
@@ -98,13 +96,11 @@ async function launchGame() {
       if (result.cancelled) {
         status.textContent = t('app.ready')
         log.textContent = result.error
-        appendConsole('info', result.error)
         resetPlayBtn()
         return
       }
       status.textContent = t('app.launchError')
       log.textContent = result.error.slice(0, 500)
-      appendConsole('error', result.error)
       resetPlayBtn()
     }
   } catch (error) {
@@ -112,7 +108,6 @@ async function launchGame() {
     const log = document.getElementById('log')
     if (log) log.textContent = message.slice(0, 500)
     setStatus(t('app.launchError'))
-    appendConsole('error', message)
     resetPlayBtn()
   } finally {
     launchInProgress = false
@@ -151,7 +146,13 @@ window.kindyrAPI.launcher.onStatus((event) => {
     log.textContent = ''
   }
 
-  appendConsole(event.type, event.message)
+  if ((event.type === 'starting' || event.type === 'running') && event.instanceId && typeof reviveInstanceConsole === 'function') {
+    reviveInstanceConsole(event.instanceId)
+  }
+
+  if (event.type === 'close' && event.instanceId && typeof clearInstanceConsoleFor === 'function') {
+    clearInstanceConsoleFor(event.instanceId)
+  }
 
   if (event.type === 'debug' || event.type === 'download' || event.type === 'progress') {
     log.textContent = event.message.slice(0, 500)

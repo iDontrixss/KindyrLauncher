@@ -57,6 +57,10 @@ async function loadMicrosoftAccounts() {
 
   const msAccounts = result.accounts || []
   const activeAccountId = result.accounts?.find(a => a.active)?.id
+  // S2: el id nunca se interpola en un string JS dentro de onclick
+  // (escapeHtml no protege ese contexto). Viaja en data-* (contexto HTML,
+  // donde escapeHtml sí es la herramienta correcta) y se enlaza con
+  // addEventListener sobre el valor ya parseado del dataset.
   const msHtml = msAccounts.map(account => {
     const cleanUuid = String(account.uuid || account.id || '').replace(/-/g, '')
     const hasUuid = /^[a-f0-9]{32}$/i.test(cleanUuid)
@@ -64,7 +68,7 @@ async function loadMicrosoftAccounts() {
       ? `<img src="https://mc-heads.net/avatar/${cleanUuid}/48" alt="${escapeHtml(account.name)}" style="width:100%;height:100%;object-fit:cover;image-rendering:pixelated;display:block;" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fa-brands fa-microsoft\\'></i>'">`
       : `<i class="fa-brands fa-microsoft"></i>`
     return `
-    <div class="account-item ${account.id === activeAccountId ? 'active microsoft' : ''}" onclick="setActiveMicrosoftAccount('${account.id}')">
+    <div class="account-item ${account.id === activeAccountId ? 'active microsoft' : ''}" data-ms-active="${escapeHtml(account.id)}">
       <div class="avatar" style="overflow:hidden;padding:0;">
         ${avatarHtml}
       </div>
@@ -72,13 +76,19 @@ async function loadMicrosoftAccounts() {
         <strong>${escapeHtml(account.name)}</strong>
         <span>${escapeHtml(t('account.ms.premium'))}${account.id === activeAccountId ? ' ' + escapeHtml(t('account.ms.active')) : ''}</span>
       </div>
-      <button type="button" class="icon-action" onclick="logoutMicrosoft(event, '${account.id}')" title="${escapeHtml(t('account.logout'))}">
+      <button type="button" class="icon-action" data-ms-logout="${escapeHtml(account.id)}" title="${escapeHtml(t('account.logout'))}">
         <i class="fa-solid fa-right-from-bracket"></i>
       </button>
     </div>
   `}).join('')
 
   list.innerHTML = msHtml || '<div style="color:#666;font-size:13px;">' + escapeHtml(t('account.ms.none')) + '</div>'
+  list.querySelectorAll('[data-ms-active]').forEach(el => {
+    el.addEventListener('click', () => setActiveMicrosoftAccount(el.dataset.msActive))
+  })
+  list.querySelectorAll('[data-ms-logout]').forEach(btn => {
+    btn.addEventListener('click', (event) => logoutMicrosoft(event, btn.dataset.msLogout))
+  })
   const active = result.accounts?.find(a => a.id === activeAccountId)
   if (active && settings && settings.accountType === 'microsoft' && settings.username === active.name) {
     if (typeof hydratePremiumAvatars === 'function') hydratePremiumAvatars()

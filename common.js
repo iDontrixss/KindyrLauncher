@@ -61,15 +61,13 @@ const I18N = {
     'settings.cache.title': 'Caché del launcher',
     'settings.cache.desc': 'Borra metadatos en caché y archivos temporales de descarga de Java.',
     'settings.cache.purge': 'Vaciar caché',
-    'settings.beta.title': 'Funciones beta',
-    'settings.beta.desc': 'Funciones experimentales que pueden cambiar en futuras versiones.',
-    'settings.beta.eager': 'Preparar instancias al crear',
-    'settings.beta.eager.desc': 'Descarga Java y Minecraft al crear la instancia. El primer inicio será instantáneo. Usa más espacio y red al crear.',
-    'settings.beta.enabled': 'Activado',
-    'settings.beta.disabled': 'Desactivado',
-    'settings.beta.preparing': 'Preparando {name}…',
-    'settings.beta.prepared': 'Instancia lista: {name}',
-    'settings.beta.failed': 'No se pudo preparar {name}',
+    'settings.prepare.title': 'Preparar instancias',
+    'settings.prepare.desc': 'Descarga Java y Minecraft al crear o instalar. El primer inicio será instantáneo. Usa más espacio y red.',
+    'settings.prepare.on': 'Activado',
+    'settings.prepare.off': 'Desactivado',
+    'settings.prepare.preparing': 'Preparando {name}…',
+    'settings.prepare.prepared': 'Instancia lista: {name}',
+    'settings.prepare.failed': 'No se pudo preparar {name}',
     'settings.discord.title': 'Discord Rich Presence',
     'settings.discord.desc': 'Muestra en tu perfil de Discord que estás usando Kindyr Launcher y a qué estás jugando. Solo se ve mientras tengas Discord abierto.',
     'settings.discord.enabled': 'Activado',
@@ -161,9 +159,157 @@ const I18N = {
     'discover.filters': 'Filtros',
     'discover.reset': 'Restablecer',
     'discover.projectType': 'Tipo de proyecto',
+    'discover.contentType': 'Tipo de contenido',
     'discover.minecraftVersion': 'Versión de Minecraft',
     'discover.anyVersion': 'Todas las versiones',
     'discover.loader': 'Loader',
+    'discover.modLoaders': 'Cargadores de mods',
+    'discover.categories': 'Categorías',
+    'discover.info': 'Información',
+    'project.tab.description': 'Descripción',
+    'project.tab.versions': 'Versiones',
+    'project.tab.gallery': 'Galería',
+    'project.loadingDetails': 'Cargando detalle...',
+    'project.detailsFailed': 'No se pudo cargar el detalle.',
+    'project.noDescription': 'Este proyecto no tiene descripción.',
+    'project.noVersions': 'Sin versiones.',
+    'project.noGallery': 'Sin imágenes.',
+    'project.close': 'Cerrar detalle',
+    'project.col.status': 'Estado',
+    'project.versionType.release': 'Release',
+    'project.versionType.beta': 'Beta',
+    'project.versionType.alpha': 'Alpha',
+    'project.info.creator': 'Creador',
+    'project.info.license': 'Licencia',
+    'project.info.clientSide': 'Lado cliente',
+    'project.info.serverSide': 'Lado servidor',
+    'project.info.gameVersions': 'Versiones de juego',
+    'project.info.compatibility': 'Compatibilidad',
+    'project.info.tags': 'Tags',
+    'project.info.creators': 'Creadores',
+    'project.role.owner': 'Propietario',
+    'project.role.admin': 'Administrador',
+    'project.role.moderator': 'Moderador',
+    'project.role.member': 'Miembro',
+    'project.role.author': 'Autor',
+    'project.info.published': 'Publicado',
+    'project.info.updated': 'Actualizado',
+    'project.info.links': 'Enlaces',
+    'project.info.required': 'Requerido',
+    'project.info.optional': 'Opcional',
+    'project.info.unsupported': 'No soportado',
+    'project.link.discord': 'Discord',
+    'project.link.source': 'Código',
+    'project.link.issues': 'Problemas',
+    'project.link.wiki': 'Wiki',
+    'project.link.website': 'Sitio',
+    'cat.adventure': 'Aventura',
+    'cat.adventure-and-rpg': 'Aventura y RPG',
+    'cat.adventure-rpg': 'Aventura y RPG',
+    'cat.animated': 'Animados',
+    'cat.admin-tools': 'Administración',
+    'cat.anti-griefing-tools': 'Anti-griefing',
+    'cat.atmosphere': 'Atmósfera',
+    'cat.audio': 'Audio',
+    'cat.technology-automation': 'Automatización',
+    'cat.blocks': 'Bloques',
+    'cat.bug-fixes': 'Corrección de errores',
+    'cat.cartoon': 'Caricaturescos',
+    'cat.challenging': 'Desafiante',
+    'cat.chat-related': 'Chat',
+    'cat.colored-lighting': 'Iluminación de colores',
+    'cat.combat': 'Combate',
+    'cat.combat-pvp': 'Combate / PvP',
+    'cat.cosmetic': 'Cosméticos',
+    'cat.creativemode': 'Modo creativo',
+    'cat.cursed': 'Malditos',
+    'cat.decoration': 'Decoración',
+    'cat.developer-tools': 'Desarrollo',
+    'cat.economy': 'Economía',
+    'cat.education': 'Educación',
+    'cat.technology-energy': 'Energía',
+    'cat.entities': 'Entidades',
+    'cat.environment': 'Ambiente',
+    'cat.equipment': 'Equipamiento',
+    'cat.expert': 'Experto',
+    'cat.exploration': 'Exploración',
+    'cat.extra-large': 'Extragrandes',
+    'cat.fantasy': 'Fantasía',
+    'cat.technology-farming': 'Agricultura',
+    'cat.fixes': 'Correcciones',
+    'cat.foliage': 'Vegetación',
+    'cat.font-packs': 'Fuentes',
+    'cat.fonts': 'Fuentes',
+    'cat.food': 'Comida',
+    'cat.mc-food': 'Comida',
+    'cat.fun': 'Diversión',
+    'cat.game-mechanics': 'Mecánicas de juego',
+    'cat.general': 'Generales',
+    'cat.technology-genetics': 'Genética',
+    'cat.gui': 'Interfaz',
+    'cat.high': 'Alto',
+    'cat.horror': 'Terror',
+    'cat.informational': 'Información',
+    'cat.items': 'Objetos',
+    'cat.library': 'Librerías',
+    'cat.library-api': 'API y librerías',
+    'cat.lightweight': 'Ligeros',
+    'cat.locale': 'Idiomas',
+    'cat.low': 'Bajo',
+    'cat.magic': 'Magia',
+    'cat.management': 'Gestión',
+    'cat.map-based': 'Basados en mapas',
+    'cat.map-information': 'Mapas e información',
+    'cat.mc-miscellaneous': 'Misceláneos',
+    'cat.mechanics': 'Mecánicas',
+    'cat.medieval': 'Medievales',
+    'cat.medium': 'Medio',
+    'cat.mini-game': 'Minijuegos',
+    'cat.minigame': 'Minijuegos',
+    'cat.miscellaneous': 'Misceláneos',
+    'cat.mod-support': 'Compatibles con mods',
+    'cat.modern': 'Modernos',
+    'cat.models': 'Modelos',
+    'cat.modded': 'Para mods',
+    'cat.multiplayer': 'Multijugador',
+    'cat.optimization': 'Optimización',
+    'cat.photo-realistic': 'Fotorrealistas',
+    'cat.technology-player-transport': 'Transporte de jugadores',
+    'cat.technology-processing': 'Procesamiento',
+    'cat.quests': 'Misiones',
+    'cat.realistic': 'Realistas',
+    'cat.reflections': 'Reflejos',
+    'cat.role-playing': 'Rol',
+    'cat.sci-fi': 'Ciencia ficción',
+    'cat.screenshot': 'Capturas',
+    'cat.semi-realistic': 'Semirrealistas',
+    'cat.server-utility': 'Utilidades de servidor',
+    'cat.shadows': 'Sombras',
+    'cat.simplistic': 'Simples',
+    'cat.small-light': 'Pequeños / Ligeros',
+    'cat.social': 'Social',
+    'cat.storage': 'Almacenamiento',
+    'cat.tech': 'Tecnología',
+    'cat.technology': 'Tecnología',
+    'cat.teleportation': 'Teletransporte',
+    'cat.themed': 'Temáticos',
+    'cat.traditional': 'Tradicionales',
+    'cat.transportation': 'Transporte',
+    'cat.technology-item-fluid-energy-transport': 'Transporte de objetos, fluidos y energía',
+    'cat.tweaks': 'Ajustes',
+    'cat.twitch-integration': 'Integración con Twitch',
+    'cat.utility': 'Utilidades',
+    'cat.utility-qol': 'Utilidad y calidad de vida',
+    'cat.vanilla-like': 'Tipo vainilla',
+    'cat.website-administration': 'Administración web',
+    'cat.world-biomes': 'Biomas',
+    'cat.world-dimensions': 'Dimensiones',
+    'cat.world-editing-and-management': 'Edición de mundos',
+    'cat.world-generators': 'Generadores de mundos',
+    'cat.world-ores-resources': 'Minerales y recursos',
+    'cat.world-structures': 'Estructuras',
+    'cat.world-gen': 'Generación de mundos',
+    'cat.worldgen': 'Generación de mundos',
     'discover.anyLoader': 'Cualquier loader',
     'discover.autoLoader': 'Automático compatible',
     'discover.sortBy': 'Ordenar por',
@@ -177,6 +323,21 @@ const I18N = {
     'discover.installDirectError': 'No se pudo instalar el proyecto en esta instancia.',
     'discover.installedDirect': 'Instalación completada',
     'discover.installedDirectMessage': '{project} ({version}) se instaló en {instance}.',
+    'discover.installed': 'Instalado',
+    'curseforge.noDistribution': 'Este proyecto no permite descargas automáticas: el autor solo habilitó la web/app de CurseForge. Descargalo manualmente y usá Subir archivos en el Centro de control.',
+    'curseforge.webOnly': 'Solo web',
+    'curseforge.openSite': 'Abrir en CurseForge',
+    'compat.installAnyway': 'Instalar igual',
+    'compat.forceTag': 'Solo otras versiones',
+    'compat.warnTitle': 'Instalar sin compatibilidad directa',
+    'compat.warnMessage': '“{title}” solo declara compatibilidad hasta {packVersions} y tu instancia es {instanceVersion}. Se instalará la más actual ({packVersion}), que puede fallar o tener bugs visuales.',
+    'compat.confirmAnyway': 'Instalar de todos modos',
+    'twin.title': 'Instalar desde Modrinth',
+    'twin.message': '“{title}” bloqueó las descargas por API en CurseForge, pero {author} lo publica en Modrinth como “{twin}”. ¿Instalar la versión de Modrinth en tu instancia?',
+    'twin.confirm': 'Instalar desde Modrinth',
+    'twin.finding': 'Buscando en Modrinth...',
+    'twin.findButton': 'Buscar en Modrinth',
+    'twin.fromModrinth': 'Se instalará desde Modrinth (mismo proyecto, mismo autor, verificado).',
     'discover.search': 'Buscar en Modrinth...',
     'discover.version': 'Versión, ej: 1.21.4',
     'discover.relevance': 'Relevancia',
@@ -272,6 +433,7 @@ const I18N = {
     'time.days': 'Hace {count} días',
     'time.weeks': 'Hace {count} semanas',
     'time.months': 'Hace {count} meses',
+    'time.years': 'Hace {count} años',
     'instance.label': 'Instalación',
     'instance.title.fallback': 'Instancia',
     'instance.isolatedFolder': 'carpeta aislada',
@@ -294,8 +456,6 @@ const I18N = {
     'instance.openMods': 'Abrir mods',
     'instance.minecraftLogs': 'Logs de Minecraft',
     'instance.launcherLogs': 'Logs del launcher',
-    'instance.console': 'Consola de inicio',
-    'instance.clear': 'Limpiar',
     'instance.selectedStatus': 'Instancia: {name}',
     'instance.folderOpened': 'Carpeta de instancia abierta',
     'instance.folderOpen': 'Carpeta abierta',
@@ -307,6 +467,74 @@ const I18N = {
     'instance.disabled': 'Desactivado',
     'instance.enable': 'Activar',
     'instance.disable': 'Desactivar',
+    'instance.additionalContent': 'Contenido adicional',
+    'instance.searchContent': 'Buscar {count} proyectos...',
+    'instance.uploadFiles': 'Subir archivos',
+    'instance.browseContent': 'Explorar contenido',
+    'instance.filter': 'Filtro',
+    'instance.filterAll': 'Todos',
+    'instance.filterMods': 'Mods',
+    'instance.filterResourcepacks': 'Resource Packs',
+    'instance.filterShaders': 'Shaders',
+    'instance.filterDatapacks': 'Datapacks',
+    'instance.updatesOnly': 'Solo updates',
+    'instance.updateAll': 'Actualizar todo',
+    'instance.colProject': 'Proyecto',
+    'instance.colVersion': 'Versión',
+    'instance.colActions': 'Acciones',
+    'instance.selectAll': 'Seleccionar todo',
+    'instance.selectedCount': '{count} seleccionados',
+    'instance.uploaded': 'Subido',
+    'instance.uploadedHint': 'Archivo subido a mano: sin proyecto vinculado',
+    'instance.unknownVersion': 'Desconocida',
+    'instance.seeVersions': 'Ver todas las versiones del proyecto',
+    'instance.updateAvailable': 'Hay update compatible: {version}. Clic para actualizar',
+    'instance.versionsHint': 'Elegí qué versión instalar (compatible con tu instancia primero).',
+    'instance.viewOnModrinth': 'Ver en Modrinth',
+    'instance.copyName': 'Copiar nombre de archivo',
+    'instance.deleteConfirm': '¿Eliminar {name} de la instancia?',
+    'instance.deleteBulkConfirm': '¿Eliminar {count} archivos de la instancia?',
+    'instance.deleted': 'Contenido eliminado',
+    'instance.uploading': 'Eligiendo archivos...',
+    'instance.uploadedOk': '{count} archivo(s) subidos',
+    'instance.uploadSkipped': '({count} omitidos: tipo/tamaño no permitido o ya existen)',
+    'instance.uploadIsModpack': '“{file}” es un modpack completo: instalalo desde Descubrir en vez de subirlo suelto',
+    'instance.uploadSkipType': '“{file}” no es un formato válido para subir (.jar/.zip/.mrpack)',
+    'instance.uploadSkipTooLarge': '“{file}” supera el tamaño máximo (2 GiB)',
+    'instance.uploadSkipUnknown': '“{file}” no se reconoció como mod, resource pack, shader o datapack',
+    'instance.uploadSkipUnreadable': '“{file}” no se pudo leer como archivo ZIP',
+    'instance.dropHint': 'Arrastrá .jar, .zip o .mrpack aquí para subirlos',
+    'instance.dropEmpty': 'No se pudo leer ningún archivo del arrastre',
+    'instance.dropFolder': 'Las carpetas no se suben: arrastrá los archivos sueltos',
+    'instance.updating': 'Actualizando {name}...',
+    'instance.updatedOk': 'Actualizado: {name}',
+    'instance.updateError': 'No se pudo actualizar',
+    'instance.updatingAll': 'Actualizando {count} proyecto(s)...',
+    'instance.updatedAll': '{count} proyecto(s) actualizados',
+    'instance.noUpdates': 'Todo está actualizado',
+    'instance.updatesFound': '{count} update(s) compatibles',
+    'instance.sortBy': 'Ordenar',
+    'instance.sortName': 'Nombre (A-Z)',
+    'instance.sortRecent': 'Recientes',
+    'instance.sortSize': 'Tamaño',
+    'instance.updateVersion': 'Actualizar versión',
+    'instance.searchVersion': 'Buscar versión...',
+    'instance.showIncompatible': 'Mostrar incompatibles',
+    'instance.hideIncompatible': 'Ocultar incompatibles',
+    'instance.updateTo': 'Actualizar a {version}',
+    'instance.updateWarning': 'Actualizar puede romper tu instancia. Revisá los changelogs y hacé backup primero.',
+    'instance.noChangelog': 'Sin changelog para esta versión.',
+    'instance.changelogTitle': 'Changelog',
+    'instance.current': 'Actual',
+    'instance.consoleTab': 'Consola',
+    'instance.consoleIdle': '¡Inicia tu instancia en la parte superior derecha para empezar\na recibir registros en vivo!',
+    'instance.console.live': 'En vivo',
+    'instance.console.stopped': 'Detenida',
+    'instance.console.lines': '{count} líneas',
+    'instance.console.follow': 'Seguir',
+    'instance.console.copy': 'Copiar',
+    'instance.console.copied': 'Consola copiada',
+    'instance.console.clear': 'Limpiar',
     'instance.updatedAt': 'Actualizado: {date}',
     'instance.world': 'Mundo',
     'instance.folder.root': 'Instancia',
@@ -388,7 +616,6 @@ const I18N = {
     'install.availableVersions': '{count} versión(es) disponibles.',
     'install.compatibleFound': '{count} versión(es) compatibles encontradas.',
     'install.pickVersion': 'Elegí una versión compatible primero',
-    'install.working': 'Trabajando... si es modpack puede tardar un toque.',
     'install.done': 'Listo: {path}',
     'install.downloaded': 'Descargado en Descargas',
     'install.installedLauncher': 'Instalado en el launcher',
@@ -591,15 +818,13 @@ const I18N = {
     'settings.cache.title': 'Launcher cache',
     'settings.cache.desc': 'Clears cached metadata and temporary Java download files.',
     'settings.cache.purge': 'Purge cache',
-    'settings.beta.title': 'Beta features',
-    'settings.beta.desc': 'Experimental features that may change in future versions.',
-    'settings.beta.eager': 'Prepare instances on create',
-    'settings.beta.eager.desc': 'Download Java and Minecraft when creating the instance. First launch will be instant. Uses more space and network at creation.',
-    'settings.beta.enabled': 'Enabled',
-    'settings.beta.disabled': 'Disabled',
-    'settings.beta.preparing': 'Preparing {name}…',
-    'settings.beta.prepared': 'Instance ready: {name}',
-    'settings.beta.failed': 'Could not prepare {name}',
+    'settings.prepare.title': 'Prepare instances',
+    'settings.prepare.desc': 'Download Java and Minecraft when creating or installing. First launch will be instant. Uses more space and network.',
+    'settings.prepare.on': 'Enabled',
+    'settings.prepare.off': 'Disabled',
+    'settings.prepare.preparing': 'Preparing {name}…',
+    'settings.prepare.prepared': 'Instance ready: {name}',
+    'settings.prepare.failed': 'Could not prepare {name}',
     'settings.discord.title': 'Discord Rich Presence',
     'settings.discord.desc': 'Shows on your Discord profile that you are using Kindyr Launcher and what you are playing. Only visible while Discord is open.',
     'settings.discord.enabled': 'Enabled',
@@ -647,9 +872,45 @@ const I18N = {
     'discover.filters': 'Filters',
     'discover.reset': 'Reset',
     'discover.projectType': 'Project type',
+    'discover.contentType': 'Content type',
     'discover.minecraftVersion': 'Minecraft version',
     'discover.anyVersion': 'All versions',
     'discover.loader': 'Loader',
+    'discover.modLoaders': 'Mod loaders',
+    'discover.categories': 'Categories',
+    'discover.info': 'Information',
+    'project.tab.description': 'Description',
+    'project.tab.versions': 'Versions',
+    'project.tab.gallery': 'Gallery',
+    'project.loadingDetails': 'Loading details...',
+    'project.detailsFailed': 'Could not load details.',
+    'project.noDescription': 'This project has no description.',
+    'project.noVersions': 'No versions.',
+    'project.noGallery': 'No images.',
+    'project.close': 'Close details',
+    'project.col.status': 'Status',
+    'project.versionType.release': 'Release',
+    'project.versionType.beta': 'Beta',
+    'project.versionType.alpha': 'Alpha',
+    'project.info.creator': 'Creator',
+    'project.info.license': 'License',
+    'project.info.clientSide': 'Client side',
+    'project.info.serverSide': 'Server side',
+    'project.info.gameVersions': 'Game versions',
+    'project.info.compatibility': 'Compatibility',
+    'project.info.tags': 'Tags',
+    'project.info.creators': 'Creators',
+    'project.info.published': 'Published',
+    'project.info.updated': 'Updated',
+    'project.info.links': 'Links',
+    'project.info.required': 'Required',
+    'project.info.optional': 'Optional',
+    'project.info.unsupported': 'Unsupported',
+    'project.link.discord': 'Discord',
+    'project.link.source': 'Source',
+    'project.link.issues': 'Issues',
+    'project.link.wiki': 'Wiki',
+    'project.link.website': 'Website',
     'discover.anyLoader': 'Any loader',
     'discover.autoLoader': 'Automatic compatible loader',
     'discover.sortBy': 'Sort by',
@@ -663,6 +924,21 @@ const I18N = {
     'discover.installDirectError': 'Could not install the project into this instance.',
     'discover.installedDirect': 'Installation complete',
     'discover.installedDirectMessage': '{project} ({version}) was installed in {instance}.',
+    'discover.installed': 'Installed',
+    'curseforge.noDistribution': 'This project disallows automatic downloads: the author only enabled the CurseForge website/app. Download it manually and use Upload files in the Control Center.',
+    'curseforge.webOnly': 'Web only',
+    'curseforge.openSite': 'Open on CurseForge',
+    'compat.installAnyway': 'Install anyway',
+    'compat.forceTag': 'Only other versions',
+    'compat.warnTitle': 'Install without direct compatibility',
+    'compat.warnMessage': '"{title}" only declares compatibility up to {packVersions} and your instance is {instanceVersion}. The newest ({packVersion}) will be installed, which may fail or show visual bugs.',
+    'compat.confirmAnyway': 'Install anyway',
+    'twin.title': 'Install from Modrinth',
+    'twin.message': '"{title}" blocked API downloads on CurseForge, but {author} publishes it on Modrinth as "{twin}". Install the Modrinth version into your instance?',
+    'twin.confirm': 'Install from Modrinth',
+    'twin.finding': 'Looking up on Modrinth...',
+    'twin.findButton': 'Find on Modrinth',
+    'twin.fromModrinth': 'Will install from Modrinth (same project, same author, verified).',
     'discover.search': 'Search on Modrinth...',
     'discover.version': 'Version, e.g: 1.21.4',
     'discover.relevance': 'Relevance',
@@ -758,6 +1034,7 @@ const I18N = {
     'time.days': '{count} days ago',
     'time.weeks': '{count} weeks ago',
     'time.months': '{count} months ago',
+    'time.years': '{count} years ago',
     'instance.label': 'Installation',
     'instance.title.fallback': 'Instance',
     'instance.isolatedFolder': 'isolated folder',
@@ -780,8 +1057,6 @@ const I18N = {
     'instance.openMods': 'Open mods',
     'instance.minecraftLogs': 'Minecraft logs',
     'instance.launcherLogs': 'Launcher logs',
-    'instance.console': 'Launch console',
-    'instance.clear': 'Clear',
     'instance.selectedStatus': 'Instance: {name}',
     'instance.folderOpened': 'Instance folder opened',
     'instance.folderOpen': 'Folder opened',
@@ -793,6 +1068,74 @@ const I18N = {
     'instance.disabled': 'Disabled',
     'instance.enable': 'Enable',
     'instance.disable': 'Disable',
+    'instance.additionalContent': 'Additional content',
+    'instance.searchContent': 'Search {count} projects...',
+    'instance.uploadFiles': 'Upload files',
+    'instance.browseContent': 'Browse content',
+    'instance.filter': 'Filter',
+    'instance.filterAll': 'All',
+    'instance.filterMods': 'Mods',
+    'instance.filterResourcepacks': 'Resource Packs',
+    'instance.filterShaders': 'Shaders',
+    'instance.filterDatapacks': 'Datapacks',
+    'instance.updatesOnly': 'Updates only',
+    'instance.updateAll': 'Update all',
+    'instance.colProject': 'Project',
+    'instance.colVersion': 'Version',
+    'instance.colActions': 'Actions',
+    'instance.selectAll': 'Select all',
+    'instance.selectedCount': '{count} selected',
+    'instance.uploaded': 'Uploaded',
+    'instance.uploadedHint': 'Manually uploaded file: no linked project',
+    'instance.unknownVersion': 'Unknown',
+    'instance.seeVersions': 'See all versions of this project',
+    'instance.updateAvailable': 'Compatible update available: {version}. Click to update',
+    'instance.versionsHint': 'Choose which version to install (compatible with your instance first).',
+    'instance.viewOnModrinth': 'View on Modrinth',
+    'instance.copyName': 'Copy file name',
+    'instance.deleteConfirm': 'Delete {name} from the instance?',
+    'instance.deleteBulkConfirm': 'Delete {count} files from the instance?',
+    'instance.deleted': 'Content deleted',
+    'instance.uploading': 'Choosing files...',
+    'instance.uploadedOk': '{count} file(s) uploaded',
+    'instance.uploadSkipped': '({count} skipped: disallowed type/size or already present)',
+    'instance.uploadIsModpack': '“{file}” is a full modpack: install it from Discover instead of uploading it loose',
+    'instance.uploadSkipType': '“{file}” is not a valid format to upload (.jar/.zip/.mrpack)',
+    'instance.uploadSkipTooLarge': '“{file}” exceeds the maximum size (2 GiB)',
+    'instance.uploadSkipUnknown': '“{file}” was not recognized as a mod, resource pack, shader or datapack',
+    'instance.uploadSkipUnreadable': '“{file}” could not be read as a ZIP file',
+    'instance.dropHint': 'Drag .jar, .zip or .mrpack files here to upload',
+    'instance.dropEmpty': 'Could not read any file from the drop',
+    'instance.dropFolder': 'Folders cannot be uploaded: drag the loose files instead',
+    'instance.updating': 'Updating {name}...',
+    'instance.updatedOk': 'Updated: {name}',
+    'instance.updateError': 'Could not update',
+    'instance.updatingAll': 'Updating {count} project(s)...',
+    'instance.updatedAll': '{count} project(s) updated',
+    'instance.noUpdates': 'Everything is up to date',
+    'instance.updatesFound': '{count} compatible update(s)',
+    'instance.sortBy': 'Sort',
+    'instance.sortName': 'Name (A-Z)',
+    'instance.sortRecent': 'Recent',
+    'instance.sortSize': 'Size',
+    'instance.updateVersion': 'Update version',
+    'instance.searchVersion': 'Search version...',
+    'instance.showIncompatible': 'Show incompatible',
+    'instance.hideIncompatible': 'Hide incompatible',
+    'instance.updateTo': 'Update to {version}',
+    'instance.updateWarning': 'Updating can break your instance. Review version changelogs and back up first.',
+    'instance.noChangelog': 'No changelog for this version.',
+    'instance.changelogTitle': 'Changelog',
+    'instance.current': 'Current',
+    'instance.consoleTab': 'Console',
+    'instance.consoleIdle': 'Start your instance in the top right to start receiving live\nlogs!',
+    'instance.console.live': 'Live',
+    'instance.console.stopped': 'Stopped',
+    'instance.console.lines': '{count} lines',
+    'instance.console.follow': 'Follow',
+    'instance.console.copy': 'Copy',
+    'instance.console.copied': 'Console copied',
+    'instance.console.clear': 'Clear',
     'instance.updatedAt': 'Updated: {date}',
     'instance.world': 'World',
     'instance.folder.root': 'Instance',
@@ -874,7 +1217,6 @@ const I18N = {
     'install.availableVersions': '{count} version(s) available.',
     'install.compatibleFound': '{count} compatible version(s) found.',
     'install.pickVersion': 'Choose a compatible version first',
-    'install.working': 'Working... modpacks can take a bit.',
     'install.done': 'Done: {path}',
     'install.downloaded': 'Downloaded to Downloads',
     'install.installedLauncher': 'Installed in the launcher',
@@ -995,27 +1337,10 @@ let settings = {
   backgroundImage: '',
   javaArgs: '',
   maxConcurrentDownloads: 6,
-  eagerPrepareOnCreate: false,
+  eagerPrepareOnCreate: true,
   discordRPC: true
 }
 let accounts = []
-const consoleLines = []
-let pendingConsoleLines = []
-let pendingConsoleBytes = 0
-let consoleBytes = 0
-let droppedConsoleLines = 0
-let consoleFlushTimer = null
-let consolePanelVisible = false
-const maxConsoleLines = 120
-const maxConsoleBytes = 32 * 1024
-const maxPendingConsoleLines = 40
-const maxPendingConsoleBytes = 8 * 1024
-const consoleDropPrefix = '[UI] '
-const consoleTextEncoder = new TextEncoder()
-
-function getConsoleLineBytes(line) {
-  return consoleTextEncoder.encode(line).length
-}
 let activeInstanceTab = 'content'
 let launcherInstances = []
 const RECENT_INSTANCES_KEY = 'kindyr-recent-instances'
@@ -1465,7 +1790,8 @@ function formatRelativeTime(value) {
   const weeks = Math.floor(days / 7)
   if (weeks < 8) return t('time.weeks', { count: weeks })
   const months = Math.floor(days / 30)
-  return t('time.months', { count: Math.max(1, months) })
+  if (months < 24) return t('time.months', { count: Math.max(1, months) })
+  return t('time.years', { count: Math.max(1, Math.floor(days / 365)) })
 }
 
 function setStatus(message) {
@@ -1501,79 +1827,6 @@ function loadSidebarState() {
   if (!sidebar) return
   const collapsed = localStorage.getItem('kindyr-sidebar-collapsed') === '1'
   sidebar.classList.toggle('collapsed', collapsed)
-}
-
-function appendConsole(type, message) {
-  if (!consolePanelVisible) {
-    const panel = document.getElementById('console-panel')
-    if (panel) panel.classList.add('active')
-    consolePanelVisible = true
-  }
-
-  const prefix = type.toUpperCase().padEnd(8, ' ')
-  const cleanMessage = String(message).replace(/\s+/g, ' ').slice(0, 180)
-  const line = `[${new Date().toLocaleTimeString()}] ${prefix} ${cleanMessage}`
-  const lineBytes = getConsoleLineBytes(line)
-  pendingConsoleLines.push(line)
-  pendingConsoleBytes += lineBytes
-
-  while (pendingConsoleLines.length > maxPendingConsoleLines || pendingConsoleBytes > maxPendingConsoleBytes) {
-    const dropped = pendingConsoleLines.shift()
-    pendingConsoleBytes -= getConsoleLineBytes(dropped)
-    droppedConsoleLines++
-  }
-
-  if (consoleFlushTimer) return
-  consoleFlushTimer = setTimeout(flushConsole, 250)
-}
-
-function flushConsole() {
-  const output = document.getElementById('console-output')
-  if (!output) {
-    pendingConsoleLines = []
-    pendingConsoleBytes = 0
-    consoleFlushTimer = null
-    return
-  }
-  consoleLines.push(...pendingConsoleLines)
-  consoleBytes += pendingConsoleBytes
-  pendingConsoleLines = []
-  pendingConsoleBytes = 0
-  while (consoleLines.length > maxConsoleLines || consoleBytes > maxConsoleBytes) {
-    const dropped = consoleLines.shift()
-    consoleBytes -= getConsoleLineBytes(dropped)
-    droppedConsoleLines++
-  }
-  if (droppedConsoleLines > 0) {
-    const summary = `${consoleDropPrefix}Se descartaron ${droppedConsoleLines} líneas de consola para mantener el límite de memoria.`
-    const previous = consoleLines.findIndex(line => line.startsWith(consoleDropPrefix))
-    if (previous >= 0) {
-      consoleBytes -= getConsoleLineBytes(consoleLines[previous])
-      consoleLines[previous] = summary
-      consoleBytes += getConsoleLineBytes(summary)
-    } else {
-      consoleLines.push(summary)
-      consoleBytes += getConsoleLineBytes(summary)
-    }
-    droppedConsoleLines = 0
-    while (consoleLines.length > maxConsoleLines || consoleBytes > maxConsoleBytes) {
-      const dropped = consoleLines.shift()
-      consoleBytes -= getConsoleLineBytes(dropped)
-    }
-  }
-  output.textContent = consoleLines.join('\n')
-  output.scrollTop = output.scrollHeight
-  consoleFlushTimer = null
-}
-
-function clearConsole() {
-  consoleLines.length = 0
-  pendingConsoleLines = []
-  pendingConsoleBytes = 0
-  consoleBytes = 0
-  droppedConsoleLines = 0
-  const output = document.getElementById('console-output')
-  if (output) output.textContent = ''
 }
 
 function closeWindow() { window.kindyrAPI.window.close() }
@@ -1628,6 +1881,8 @@ function ensureAccount(name) {
 function renderAccounts() {
   const list = document.getElementById('account-list')
   if (!list) return
+  // S2: igual que en accounts.js — el nombre nunca se interpola en un string
+  // JS dentro de onclick. Viaja en data-* y se enlaza con addEventListener.
   list.innerHTML = accounts
     .filter(a => a.type === 'offline')
     .map(a => {
@@ -1641,12 +1896,15 @@ function renderAccounts() {
             <strong>${escapeHtml(a.name)}</strong>
             <span>${escapeHtml(t('account.mode.offline'))}${isActive ? ' ' + t('account.offline.active') : ''}</span>
           </div>
-          <button type="button" class="icon-action" onclick="deleteOfflineAccount(event, '${escapeHtml(a.name)}')" title="${escapeHtml(t('account.delete'))}">
+          <button type="button" class="icon-action" data-offline-delete="${escapeHtml(a.name)}" title="${escapeHtml(t('account.delete'))}">
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>
       `
     }).join('') || '<div style="color:#666;font-size:13px;">' + escapeHtml(t('account.none.offline')) + '</div>'
+  list.querySelectorAll('[data-offline-delete]').forEach(btn => {
+    btn.addEventListener('click', (event) => deleteOfflineAccount(event, btn.dataset.offlineDelete))
+  })
 }
 function getInitials(name) {
   return isValidUsername(name) ? name.slice(0, 2).toUpperCase() : '--'
@@ -1848,10 +2106,10 @@ try {
     theme: 'midnight',
     backgroundImage: '',
     javaArgs: '',
-    maxConcurrentDownloads: 6,
-    eagerPrepareOnCreate: false,
-    ...saved
-  }
+  maxConcurrentDownloads: 6,
+  eagerPrepareOnCreate: true,
+  ...saved
+}
   const legacyThemes = { dark: 'midnight', kindyr: 'midnight', light: 'steel', green: 'azure', neobrutal: 'navy' }
   settings.theme = legacyThemes[settings.theme] || settings.theme
 

@@ -300,15 +300,27 @@ function loadHomeDiscoverScripts() {
       button.textContent = t('home.installing')
       setStatus(t('home.installingRelease', { title: project.title }))
 
-      const result = await window.kindyrAPI.modrinth.installLatestRelease({
+      let result = await window.kindyrAPI.modrinth.installLatestRelease({
         project,
         instanceId: selectedInstance
       })
+      // Fallback RP/shader: sin compatibilidad directa se ofrece instalar la
+      // más actual con modal de aviso en vez de fallar en seco.
+      if (!result.ok && isNoCompatibleError(result.error) && !project._curseForge && COMPAT_FALLBACK_KINDS.has(getProjectInstallKind(project))) {
+        const fb = await installFallbackNewest({ project, installKind: getProjectInstallKind(project), instanceId: selectedInstance, instanceVersion: meta.version })
+        if (fb.cancelled) {
+          button.disabled = false
+          button.textContent = originalText
+          setStatus(t('app.ready'))
+          return
+        }
+        result = fb
+      }
 
       button.disabled = false
       button.textContent = originalText
       if (!result.ok) {
-        setStatus(result.error)
+        setStatus(friendlyInstallError(result.error))
         return
       }
 
@@ -329,6 +341,9 @@ let installVersionId = ''
 let installModpackLoader = ''
 let installModpackDestination = 'instance'
 let installLocalPathDefault = ''
+// Gemelo Modrinth verificado para proyectos CF "Solo web" (ver oferta abajo).
+let compatTwinProject = null
+let compatTwinChecked = false
 const modpackLoaderDefs = [
   { id: 'fabric', label: 'Fabric' },
   { id: 'forge', label: 'Forge' },
@@ -341,6 +356,221 @@ function getInstallKind(project) {
   const activeDiscoverType = typeof discoverType === 'string' ? discoverType : ''
   if (activeDiscoverType === 'plugin' || activeDiscoverType === 'datapack') return activeDiscoverType
   return project.project_type || 'mod'
+}
+
+// ===== Fallback RP/shader sin compatibilidad directa + modal de aviso =====
+// Paso 1: si alguna versión declara la versión de la instancia (cualquier
+// canal: hay packs que publican todo como beta y nunca como release), se
+// instala directo SIN modal. Paso 2: solo en desfasaje real (ej. instancia
+// 26.1.2 y pack hasta 1.21.11) se instala la más actual previo modal de
+// aviso (puede fallar o tener bugs visuales). Solo aplica a resourcepacks y
+// shaders de Modrinth: los mods con loader incorrecto no correrían y los
+// datapacks pueden romper mundos.
+const COMPAT_FALLBACK_KINDS = new Set(['resourcepack', 'shader'])
+
+function isNoCompatibleError(message) {
+  return /no hay versiones compatibles/i.test(String(message || ''))
+}
+
+// Error de distribución desactivada por el autor en CurseForge: la API no da
+// URL y ningún reintento lo arregla. Se muestra el mensaje accionable (i18n)
+// en vez del técnico del backend.
+function isNoDistributionError(message) {
+  return /no permite descargas por API/i.test(String((message && message.message) || message || ''))
+}
+
+function friendlyInstallError(error) {
+  const raw = String((error && error.message) || error || '')
+  if (isNoDistributionError(raw)) return t('curseforge.noDistribution')
+  return raw
+}
+
+function getFallbackKind(project) {
+  const cats = (project && (project.display_categories || project.categories)) || []
+  if (cats.includes('datapack')) return 'datapack'
+  return (project && project.project_type) || 'mod'
+}
+
+function pickNewestProjectVersion(versions) {
+  let best = null
+  let bestTs = -Infinity
+  for (const v of (Array.isArray(versions) ? versions : [])) {
+    const ts = Date.parse(v.date_published || '') || 0
+    if (!best || ts > bestTs) { best = v; bestTs = ts }
+  }
+  return best
+}
+
+let compatWarnState = null
+
+function ensureCompatWarnModal() {
+  let modal = document.getElementById('compat-warn-modal')
+  if (modal) return modal
+  modal = document.createElement('div')
+  modal.className = 'modal-backdrop'
+  modal.id = 'compat-warn-modal'
+  modal.innerHTML =
+    '<div class="account-modal compat-warn-modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()">' +
+      '<div class="modal-head"><span class="compat-warn-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>' +
+      '<div class="modal-title" id="compat-warn-title"></div>' +
+      '<button type="button" class="modal-close" onclick="closeCompatWarnModal(false)" aria-label="×">×</button></div>' +
+      '<div class="modal-body"><div class="compat-warn-box"><i class="fa-solid fa-triangle-exclamation"></i><span id="compat-warn-message"></span></div></div>' +
+      '<div class="compat-warn-foot"><button type="button" class="secondary-btn" id="compat-warn-cancel"></button>' +
+      '<button type="button" class="primary-btn" id="compat-warn-confirm"></button></div>' +
+    '</div>'
+  modal.addEventListener('click', (ev) => { if (ev.target === modal) closeCompatWarnModal(false) })
+  document.body.appendChild(modal)
+  return modal
+}
+
+function closeCompatWarnModal(confirmed) {
+  document.getElementById('compat-warn-modal')?.classList.remove('active')
+  const st = compatWarnState
+  compatWarnState = null
+  if (st && typeof st.resolve === 'function') st.resolve(Boolean(confirmed))
+}
+
+function showCompatWarnModal({ title, packVersion, packVersions, instanceVersion }) {
+  const modal = ensureCompatWarnModal()
+  document.getElementById('compat-warn-title').textContent = t('compat.warnTitle')
+  document.getElementById('compat-warn-message').textContent = t('compat.warnMessage', { title, packVersion, packVersions, instanceVersion })
+  document.getElementById('compat-warn-cancel').textContent = t('install.cancel')
+  const confirm = document.getElementById('compat-warn-confirm')
+  confirm.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> ' + escapeHtml(t('compat.confirmAnyway'))
+  modal.classList.add('active')
+  return new Promise(resolve => {
+    compatWarnState = { resolve }
+    document.getElementById('compat-warn-cancel').onclick = () => closeCompatWarnModal(false)
+    confirm.onclick = () => closeCompatWarnModal(true)
+  })
+}
+
+// Compara versiones de juego por grupos numéricos (1.21.11 > 1.21.2, 26.2 > 1.21.11).
+function compareGameVersions(a, b) {
+  const pa = String(a).split(/[^0-9]+/).filter(Boolean).map(Number)
+  const pb = String(b).split(/[^0-9]+/).filter(Boolean).map(Number)
+  const n = Math.max(pa.length, pb.length)
+  for (let i = 0; i < n; i++) {
+    const x = i < pa.length ? pa[i] : 0
+    const y = i < pb.length ? pb[i] : 0
+    if (x !== y) return x - y
+  }
+  return String(a).localeCompare(String(b))
+}
+
+// Busca la versión más actual sin filtro de juego e instala:
+// - Paso 1: si alguna declara la versión de la instancia (cualquier canal:
+//   hay packs que publican todo como beta), se instala DIRECTO sin modal.
+// - Paso 2: solo en desfasaje real se muestra el aviso y se instala la más
+//   actual. Devuelve {ok, version?, error?, cancelled?}.
+async function installFallbackNewest({ project, installKind, instanceId, instanceVersion }) {
+  const versionsRes = await window.kindyrAPI.modrinth.versions({ projectId: project.project_id || project.id || project.slug })
+  if (!versionsRes.ok) return { ok: false, error: versionsRes.error }
+  const all = versionsRes.versions || []
+  if (!all.length) return { ok: false, error: t('install.noVersions') }
+  const withFile = all.filter(v => (v.files || []).some(f => f.url))
+  const pool = withFile.length ? withFile : all
+  const mcVersion = String(instanceVersion || '')
+  if (mcVersion) {
+    const matching = pool.filter(v => (v.game_versions || []).includes(mcVersion))
+    const silent = pickNewestProjectVersion(matching)
+    if (silent) {
+      setStatus(t('install.installing'))
+      return window.kindyrAPI.modrinth.install({ project, installKind, versionId: silent.id, destination: 'instance', instanceId })
+    }
+  }
+  const latest = pickNewestProjectVersion(pool)
+  if (!latest) return { ok: false, error: t('install.noVersions') }
+  const declared = [...new Set(all.flatMap(v => v.game_versions || []))]
+    .filter(v => /^\d/.test(String(v))).sort(compareGameVersions).slice(-4).join(', ') || '—'
+  const confirmed = await showCompatWarnModal({
+    title: project.title,
+    packVersion: latest.version_number || latest.name || '',
+    packVersions: declared,
+    instanceVersion: mcVersion
+  })
+  if (!confirmed) return { ok: false, cancelled: true }
+  setStatus(t('install.installing'))
+  return window.kindyrAPI.modrinth.install({ project, installKind, versionId: latest.id, destination: 'instance', instanceId })
+}
+
+// ===== Rescate cross-provider CF -> Modrinth (gemelo verificado) =====
+// Cuando CurseForge bloquea la distribución por API pero el MISMO proyecto
+// existe en Modrinth (mismo slug + tipo + autor verificado en backend), se
+// ofrece instalarlo desde ahí. Siempre con confirmación explícita mostrando
+// ambas fuentes: nunca sustitución silenciosa.
+let twinModalState = null
+
+function ensureTwinModal() {
+  let modal = document.getElementById('twin-modal')
+  if (modal) return modal
+  modal = document.createElement('div')
+  modal.className = 'modal-backdrop'
+  modal.id = 'twin-modal'
+  modal.innerHTML =
+    '<div class="account-modal twin-modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()">' +
+      '<div class="modal-head"><span class="twin-icon"><i class="fa-solid fa-arrows-rotate"></i></span>' +
+      '<div class="modal-title" id="twin-title"></div>' +
+      '<button type="button" class="modal-close" onclick="closeTwinModal(false)" aria-label="×">×</button></div>' +
+      '<div class="modal-body"><div class="twin-box"><i class="fa-solid fa-circle-info"></i><span id="twin-message"></span></div></div>' +
+      '<div class="twin-foot"><button type="button" class="secondary-btn" id="twin-cancel"></button>' +
+      '<button type="button" class="primary-btn" id="twin-confirm"></button></div>' +
+    '</div>'
+  modal.addEventListener('click', (ev) => { if (ev.target === modal) closeTwinModal(false) })
+  document.body.appendChild(modal)
+  return modal
+}
+
+function closeTwinModal(accepted) {
+  document.getElementById('twin-modal')?.classList.remove('active')
+  const st = twinModalState
+  twinModalState = null
+  if (st && typeof st.resolve === 'function') st.resolve(Boolean(accepted))
+}
+
+function showTwinModal({ cfTitle, twinTitle, author }) {
+  const modal = ensureTwinModal()
+  document.getElementById('twin-title').textContent = t('twin.title')
+  document.getElementById('twin-message').textContent = t('twin.message', { title: cfTitle, twin: twinTitle, author })
+  document.getElementById('twin-cancel').textContent = t('install.cancel')
+  const confirm = document.getElementById('twin-confirm')
+  confirm.innerHTML = '<i class="fa-solid fa-download"></i> ' + escapeHtml(t('twin.confirm'))
+  modal.classList.add('active')
+  return new Promise(resolve => {
+    twinModalState = { resolve }
+    document.getElementById('twin-cancel').onclick = () => closeTwinModal(false)
+    confirm.onclick = () => closeTwinModal(true)
+  })
+}
+
+// Busca gemelo en Modrinth y, con confirmación, lo instala en la instancia.
+// Devuelve {ok, version?...} o {ok:false, twin:false} (sin gemelo) o
+// {ok:false, cancelled:true} (usuario canceló).
+async function offerModrinthTwinInstall({ cfProject, instanceId }) {
+  let twinRes = null
+  try {
+    twinRes = await window.kindyrAPI.curseforge.findTwin({
+      modId: cfProject.project_id || cfProject.id,
+      slug: cfProject.slug,
+      title: cfProject.title,
+      author: cfProject.author,
+      kind: String(cfProject.project_type || 'mod')
+    })
+  } catch (e) {
+    return { ok: false, twin: false, error: (e && e.message) || String(e) }
+  }
+  if (!twinRes || !twinRes.ok || !twinRes.found) return { ok: false, twin: false }
+  const confirmed = await showTwinModal({ cfTitle: cfProject.title, twinTitle: twinRes.project.title, author: twinRes.author || cfProject.author })
+  if (!confirmed) return { ok: false, cancelled: true }
+  setStatus(t('install.installing'))
+  const installed = await window.kindyrAPI.modrinth.installLatestRelease({ project: twinRes.project, instanceId })
+  if (!installed.ok && isNoCompatibleError(installed.error) && COMPAT_FALLBACK_KINDS.has(getFallbackKind(twinRes.project))) {
+    const instance = (typeof launcherInstances !== 'undefined' ? launcherInstances.find(i => i.id === instanceId) : null)
+    const fb = await installFallbackNewest({ project: twinRes.project, installKind: getFallbackKind(twinRes.project), instanceId, instanceVersion: instance ? instance.version : '' })
+    if (fb.cancelled) return { ok: false, cancelled: true }
+    return fb
+  }
+  return installed
 }
 
 async function ensureInstallLocalPaths() {
@@ -495,14 +725,65 @@ async function renderCompatInstances() {
   const list = document.getElementById('install-compat-list')
   const countEl = document.getElementById('install-compat-count')
   if (!list) return
-  let compat = getCompatInstancesForProject(installProject || {})
+  // Solo web (CF con distribución por API desactivada): primero se busca un
+  // gemelo verificado en Modrinth; sin gemelo, banner final (ningún intento
+  // por CF puede funcionar, la API no da URL).
+  const isWebOnlyCF = Boolean(installProject && installProject._curseForge && installProject.allowModDistribution === false)
+  if (isWebOnlyCF && !compatTwinChecked) {
+    const siteUrl = installProject._curseUrl || ('https://www.curseforge.com/minecraft/mc-mods/' + encodeURIComponent(installProject.slug || installProject.project_id || ''))
+    list.innerHTML = '<div class="compat-webonly"><i class="fa-solid fa-triangle-exclamation"></i>' +
+      '<div><strong>' + escapeHtml(t('curseforge.webOnly')) + '</strong><span>' + escapeHtml(t('curseforge.noDistribution')) + '</span></div>' +
+      '<button type="button" class="btn btn-primary" id="compat-twin-find"><i class="fa-solid fa-arrows-rotate"></i> ' + escapeHtml(t('twin.findButton')) + '</button>' +
+      '<button type="button" class="btn btn-secondary" id="compat-webonly-open"><i class="fa-solid fa-arrow-up-right-from-square"></i> ' + escapeHtml(t('curseforge.openSite')) + '</button></div>'
+    if (countEl) countEl.textContent = '0 compatibles'
+    document.getElementById('compat-webonly-open')?.addEventListener('click', () => {
+      if (window.kindyrAPI?.curseforge?.openProject) window.kindyrAPI.curseforge.openProject(siteUrl)
+    })
+    document.getElementById('compat-twin-find')?.addEventListener('click', async (ev) => {
+      const btn = ev.currentTarget
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + escapeHtml(t('twin.finding')) }
+      let found = null
+      try {
+        const res = await window.kindyrAPI.curseforge.findTwin({
+          modId: installProject.project_id || installProject.id,
+          slug: installProject.slug,
+          title: installProject.title,
+          author: installProject.author,
+          kind: String(installProject.project_type || 'mod')
+        })
+        if (res && res.ok && res.found) found = res.project
+      } catch {}
+      compatTwinChecked = true
+      compatTwinProject = found
+      renderCompatInstances()
+    })
+    return
+  }
+  if (isWebOnlyCF && !compatTwinProject) {
+    const siteUrl = installProject._curseUrl || ('https://www.curseforge.com/minecraft/mc-mods/' + encodeURIComponent(installProject.slug || installProject.project_id || ''))
+    list.innerHTML = '<div class="compat-webonly"><i class="fa-solid fa-triangle-exclamation"></i>' +
+      '<div><strong>' + escapeHtml(t('curseforge.webOnly')) + '</strong><span>' + escapeHtml(t('curseforge.noDistribution')) + '</span></div>' +
+      '<button type="button" class="btn btn-secondary" id="compat-webonly-open"><i class="fa-solid fa-arrow-up-right-from-square"></i> ' + escapeHtml(t('curseforge.openSite')) + '</button></div>'
+    if (countEl) countEl.textContent = '0 compatibles'
+    document.getElementById('compat-webonly-open')?.addEventListener('click', () => {
+      if (window.kindyrAPI?.curseforge?.openProject) window.kindyrAPI.curseforge.openProject(siteUrl)
+    })
+    return
+  }
+  // Proyecto efectivo: en modo gemelo se chequea/instala el gemelo de
+  // Modrinth (mismo slug + tipo + autor verificado en backend).
+  const effProject = compatTwinProject
+    ? { ...installProject, project_id: compatTwinProject.project_id, slug: compatTwinProject.slug, title: compatTwinProject.title, project_type: compatTwinProject.project_type, categories: compatTwinProject.categories, display_categories: compatTwinProject.display_categories }
+    : (installProject || {})
+  const effIsCF = !compatTwinProject && Boolean(installProject && installProject._curseForge)
+  let compat = getCompatInstancesForProject(effProject)
   if (!compat.length) {
     try {
       const res = await window.kindyrAPI.instances.list()
       const arr = Array.isArray(res) ? res : (res && Array.isArray(res.instances) ? res.instances : [])
       if (arr.length) {
         if (typeof launcherInstances !== 'undefined') launcherInstances = arr
-        compat = getCompatInstancesForProject(installProject || {})
+        compat = getCompatInstancesForProject(effProject)
         if (!compat.length) compat = arr
       }
     } catch {}
@@ -513,20 +794,24 @@ async function renderCompatInstances() {
     return
   }
   // Verificar instalados (async, sin bloquear orden)
-  const isMod = (installProject && (installProject.project_type || 'mod') === 'mod')
-  const slug = String(installProject.slug || installProject.project_id || '').toLowerCase()
+  const isMod = ((effProject.project_type || 'mod') === 'mod')
+  const slug = String(effProject.slug || effProject.project_id || '').toLowerCase()
   // intentar obtener loaders soportados del mod para filtrar mejor
   let supportedLoaders = null
   let supportedVersions = null
   try {
-    const isCF = Boolean(installProject._curseForge)
-    const api = isCF ? window.kindyrAPI.curseforge : window.kindyrAPI.modrinth
-    const vRes = await api.versions({ projectId: installProject.project_id || installProject.slug || installProject.id, modId: installProject.project_id || installProject.id })
+    const api = effIsCF ? window.kindyrAPI.curseforge : window.kindyrAPI.modrinth
+    const vRes = await api.versions({ projectId: effProject.project_id || effProject.slug || effProject.id, modId: effProject.project_id || effProject.id })
     if (vRes && vRes.ok && Array.isArray(vRes.versions) && vRes.versions.length) {
       supportedLoaders = new Set()
       supportedVersions = new Set()
-      for (const v of vRes.versions.slice(0,20)) {
+      // OJO: usar TODAS las versiones, no una muestra. La API no garantiza
+      // orden y hay proyectos con 100+ versiones: muestrear las primeras
+      // podía marcar como incompatible algo perfectamente compatible.
+      for (const v of vRes.versions) {
         for (const l of (v.loaders || [])) supportedLoaders.add(String(l).toLowerCase())
+      }
+      for (const v of vRes.versions) {
         for (const gv of (v.game_versions || v.gameVersions || [])) supportedVersions.add(String(gv).toLowerCase())
       }
     }
@@ -539,24 +824,36 @@ async function renderCompatInstances() {
       if (Array.isArray(mods)) {
         installed = mods.some(m => {
           const n = String(m.name || m.fileName || m.path || '').toLowerCase()
-          return n.includes(slug) || (installProject.title && n.includes(String(installProject.title).toLowerCase().slice(0,8)))
+          return n.includes(slug) || (effProject.title && n.includes(String(effProject.title).toLowerCase().slice(0,8)))
         })
       }
+      if (!installed && det && Array.isArray(det.content)) {
+        const pid = String(effProject.project_id || effProject.id || '').toLowerCase()
+        if (pid) installed = det.content.some(item => String(item.projectId || '').toLowerCase() === pid)
+      }
     } catch {}
-    let isIncompat = false
+    let loaderMismatch = false
+    let versionMismatch = false
     if (!installed) {
-      if (isMod && (!inst.loader || inst.loader === 'vanilla')) isIncompat = true
-      else if (supportedLoaders && supportedLoaders.size && inst.loader && !supportedLoaders.has(String(inst.loader).toLowerCase()) && !supportedLoaders.has('minecraft') && String(inst.loader).toLowerCase() !== 'vanilla') isIncompat = true
-      else if (supportedVersions && supportedVersions.size && !supportedVersions.has(String(inst.version).toLowerCase())) isIncompat = true
+      if (isMod && (!inst.loader || inst.loader === 'vanilla')) loaderMismatch = true
+      else if (supportedLoaders && supportedLoaders.size && inst.loader && !supportedLoaders.has(String(inst.loader).toLowerCase()) && !supportedLoaders.has('minecraft') && String(inst.loader).toLowerCase() !== 'vanilla') loaderMismatch = true
+      if (supportedVersions && supportedVersions.size && !supportedVersions.has(String(inst.version).toLowerCase())) versionMismatch = true
     }
-    const status = installed ? 'installed' : (isIncompat ? 'incompatible' : 'compatible')
+    // RP/shader con desfasaje SOLO de versión de juego: ofrecer instalar la
+    // más actual con aviso en vez de bloquear (los loaders no aplican).
+    const canForce = !installed && !effIsCF &&
+      COMPAT_FALLBACK_KINDS.has(getFallbackKind(effProject)) && versionMismatch && !loaderMismatch
+    const status = installed ? 'installed' : (canForce ? 'force' : ((loaderMismatch || versionMismatch) ? 'incompatible' : 'compatible'))
     return { inst, status, installed }
   }))
-  // Orden: compatibles, incompatibles, instalados
-  const order = { compatible: 0, incompatible: 1, installed: 2 }
+  // Orden: compatibles, forzables, incompatibles, instalados
+  const order = { compatible: 0, force: 1, incompatible: 2, installed: 3 }
   checks.sort((a,b) => (order[a.status] - order[b.status]) || a.inst.name.localeCompare(b.inst.name))
   if (countEl) countEl.textContent = checks.filter(c=>c.status==='compatible').length + ' compatibles'
-  list.innerHTML = checks.map(({inst, status}) => {
+  const twinInfo = compatTwinProject
+    ? '<div class="compat-twininfo"><i class="fa-solid fa-arrows-rotate"></i><span>' + escapeHtml(t('twin.fromModrinth')) + '</span></div>'
+    : ''
+  list.innerHTML = twinInfo + checks.map(({inst, status}) => {
     const loaderLabel = (typeof getInstanceLoaderLabel === 'function' ? getInstanceLoaderLabel(inst.loader) : inst.loader) || 'Vanilla'
     let btn = ''
     let tag = ''
@@ -564,10 +861,16 @@ async function renderCompatInstances() {
     let cardClass = 'instance-card'
     let titleAttr = ''
     if (status === 'installed') {
-      btn = '<button type="button" class="btn btn-secondary" disabled><i class="fa-solid fa-check"></i> Instalado</button>'
-      tag = '<span class="mini ok" style="background:#1a1a1a;color:#666;border-color:#333"><i class="fa-solid fa-check"></i> Instalado</span>'
+      btn = '<button type="button" class="btn btn-secondary" disabled><i class="fa-solid fa-check"></i> ' + escapeHtml(t('discover.installed')) + '</button>'
+      tag = '<span class="mini ok" style="background:#1a1a1a;color:#666;border-color:#333"><i class="fa-solid fa-check"></i> ' + escapeHtml(t('discover.installed')) + '</span>'
       cardClass += ' installed'
       ic = 'fa-check'
+    } else if (status === 'force') {
+      btn = '<button type="button" class="btn btn-warn" onclick="installCompatInstanceAnyway(\'' + escapeHtml(inst.id) + '\', this)"><i class="fa-solid fa-triangle-exclamation"></i> ' + escapeHtml(t('compat.installAnyway')) + '</button>'
+      tag = '<span class="mini warn">' + escapeHtml(t('compat.forceTag')) + '</span>'
+      cardClass += ' forceable'
+      ic = 'fa-triangle-exclamation'
+      titleAttr = ' title="' + escapeHtml(t('compat.warnTitle')) + '"'
     } else if (status === 'incompatible') {
       btn = '<button type="button" class="btn btn-secondary" disabled style="border-color:#f59e0b;color:#f59e0b"><i class="fa-solid fa-triangle-exclamation"></i> Instalar</button>'
       tag = '<span class="mini">No compatible</span>'
@@ -588,22 +891,52 @@ async function renderCompatInstances() {
 
 async function installToCompatInstance(instanceId, button) {
   if (!installProject || !instanceId) return
+  const isCF = Boolean(installProject._curseForge)
   const orig = button ? button.innerHTML : ''
   if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Instalando...' }
   const instance = (typeof launcherInstances !== 'undefined' ? launcherInstances.find(i => i.id === instanceId) : null)
   const gameVersion = instance ? instance.version : document.getElementById('install-game-version').value.trim()
   const loader = instance ? (instance.loader || 'vanilla') : document.getElementById('install-loader').value
   try {
-    const result = await window.kindyrAPI.modrinth.install({
-      project: installProject,
-      installKind: getInstallKind(installProject),
-      gameVersion,
-      loader,
-      destination: 'instance',
-      instanceId
-    })
+    let result
+    if (compatTwinProject) {
+      // Modo gemelo: el proyecto CF es Solo web, se instala el gemelo de
+      // Modrinth (mismo slug + tipo + autor verificado en backend).
+      result = await window.kindyrAPI.modrinth.installLatestRelease({ project: compatTwinProject, instanceId })
+      if (!result.ok && isNoCompatibleError(result.error) && COMPAT_FALLBACK_KINDS.has(getFallbackKind(compatTwinProject))) {
+        const fb = await installFallbackNewest({ project: compatTwinProject, installKind: getFallbackKind(compatTwinProject), instanceId, instanceVersion: gameVersion })
+        if (fb.cancelled) {
+          if (button) { button.disabled = false; button.innerHTML = orig }
+          setInstallNote(result.error)
+          setStatus(t('app.ready'))
+          return
+        }
+        result = fb
+      }
+    } else {
+      result = await window.kindyrAPI.modrinth.install({
+        project: installProject,
+        installKind: getInstallKind(installProject),
+        gameVersion,
+        loader,
+        destination: 'instance',
+        instanceId
+      })
+    }
+    // Fallback RP/shader: si no hay versión compatible directa, ofrecer la
+    // más actual con modal de aviso en vez de fallar en seco.
+    if (!result.ok && isNoCompatibleError(result.error) && !installProject._curseForge && COMPAT_FALLBACK_KINDS.has(getFallbackKind(installProject))) {
+      const fb = await installFallbackNewest({ project: installProject, installKind: getInstallKind(installProject), instanceId, instanceVersion: gameVersion })
+      if (fb.cancelled) {
+        if (button) { button.disabled = false; button.innerHTML = orig }
+        setInstallNote(result.error)
+        setStatus(t('app.ready'))
+        return
+      }
+      result = fb
+    }
     if (button) { button.disabled = false; button.innerHTML = orig }
-    if (!result.ok) { setInstallNote(result.error); setStatus(result.error); return }
+    if (!result.ok) { const msg = friendlyInstallError(result.error); setInstallNote(msg); setStatus(msg); return }
     await refreshLauncherInstances()
     setInstallNote(isCF ? 'Instalado en ' + instance.name : t('install.installedLauncher'))
     setStatus('Instalado en ' + instance.name)
@@ -611,6 +944,27 @@ async function installToCompatInstance(instanceId, button) {
     if (result.instance && result.instance.id && typeof openInstanceView === 'function') {
       setTimeout(() => openInstanceView(result.instance.id), 400)
     }
+  } catch (e) {
+    if (button) { button.disabled = false; button.innerHTML = orig }
+    setInstallNote(e.message || String(e))
+    setStatus(e.message || String(e))
+  }
+}
+
+async function installCompatInstanceAnyway(instanceId, button) {
+  if (!installProject || !instanceId) return
+  const orig = button ? button.innerHTML : ''
+  if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + escapeHtml(t('install.checkingCompatibility')) }
+  const instance = (typeof launcherInstances !== 'undefined' ? launcherInstances.find(i => i.id === instanceId) : null)
+  try {
+    const fb = await installFallbackNewest({ project: installProject, installKind: getInstallKind(installProject), instanceId, instanceVersion: instance ? instance.version : '' })
+    if (button) { button.disabled = false; button.innerHTML = orig }
+    if (fb.cancelled) { setStatus(t('app.ready')); return }
+    if (!fb.ok) { const msg = friendlyInstallError(fb.error); setInstallNote(msg); setStatus(msg); return }
+    await refreshLauncherInstances()
+    setInstallNote(t('install.installedLauncher'))
+    setStatus(t('home.installed', { name: fb.version?.name || fb.version?.version_number || installProject.title }))
+    closeInstallModal()
   } catch (e) {
     if (button) { button.disabled = false; button.innerHTML = orig }
     setInstallNote(e.message || String(e))
@@ -769,6 +1123,8 @@ async function openInstallModal(project) {
   installProject = project
   installVersions = []
   installVersionId = ''
+  compatTwinProject = null
+  compatTwinChecked = false
   const isModpack = project.project_type === 'modpack'
   setInstallModalMode(isModpack)
   const title = document.getElementById('install-title')
@@ -935,16 +1291,10 @@ async function installSelectedProject() {
   // No-modpack: siempre descarga local (el usuario ya eligió "Descargar local").
   const destination = isModpack ? installModpackDestination : 'downloads'
   const isModpackNewInstance = isModpack && destination === 'instance'
-  const shouldShowToast = isModpackNewInstance && settings.eagerPrepareOnCreate
   const btn = document.getElementById('install-confirm')
   btn.disabled = true
   btn.textContent = destination === 'downloads' ? t('install.downloading') : t('install.installing')
-  setInstallNote(t('install.working'))
-
-  if (shouldShowToast) {
-    showPrepareToast(installProject.title || 'Modpack', t('install.working'))
-    updatePrepareToast(10, t('install.working'), 'Iniciando')
-  }
+  setInstallNote(t('install.installing'))
 
   const result = await window.kindyrAPI.modrinth.install({
     project: installProject,
@@ -966,25 +1316,18 @@ async function installSelectedProject() {
     updateInstallDestination()
   }
   if (!result.ok) {
-    if (shouldShowToast) {
-      updatePrepareToast(0, result.error, 'Error')
-      setTimeout(() => hidePrepareToast(true), 3000)
-    }
     setInstallNote(result.error)
     setStatus(result.error)
     return
   }
 
   await refreshLauncherInstances()
-  if (shouldShowToast) {
-    updatePrepareToast(100, t('install.done', { path: result.path }), 'Listo')
-    setStatus(t('settings.beta.prepared', { name: installProject.title || result.instance?.name || 'Modpack' }))
-    setTimeout(() => hidePrepareToast(true), 900)
+  if (isModpackNewInstance && result.instance && result.instance.id) {
+    // El modpack crea instancia: preparación real (Java+MC) si está activada.
+    await runEagerPrepare(result.instance.id, installProject.title || result.instance.name || 'Modpack')
     closeInstallModal()
-    if (result.instance && result.instance.id) {
-      await new Promise(r => setTimeout(r, 200))
-      openInstanceView(result.instance.id)
-    }
+    await new Promise(r => setTimeout(r, 200))
+    openInstanceView(result.instance.id)
     return
   }
   setInstallNote(t('install.done', { path: result.path }))
