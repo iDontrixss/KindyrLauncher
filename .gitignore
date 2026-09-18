@@ -22,6 +22,8 @@ pnpm-debug.log*
 *.pkg
 *.msi
 *.deb
+# Excepción: los assets del repo sí se commitean (iconos, logos)
+!assets/**
 
 # Environment variables
 .env*

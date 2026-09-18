@@ -108,8 +108,7 @@
       "THIRD_PARTY_NOTICES.md",
       "THIRD_PARTY_NOTICES.es.md",
       "assets/**/*",
-      "sections/**/*",
-      "scripts/after-pack.js"
+      "sections/**/*"
     ],
     "win": {
       "target": [
