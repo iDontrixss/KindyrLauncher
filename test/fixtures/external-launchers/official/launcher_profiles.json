@@ -1,0 +1,21 @@
+{
+  "_synthetic": true,
+  "profiles": {
+    "synthetic-shared-vanilla": {
+      "name": "Synthetic Shared",
+      "lastVersionId": "1.21.1",
+      "type": "custom"
+    },
+    "synthetic-custom-forge": {
+      "name": "Synthetic Forge",
+      "gameDir": "$FIXTURE/game-custom",
+      "lastVersionId": "1.20.1-forge-47.4.16",
+      "type": "custom"
+    },
+    "synthetic-neoforge-nomc": {
+      "name": "Synthetic NeoForge",
+      "lastVersionId": "neoforge-21.1.248",
+      "type": "custom"
+    }
+  }
+}

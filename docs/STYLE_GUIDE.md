@@ -61,4 +61,12 @@ Neo-brutalista hard-shadow: `border-radius: 0` en todo, bordes gruesos `2-3px so
 1. Usa tokens, no hex sueltos. 2. `radius 0`, `2px ink` + hard shadow. 3. Hover `translate(-1,-1)` + shadow. 4. Texto `Space Grotesk 800` + `JetBrains Mono` para números. 5. Reutiliza `.settings-group`, `.primary-btn`, `.type-chip` antes de crear nuevo. 6. Toasts → `prepare-toast-stack` top-right, `340px`, `var(--kindyr-surface)`, `4px 4px`, `left 3px accent`.
 7. Todo control clickeable propio es una card: usa `.type-chip`, `.project-card` o los botones del sistema (`.primary-btn`/`.secondary-btn`). Prohibido inventar botones/pills con otros radios, bordes o paletas.
 
+## 10. Checkboxes nativos (listas de selección, ej. instancias a importar)
+1. Usa el `<input type="checkbox">` nativo: accesible por teclado/lector y se adapta a todos los temas sin dibujar nada propio. Prohibido simular checks con divs/SVG.
+2. Tamaño `18×18px`, `accent-color: var(--kindyr-accent)`, sin radio ni bordes propios (los pone el navegador).
+3. El checkbox vive dentro de una card clickeable (`label` que envuelve toda la fila, estilo `.external-instance-row`: `surface-2`, `2px ink`, `2px 2px` hard shadow, hover `translate(-1,-1)` + `3px 3px`).
+4. Estado deshabilitado (`disabled` + clase `.external-unsupported` con `opacity 0.75` + `cursor not-allowed`) para filas no compatibles, con el motivo en texto (nunca solo color).
+5. Foco visible del navegador + `outline 2px var(--kindyr-accent)` si se refuerza; números/tamaños en `JetBrains Mono`.
+6. Acciones en lote (`Todas`/`Ninguna`) con `.secondary-btn`; el CTA de confirmar con `.primary-btn` deshabilitado si no hay selección.
+
 > **Obligatorio:** Antes de agregar cualquier componente, importa este archivo y copia un componente existente. No inventes paletas ni radios.

@@ -1,0 +1,16 @@
+{
+  "_synthetic": true,
+  "_note": "SYNTHETIC: forma real de minecraftinstance.json (claves verificadas en instalación real), valores inventados",
+  "name": "Synthetic Pack",
+  "gameVersion": "1.20.1",
+  "isVanilla": false,
+  "guid": "00000000-0000-4000-8000-000000000000",
+  "gameTypeID": 432,
+  "installPath": "SYNTHETIC",
+  "baseModLoader": {
+    "name": "fabric-0.16.9-1.20.1",
+    "type": 4,
+    "forgeVersion": "0.16.9",
+    "minecraftVersion": "1.20.1"
+  }
+}

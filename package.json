@@ -81,6 +81,7 @@
       "mrpack-utils.js",
       "content-sniff.js",
       "skin-security.js",
+      "external-launchers/**/*",
       "preload.js",
       "preload-onboarding.js",
       "preload-splash.js",

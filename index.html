@@ -214,28 +214,19 @@
       <div id="create-step-choice">
         <div class="section-label" data-i18n="create.choice.title">¿Cómo querés empezar?</div>
         <div class="create-choice-grid">
-          <button type="button" class="create-choice-option" onclick="selectCreateStep('modpack')">
-            <i class="fa-solid fa-box-archive"></i>
-            <span><strong data-i18n="create.choice.modpack">Comenzar con un modpack</strong><small data-i18n="create.choice.modpackDesc">Un pack listo para jugar, desde Modrinth o un archivo .mrpack</small></span>
-          </button>
           <button type="button" class="create-choice-option" onclick="selectCreateStep('custom')">
             <i class="fa-solid fa-sliders"></i>
             <span><strong data-i18n="create.choice.custom">Personalizado</strong><small data-i18n="create.choice.customDesc">Elegí loader y versión de Minecraft</small></span>
           </button>
-        </div>
-      </div>
-      <div id="create-step-modpack" hidden>
-        <div class="section-label" data-i18n="create.choice.modpack">Comenzar con un modpack</div>
-        <div class="create-choice-grid">
           <button type="button" class="create-choice-option" onclick="createBrowseModpacks()">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <span><strong data-i18n="create.choice.search">Buscar modpacks</strong><small data-i18n="create.choice.searchDesc">Desde Modrinth, listo para instalar</small></span>
-          </button>
-          <button type="button" class="create-choice-option" onclick="createImportMrpack()">
-            <i class="fa-solid fa-file-import"></i>
-            <span><strong data-i18n="create.choice.importFile">Importar archivo .mrpack</strong><small data-i18n="create.choice.importFileDesc">Ya tenés el archivo descargado</small></span>
+            <span><strong data-i18n="create.choice.search">Descubrir modpacks</strong><small data-i18n="create.choice.searchDesc">Desde Modrinth, listo para instalar</small></span>
           </button>
         </div>
+      </div>
+      <div id="create-step-external" hidden>
+        <div class="section-label" data-i18n="external.title">Importar desde otro launcher</div>
+        <div id="external-launcher-view"></div>
       </div>
       <div id="create-step-custom" hidden>
       <div class="create-icon-row">
@@ -274,8 +265,32 @@
     </div>
     <div class="create-footer">
       <button type="button" class="secondary-btn" id="create-back-btn" hidden onclick="selectCreateStep('choice')" data-i18n="create.back">Volver</button>
-      <button type="button" class="secondary-btn" onclick="closeCreateInstanceModal()" data-i18n="install.cancel">Cancelar</button>
+      <button type="button" class="secondary-btn" id="create-cancel-btn" onclick="closeCreateInstanceModal()" data-i18n="install.cancel">Cancelar</button>
       <button type="button" class="primary-btn" id="create-instance-confirm" hidden onclick="createSelectedInstance()" data-i18n="create.create">Crear instalación</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="import-modpack-modal" onclick="closeImportModpackMenu(event)">
+  <div class="create-modal" role="dialog" aria-modal="true" aria-labelledby="import-modpack-modal-title" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title" id="import-modpack-modal-title" data-i18n="instances.import">Importar modpack</div>
+      <button type="button" class="modal-close" onclick="closeImportModpackMenu()" aria-label="Cerrar" data-i18n-aria-label="app.close">×</button>
+    </div>
+    <div class="create-body">
+      <div class="create-choice-grid">
+        <button type="button" class="create-choice-option" onclick="createImportMrpack()">
+          <i class="fa-solid fa-upload"></i>
+          <span><strong data-i18n="instances.uploadFile">Subir archivo</strong><small data-i18n="create.choice.importFileDesc">Ya tenés el archivo descargado</small></span>
+        </button>
+        <button type="button" class="create-choice-option" onclick="openExternalFromImportMenu()">
+          <i class="fa-solid fa-right-left"></i>
+          <span><strong data-i18n="create.choice.importExternal">Importar desde otro launcher</strong><small data-i18n="create.choice.importExternalDesc">Prism, CurseForge, Modrinth, SKLauncher u oficial</small></span>
+        </button>
+      </div>
+    </div>
+    <div class="create-footer">
+      <button type="button" class="secondary-btn" onclick="closeImportModpackMenu()" data-i18n="install.cancel">Cancelar</button>
     </div>
   </div>
 </div>

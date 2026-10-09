@@ -27,6 +27,8 @@ const REQUIRED_ASAR_FILES = [
   'mrpack-utils.js',
   'content-sniff.js',
   'curseforge-modpack.js',
+  'external-launchers/shared.js',
+  'external-launchers/importer.js',
   'skin-security.js',
   'main.js',
   'preload.js',

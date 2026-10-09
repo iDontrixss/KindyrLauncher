@@ -90,6 +90,13 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
     onImportProgress: (callback) => ipcRenderer.on('mrpack-progress', (_event, data) => callback(data)),
     offImportProgress: () => ipcRenderer.removeAllListeners('mrpack-progress'),
     exportMrpack: (instanceId) => ipcRenderer.invoke('export-mrpack', instanceId),
+    externalDetect: () => ipcRenderer.invoke('external-detect'),
+    externalList: (payload) => ipcRenderer.invoke('external-list', payload),
+    externalBrowse: () => ipcRenderer.invoke('external-browse'),
+    externalImport: (payload) => ipcRenderer.invoke('external-import', payload),
+    externalImportCancel: (payload) => ipcRenderer.invoke('external-import-cancel', payload),
+    onExternalImportProgress: (callback) => ipcRenderer.on('external-import-progress', (_event, data) => callback(data)),
+    offExternalImportProgress: () => ipcRenderer.removeAllListeners('external-import-progress'),
   },
   modrinth: {
     search: (payload) => ipcRenderer.invoke('modrinth-search', payload),

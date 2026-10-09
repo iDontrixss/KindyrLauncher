@@ -60,12 +60,14 @@ test('uses the Kindyr-specific install dialog', () => {
   assert.match(stylesSource, /\/\* Kindyr install flow \*\//)
 })
 
-test('the create-instance modal asks modpack vs custom first', () => {
+test('the create-instance modal offers custom, discover and import first', () => {
   assert.match(indexSource, /id="create-step-choice"/)
-  assert.match(indexSource, /id="create-step-modpack"/)
   assert.match(indexSource, /id="create-step-custom"/)
-  assert.match(indexSource, /selectCreateStep\('modpack'\)/)
+  assert.match(indexSource, /id="create-step-external"/)
   assert.match(indexSource, /selectCreateStep\('custom'\)/)
+  assert.match(indexSource, /openExternalFromImportMenu\(\)/)
+  assert.match(indexSource, /id="import-modpack-modal"/)
+  assert.match(instancesSource, /function openImportModpackMenu\(\)/)
   assert.match(instancesSource, /function selectCreateStep\(step\)/)
   assert.match(instancesSource, /function createBrowseModpacks\(\)/)
   assert.match(instancesSource, /function createImportMrpack\(\)/)

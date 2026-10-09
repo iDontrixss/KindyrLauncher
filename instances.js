@@ -2079,12 +2079,14 @@ function openCreateInstanceModal() {
 
 function selectCreateStep(step) {
   createStep = step
-  for (const name of ['choice', 'modpack', 'custom']) {
+  for (const name of ['choice', 'custom', 'external']) {
     const el = document.getElementById('create-step-' + name)
     if (el) el.hidden = name !== step
   }
   const back = document.getElementById('create-back-btn')
-  if (back) back.hidden = step === 'choice'
+  if (back) back.hidden = step === 'choice' || step === 'external'
+  const cancelBtn = document.getElementById('create-cancel-btn')
+  if (cancelBtn) cancelBtn.hidden = step === 'external'
   const confirm = document.getElementById('create-instance-confirm')
   if (confirm) confirm.hidden = step !== 'custom'
   if (step === 'custom') {
@@ -2111,6 +2113,34 @@ function selectCreateStep(step) {
     syncCreateNameDefault()
     loadCreateVersions()
   }
+  if (step === 'external') {
+    openExternalImport()
+  }
+}
+
+// "Importar modpack" (toolbar e inicio): modal propio SOLO con Subir archivo /
+// Desde otro launcher. Separado del modal Crear para no mezclar títulos,
+// opciones ni estado. La vía de archivo (createImportMrpack) no cambia.
+function openImportModpackMenu() {
+  closeCreateInstanceModal()
+  document.getElementById('import-modpack-modal').classList.add('active')
+}
+
+function closeImportModpackMenu(event) {
+  if (event && event.target.id !== 'import-modpack-modal') return
+  document.getElementById('import-modpack-modal').classList.remove('active')
+}
+
+function openExternalFromImportMenu() {
+  closeImportModpackMenu()
+  openCreateInstanceModal()
+  selectCreateStep('external')
+}
+
+// Volver del picker al menú Importar (cierra Crear y reabre Importar).
+function backToImportMenu() {
+  closeCreateInstanceModal()
+  document.getElementById('import-modpack-modal').classList.add('active')
 }
 
 async function createBrowseModpacks() {
@@ -2128,6 +2158,7 @@ async function createBrowseModpacks() {
 
 async function createImportMrpack() {
   closeCreateInstanceModal()
+  closeImportModpackMenu()
   if (!window.kindyrAPI?.instances?.importMrpack) {
     setStatus(t('instances.importError'))
     return
@@ -2145,7 +2176,7 @@ async function createImportMrpack() {
   await afterModpackImport(result)
 }
 
-// Post-import .mrpack: refresh + preparación eager (Java+MC) si está
+// Post-import .mrpack/.zip: refresh + preparación eager (Java+MC) si está
 // activada + vista de la instancia. Con la opción apagada, comportamiento
 // anterior (quedarse en la lista con el estado).
 async function afterModpackImport(result) {
@@ -2168,6 +2199,285 @@ async function afterModpackImport(result) {
   } else {
     setStatus(t('instances.importSuccess', { name: result.name }))
   }
+}
+
+// Íconos por launcher. Archivos aportados por el usuario en assets/external/:
+// prism.svg oficial con atribución CC BY-SA (ver cabecera del archivo);
+// curseforge.svg, modrinth.svg, sklauncher.svg y official.svg aportados por el
+// usuario (marcas de terceros: ver devnote 0.2.1-beta.3).
+const EXTERNAL_LAUNCHER_ICONS = {
+  prism: '<img src="assets/external/prism.svg" alt="" aria-hidden="true">',
+  curseforge: '<img src="assets/external/curseforge.svg" alt="" aria-hidden="true">',
+  modrinth: '<img src="assets/external/modrinth.svg" alt="" aria-hidden="true">',
+  sklauncher: '<img src="assets/external/sklauncher.svg" alt="" aria-hidden="true">',
+  official: '<img src="assets/external/official.svg" alt="" aria-hidden="true">'
+}
+
+function externalLauncherIcon(launcherId) {
+  return EXTERNAL_LAUNCHER_ICONS[launcherId] || '<i class="fa-solid fa-gamepad"></i>'
+}
+
+// Importar desde otro launcher: picker de launcher -> lista de instancias ->
+// importación secuencial reutilizando afterModpackImport (refresh + eager prepare).
+let externalState = { launchers: [], launcherId: null, root: null, instances: [], checked: [], importing: false, cancelRequested: false, currentImportId: null }
+
+function externalView() {
+  return document.getElementById('external-launcher-view')
+}
+
+function formatExternalBytes(bytes) {
+  if (typeof bytes !== 'number' || bytes < 0) return '—'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
+  if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB'
+  return (bytes / 1073741824).toFixed(2) + ' GB'
+}
+
+function externalLauncherLabel(launcherId, fallback) {
+  const key = 'external.launcher.' + launcherId
+  const translated = t(key)
+  return translated === key ? (fallback || launcherId) : translated
+}
+
+function openExternalImport() {
+  externalState = { launchers: [], launcherId: null, root: null, instances: [], checked: [], importing: false, cancelRequested: false, currentImportId: null }
+  const view = externalView()
+  if (view) view.innerHTML = '<div class="install-note">' + escapeHtml(t('external.pickLauncher')) + '...</div>'
+  loadExternalLaunchers()
+}
+
+async function loadExternalLaunchers() {
+  const view = externalView()
+  if (!window.kindyrAPI?.instances?.externalDetect) {
+    if (view) view.innerHTML = '<div class="install-note">' + escapeHtml(t('external.detectError')) + '</div>'
+    return
+  }
+  let detected = []
+  try {
+    detected = await window.kindyrAPI.instances.externalDetect() || []
+  } catch {
+    if (view) view.innerHTML = '<div class="install-note">' + escapeHtml(t('external.detectError')) + '</div>'
+    return
+  }
+  externalState.launchers = detected
+  if (!view) return
+  const order = ['official', 'curseforge', 'modrinth', 'prism', 'sklauncher']
+  const rows = [...detected]
+    .sort((a, b) => order.indexOf(a.launcherId) - order.indexOf(b.launcherId))
+    .map(item => {
+      const found = (item.roots || []).find(root => root.exists)
+      const descKey = 'external.desc.' + item.launcherId
+      const desc = t(descKey) === descKey ? (found ? found.root : t('external.notFound')) : t(descKey)
+      return '<button type="button" class="external-pick-row" onclick="chooseExternalLauncher(&quot;' + escapeHtml(item.launcherId) + '&quot;)">' +
+        '<span class="external-pick-icon">' + externalLauncherIcon(item.launcherId) + '</span>' +
+        '<span class="external-pick-main"><strong>' + escapeHtml(externalLauncherLabel(item.launcherId, item.label)) + '</strong><small>' + escapeHtml(desc) + '</small></span>' +
+        '<i class="fa-solid fa-chevron-right external-pick-chevron" aria-hidden="true"></i>' +
+      '</button>'
+    }).join('')
+  view.innerHTML =
+    '<div class="section-label">' + escapeHtml(t('external.title')) + '</div>' +
+    '<div class="external-subtitle">' + escapeHtml(t('external.pickSubtitle')) + '</div>' +
+    '<div class="external-pick-list">' + rows + '</div>' +
+    '<div class="external-foot">' +
+      '<span></span>' +
+      '<span class="external-foot-actions">' +
+        '<button type="button" class="secondary-btn" onclick="backToImportMenu()">' + escapeHtml(t('create.back')) + '</button>' +
+      '</span>' +
+    '</div>'
+}
+
+async function chooseExternalLauncher(launcherId, rootOverride) {
+  const view = externalView()
+  externalState.launcherId = launcherId
+  externalState.instances = []
+  externalState.checked = []
+  if (view) view.innerHTML = '<div class="install-note">' + escapeHtml(t('external.instances')) + '...</div>'
+  let result
+  try {
+    result = await window.kindyrAPI.instances.externalList({ launcherId, rootOverride })
+  } catch (error) {
+    result = { ok: false, error: (error && error.message) || String(error) }
+  }
+  if (!result || !result.ok) {
+    if (view) {
+      view.innerHTML = '<div class="install-note">' + escapeHtml((result && result.error) || t('external.detectError')) + '</div>' +
+        '<div class="settings-actions"><button type="button" class="secondary-btn" onclick="openExternalImport()">' + escapeHtml(t('external.backLaunchers')) + '</button></div>'
+    }
+    return
+  }
+  externalState.root = result.root
+  externalState.instances = result.instances || []
+  externalState.checked = externalState.instances.map(item => Boolean(item.supported))
+  renderExternalInstances()
+}
+
+async function externalBrowseFolder() {
+  if (!window.kindyrAPI?.instances?.externalBrowse) return
+  const picked = await window.kindyrAPI.instances.externalBrowse()
+  if (!picked || picked.cancelled || !picked.path) return
+  const launcherId = externalState.launcherId || (externalState.launchers[0] && externalState.launchers[0].launcherId)
+  if (!launcherId) return
+  chooseExternalLauncher(launcherId, picked.path)
+}
+
+function toggleExternalChecked(index) {
+  const item = externalState.instances[index]
+  if (!item || !item.supported || externalState.importing) return
+  externalState.checked[index] = !externalState.checked[index]
+  renderExternalInstances()
+}
+
+function setExternalCheckedAll(value) {
+  if (externalState.importing) return
+  externalState.checked = externalState.instances.map(item => Boolean(value && item.supported))
+  renderExternalInstances()
+}
+
+function externalSelectionSummary() {
+  let count = 0
+  let total = 0
+  let unknown = false
+  const byDir = new Map()
+  externalState.instances.forEach((item, index) => {
+    if (!externalState.checked[index] || !item.supported) return
+    count++
+    if (typeof item.sizeBytes === 'number') {
+      total += item.sizeBytes
+      if (!byDir.has(item.gameDir)) byDir.set(item.gameDir, 0)
+      byDir.set(item.gameDir, byDir.get(item.gameDir) + 1)
+    } else {
+      unknown = true
+    }
+  })
+  const sharedGroups = [...byDir.values()].filter(n => n > 1).length
+  return { count, total, unknown, sharedGroups }
+}
+
+function externalInstanceIcon(loader) {
+  if (loader === 'fabric') return '<i class="fa-solid fa-scroll" aria-hidden="true"></i>'
+  if (loader === 'quilt') return '<i class="fa-solid fa-feather" aria-hidden="true"></i>'
+  if (loader === 'forge') return '<i class="fa-solid fa-trophy" aria-hidden="true"></i>'
+  if (loader === 'neoforge') return '<i class="fa-solid fa-shield-halved" aria-hidden="true"></i>'
+  return '<i class="fa-solid fa-cube" aria-hidden="true"></i>'
+}
+
+function renderExternalInstances() {
+  const view = externalView()
+  if (!view) return
+  const isOfficial = externalState.launcherId === 'official'
+  const listTitle = t(isOfficial ? 'external.profilesTitle' : 'external.instancesTitle')
+  const descKey = 'external.desc.' + externalState.launcherId
+  const subtitle = t(descKey) === descKey ? '' : t(descKey)
+  const rows = externalState.instances.map((item, index) => {
+    const badges = escapeHtml(item.minecraftVersion || '—') + ' · ' + escapeHtml(item.loader || '—') +
+      (item.loaderVersion ? ' ' + escapeHtml(item.loaderVersion) : '') +
+      ' · ' + escapeHtml(formatExternalBytes(item.sizeBytes))
+    const sub = item.supported
+      ? badges
+      : escapeHtml(t('external.unsupported')) + ': ' + escapeHtml(item.reason || '')
+    return '<label class="external-instance-row' + (item.supported ? '' : ' external-unsupported') + '">' +
+      '<span class="external-instance-icon">' + externalInstanceIcon(item.loader) + '</span>' +
+      '<span class="external-instance-main"><strong>' + escapeHtml(item.name) + '</strong><small>' + sub + '</small></span>' +
+      '<input type="checkbox"' + (externalState.checked[index] ? ' checked' : '') + (item.supported && !externalState.importing ? '' : ' disabled') +
+        ' onchange="toggleExternalChecked(' + index + ')">' +
+    '</label>'
+  }).join('')
+  const summary = externalSelectionSummary()
+  const warning = summary.sharedGroups > 0
+    ? '<div class="install-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> ' + escapeHtml(t('external.sharedWarning', { n: summary.count, size: formatExternalBytes(summary.total) })) + '</div>'
+    : ''
+  view.innerHTML =
+    '<div class="section-label">' + escapeHtml(externalLauncherLabel(externalState.launcherId, externalState.launcherId)) + '</div>' +
+    (subtitle ? '<div class="external-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +
+    '<div class="external-pathbar"><i class="fa-regular fa-folder" aria-hidden="true"></i>' +
+      '<span>' + escapeHtml(externalState.root || '') + '</span>' +
+      '<button type="button" class="secondary-btn" onclick="externalBrowseFolder()"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> ' + escapeHtml(t('external.chooseFolder')) + '</button>' +
+    '</div>' +
+    '<div class="external-list-head"><span>' + escapeHtml(listTitle) + ' (' + externalState.instances.length + ')</span>' +
+      '<button type="button" class="external-clear-btn" onclick="setExternalCheckedAll(false)"' + (externalState.importing ? ' disabled' : '') + '>' + escapeHtml(t('external.clear')) + '</button>' +
+    '</div>' +
+    (externalState.instances.length ? '<div class="external-instance-list">' + rows + '</div>' : '<div class="install-note">' + escapeHtml(t('external.noInstances')) + '</div>') +
+    warning +
+    '<div class="external-foot">' +
+      '<span>' + escapeHtml(t('external.selected', { n: summary.count })) + ' · ' + escapeHtml(t('external.totalSize', { size: formatExternalBytes(summary.total) })) + '</span>' +
+      '<span class="external-foot-actions">' +
+      (externalState.importing
+        ? '<button type="button" class="secondary-btn" onclick="cancelExternalImports()">' + escapeHtml(t('external.cancel')) + '</button>'
+        : '<button type="button" class="secondary-btn" onclick="openExternalImport()">' + escapeHtml(t('create.back')) + '</button>' +
+          '<button type="button" class="primary-btn" onclick="runExternalImports()"' + (summary.count ? '' : ' disabled') + '>' + escapeHtml(t('external.continue')) + ' ›</button>') +
+      '</span>' +
+    '</div>'
+}
+
+async function runExternalImports() {
+  if (externalState.importing) return
+  const api = window.kindyrAPI?.instances
+  if (!api?.externalImport) return
+  externalState.importing = true
+  externalState.cancelRequested = false
+  externalState.currentImportId = null
+  let okCount = 0
+  let failCount = 0
+  const onProgress = (data) => {
+    if (!data || data.importId !== externalState.currentImportId) return
+    const pct = data.totalBytes > 0 ? Math.round((data.doneBytes / data.totalBytes) * 100) : 0
+    updatePrepareToast(pct, data.current || t('external.importing'), t('external.importing'))
+  }
+  api.onExternalImportProgress(onProgress)
+  try {
+    for (let index = 0; index < externalState.instances.length; index++) {
+      if (externalState.cancelRequested) break
+      const item = externalState.instances[index]
+      if (!externalState.checked[index] || !item.supported) continue
+      externalState.currentImportId = 'ext-' + Date.now().toString(36) + '-' + index
+      showPrepareToast(item.name, t('external.importing'))
+      renderExternalInstances()
+      let result
+      try {
+        result = await api.externalImport({
+          importId: externalState.currentImportId,
+          launcherId: externalState.launcherId,
+          gameDir: item.gameDir,
+          name: item.name,
+          minecraftVersion: item.minecraftVersion,
+          loader: item.loader,
+          loaderVersion: item.loaderVersion
+        })
+      } finally {
+        hidePrepareToast(true)
+      }
+      if (!result) continue
+      if (result.cancelled) {
+        setStatus(t('external.importCancelled'))
+        break
+      }
+      if (result.ok) {
+        okCount++
+        externalState.checked[index] = false
+      } else {
+        failCount++
+      }
+      await afterModpackImport(result)
+      renderExternalInstances()
+    }
+  } finally {
+    api.offExternalImportProgress()
+    externalState.importing = false
+    externalState.currentImportId = null
+    renderExternalInstances()
+  }
+  setStatus(t('external.importDone', { ok: okCount, fail: failCount }))
+}
+
+async function cancelExternalImports() {
+  externalState.cancelRequested = true
+  try {
+    if (externalState.currentImportId && window.kindyrAPI?.instances?.externalImportCancel) {
+      await window.kindyrAPI.instances.externalImportCancel({ importId: externalState.currentImportId })
+    }
+  } catch {}
+  renderExternalInstances()
+  setStatus(t('external.importCancelled'))
 }
 
 function closeCreateInstanceModal(event) {

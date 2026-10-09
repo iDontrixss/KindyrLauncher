@@ -64,10 +64,10 @@ function diagnoseZipFile(archivePath, originalError) {
   try { stat = fs.statSync(archivePath) } catch {}
   const size = stat ? stat.size : -1
   if (size === 0) {
-    return new Error(`Archivo .mrpack vacío (0 bytes). Descarga incompleta o corrupta: ${archivePath}. Re-descarga el modpack.`)
+    return new Error(`Archivo .mrpack o .zip vacío (0 bytes). Descarga incompleta o corrupta: ${archivePath}. Re-descarga el modpack.`)
   }
   if (size > 0 && size < 22) {
-    return new Error(`Archivo .mrpack truncado (${size} bytes, mínimo 22). Re-descarga el modpack. Detalle: ${originalError.message}`)
+    return new Error(`Archivo .mrpack o .zip truncado (${size} bytes, mínimo 22). Re-descarga el modpack. Detalle: ${originalError.message}`)
   }
   let headerHex = '??'
   let headerText = ''
@@ -84,12 +84,12 @@ function diagnoseZipFile(archivePath, originalError) {
   const isHtml = headerText.trimStart().startsWith('<') || headerHex.startsWith('3c')
   const isZip = headerHex.startsWith('504b0304') || headerHex.startsWith('504b0506') || headerHex.startsWith('504b0708')
   if (isHtml) {
-    return new Error(`El archivo no es un ZIP válido (cabecera ${headerHex} = "${headerText}", ${size} bytes). Parece HTML (página de error/Cloudflare). Descarga el .mrpack directo de Modrinth con el navegador y reintenta.`)
+    return new Error(`El archivo no es un ZIP válido (cabecera ${headerHex} = "${headerText}", ${size} bytes). Parece HTML (página de error/Cloudflare). Descarga el .mrpack o .zip directo de Modrinth/CurseForge con el navegador y reintenta.`)
   }
   if (!isZip) {
-    return new Error(`El archivo no es un ZIP válido (cabecera 0x${headerHex} "${headerText}", ${size} bytes). Archivo corrupto o formato incorrecto (¿es un .zip de CurseForge renombrado?). Detalle: ${originalError.message}`)
+    return new Error(`El archivo no es un ZIP válido (cabecera 0x${headerHex} "${headerText}", ${size} bytes). Archivo corrupto o formato incorrecto. Detalle: ${originalError.message}`)
   }
-  return new Error(`${originalError.message} (tamaño ${size} bytes, cabecera 0x${headerHex}). Archivo .mrpack corrupto o truncado. Re-descarga el modpack y verifica que abra con 7-Zip/WinRAR.`)
+  return new Error(`${originalError.message} (tamaño ${size} bytes, cabecera 0x${headerHex}). Archivo .mrpack o .zip corrupto o truncado. Re-descarga el modpack y verifica que abra con 7-Zip/WinRAR.`)
 }
 
 async function withZip(archivePath, callback) {
@@ -192,18 +192,62 @@ async function extractZipEntries(archivePath, destinationRoot, options = {}) {
   const maxEntryBytes = options.maxEntryBytes || DEFAULT_MAX_ENTRY_BYTES
   const maxTotalBytes = options.maxTotalBytes || DEFAULT_MAX_TOTAL_BYTES
   const mapEntry = options.mapEntry || (name => name)
+  // onEntry: heartbeat opcional por archivo procesado (progreso en vivo para
+  // extracciones largas). skipInvalid (opt-in): en vez de abortar toda la
+  // extracción ante UNA entrada hostil/ilegible, se salta y se registra en
+  // `skipped`. Nada hostil se escribe jamás en ningún modo.
+  const onEntry = typeof options.onEntry === 'function' ? options.onEntry : null
+  const skipInvalid = options.skipInvalid === true
+  const emit = (info) => { if (onEntry) { try { onEntry(info) } catch {} } }
   const extracted = []
+  const skipped = []
   let totalBytes = 0
+  let processed = 0
   await withZip(archivePath, async zip => {
     let visited = 0
     for await (const entry of walkEntriesGenerator(zip)) {
       if (++visited > maxEntries) throw new Error('El ZIP contiene demasiadas entradas.')
       if (entry.fileName.endsWith('/')) continue
-      const sourceName = normalizeZipPath(entry.fileName)
-      if (isZipSymlink(entry)) throw new Error(`El ZIP contiene un enlace no permitido: ${sourceName}`)
-      const mapped = mapEntry(sourceName, entry)
-      if (!mapped) continue
-      const relativePath = normalizeZipPath(mapped)
+      let sourceName
+      try {
+        sourceName = normalizeZipPath(entry.fileName)
+      } catch (error) {
+        if (!skipInvalid) throw error
+        skipped.push({ sourceName: String(entry.fileName || ''), reason: error.message })
+        emit({ index: ++processed, skipped: true })
+        continue
+      }
+      if (isZipSymlink(entry)) {
+        const error = new Error(`El ZIP contiene un enlace no permitido: ${sourceName}`)
+        if (!skipInvalid) throw error
+        skipped.push({ sourceName, reason: error.message })
+        emit({ index: ++processed, skipped: true })
+        continue
+      }
+      let mapped
+      try {
+        mapped = mapEntry(sourceName, entry)
+      } catch (error) {
+        if (!skipInvalid) throw error
+        skipped.push({ sourceName, reason: error.message })
+        emit({ index: ++processed, skipped: true })
+        continue
+      }
+      if (!mapped) {
+        // Ignorada por el llamador (p. ej. fuera de overrides/): cuenta para
+        // el progreso pero no es ni extraída ni saltada por inválida.
+        emit({ index: ++processed, ignored: true })
+        continue
+      }
+      let relativePath
+      try {
+        relativePath = normalizeZipPath(mapped)
+      } catch (error) {
+        if (!skipInvalid) throw error
+        skipped.push({ sourceName, reason: error.message })
+        emit({ index: ++processed, skipped: true })
+        continue
+      }
       if (totalBytes + entry.uncompressedSize > maxTotalBytes) {
         throw new Error('El contenido extraído supera el límite total permitido.')
       }
@@ -211,12 +255,21 @@ async function extractZipEntries(archivePath, destinationRoot, options = {}) {
       const root = path.resolve(destinationRoot) + path.sep
       if (!destination.startsWith(root)) throw new Error(`Path traversal detectado: ${sourceName}`)
       const remainingBytes = maxTotalBytes - totalBytes
-      const bytes = await streamEntryToFile(zip, entry, destination, Math.min(maxEntryBytes, remainingBytes))
+      let bytes
+      try {
+        bytes = await streamEntryToFile(zip, entry, destination, Math.min(maxEntryBytes, remainingBytes))
+      } catch (error) {
+        if (!skipInvalid) throw error
+        skipped.push({ sourceName, reason: error.message })
+        emit({ index: ++processed, skipped: true })
+        continue
+      }
       totalBytes += bytes
       extracted.push({ sourceName, relativePath, bytes })
+      emit({ index: ++processed, sourceName, relativePath, bytes })
     }
   })
-  return { entries: extracted, totalBytes }
+  return { entries: extracted, totalBytes, skipped }
 }
 
 // Lista nombres normalizados de entradas (sin extraer nada). A diferencia de

@@ -1,5 +1,6 @@
 # Electron specific
 dist/
+dist-check/
 electron-unit-tests/
 
 # Dependencies

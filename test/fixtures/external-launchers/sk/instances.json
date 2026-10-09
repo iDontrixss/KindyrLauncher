@@ -1,0 +1,22 @@
+{
+  "_synthetic": true,
+  "instances": [
+    {
+      "id": "synthetic-selve",
+      "name": "Synthetic Selve",
+      "type": "modpack",
+      "gameType": "neoforge",
+      "minecraftVersion": "1.21.1",
+      "loaderVersion": "21.1.247",
+      "versionId": "1.21.1-neoforge-21.1.247"
+    },
+    {
+      "id": "synthetic-latest",
+      "name": "Synthetic Latest",
+      "type": "latest-release",
+      "gameType": "vanilla",
+      "minecraftVersion": "latest-release",
+      "versionId": "latest-release"
+    }
+  ]
+}
