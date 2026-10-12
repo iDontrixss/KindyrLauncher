@@ -1,10 +1,12 @@
 ---
-import homeSource from '../../../sections/inicio.html?raw';
-import instancesSource from '../../../sections/instancias.html?raw';
-import discoverSource from '../../../sections/descubrir.html?raw';
-import indexSource from '../../../index.html?raw';
-import commonSource from '../../../common.js?raw';
+// Vistas del launcher vendorizadas en ../vendor (copias de main: sections/ + index.html).
+// Si el launcher cambia esas vistas, copiar de nuevo esos archivos a ../vendor.
+import homeSource from '../vendor/inicio.html?raw';
+import instancesSource from '../vendor/instancias.html?raw';
+import discoverSource from '../vendor/descubrir.html?raw';
+import indexSource from '../vendor/index.html?raw';
 import featured from '../data/modrinth-featured.json';
+import categoryLabels from '../data/category-labels.json';
 
 type View = 'home' | 'instances' | 'discover' | 'import' | 'accounts';
 interface Props { view: View }
@@ -50,12 +52,8 @@ function loaderIcon(id: string) {
   return `<span class="loader-svg" aria-hidden="true">${JSON.parse(iconMatch[1])}</span>`;
 }
 
-// Etiquetas de categoría en español: mismo diccionario cat.<slug> de common.js (bloque ES).
-const esDictionary = commonSource.slice(0, commonSource.indexOf("'discover.downloads': 'Downloads'"));
-const categoryNames = new Map<string, string>();
-for (const match of esDictionary.matchAll(/'cat\.([a-z0-9-]+)':\s*'((?:\\.|[^'\\])*)'/g)) {
-  if (!categoryNames.has(match[1])) categoryNames.set(match[1], match[2]);
-}
+// Etiquetas de categoría en español: diccionario cat.<slug> extraído de common.js (bloque ES).
+const categoryNames = new Map<string, string>(Object.entries(categoryLabels as Record<string, string>));
 function categoryLabel(slug: string) {
   const key = slug.toLowerCase();
   if (categoryNames.has(key)) return categoryNames.get(key) as string;
