@@ -1,4 +1,5 @@
-packages: []
+packages:
+  - website
 
 # Espejo de package.json > pnpm.overrides (valores idénticos a propósito):
 # pnpm 9 (CI) solo lee overrides desde package.json, pnpm 11+ solo desde
