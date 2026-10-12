@@ -1,0 +1,75 @@
+﻿---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { downloads, VERSION, RELEASES_URL } from '../data/downloads';
+
+const options = Object.values(downloads);
+---
+
+<BaseLayout title="Descargar Kindyr" description="Descargá Kindyr para Windows o Linux.">
+  <div class="site-shell">
+    <main id="contenido" class="download-page">
+      <div class="section-grid download-back-row">
+        <a class="button button-dark button-small download-back" href="/" data-back>← VOLVER</a>
+      </div>
+      <section class="download download-page__band" aria-labelledby="descargar-titulo">
+        <div class="download-grid" aria-hidden="true"></div>
+        <div class="download-copy download-page__copy">
+          <div class="eyebrow"><span></span> DESCARGAS · v{VERSION}</div>
+          <h1 id="descargar-titulo">ELEGÍ TU<br /><em>SISTEMA.</em></h1>
+          <p class="yuyu-text">Kindyr está disponible para Windows y Linux. Descargá la versión que corresponde a tu equipo.</p>
+        </div>
+        <div class="download-page__grid">
+          {options.map((option) => (
+            <a class="download-page__card" href={option.url} rel="noreferrer">
+              <strong>{option.label}</strong>
+              <span>{option.detail}</span>
+              <small>{option.file}</small>
+              <span class="download-page__cta">DESCARGAR <span aria-hidden="true">↓</span></span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <p class="download-page__more section-grid">
+        Otras versiones y notas de cambios: <a href={RELEASES_URL} target="_blank" rel="noreferrer">ver todas las releases ↗</a>
+      </p>
+    </main>
+  </div>
+  <script is:inline>
+    // Vuelve a la página anterior del mismo sitio; si no hay historial, va al inicio.
+    document.querySelector('[data-back]')?.addEventListener('click', (event) => {
+      const sameSite = document.referrer && new URL(document.referrer).origin === location.origin;
+      if (sameSite && history.length > 1) {
+        event.preventDefault();
+        history.back();
+      }
+    });
+  </script>
+</BaseLayout>
+
+<style>
+  .download-page { min-height: 100vh; padding-top: 110px; display: flex; flex-direction: column; gap: 40px; }
+  .download-page__band { min-height: 560px; grid-template-columns: minmax(330px, .7fr) minmax(0, 1.3fr); align-items: center; }
+  .download-page__copy h1 { margin: 28px 0 0; font-size: clamp(51px, 6vw, 84px); line-height: .9; letter-spacing: -.055em; text-transform: uppercase; }
+  .download-page__copy h1 em { color: var(--white); font-style: normal; text-shadow: 4px 4px 0 var(--ink); }
+  .download-page__copy > p { max-width: 520px; margin: 25px 0 0; font-size: 18px; font-weight: 600; line-height: 1.6; }
+  .download-page__grid { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+  .download-page__card { display: flex; flex-direction: column; gap: 8px; padding: 28px; border: 3px solid var(--ink); background: var(--navy); box-shadow: var(--shadow-large); color: var(--white); text-decoration: none; transition: transform 140ms ease, box-shadow 140ms ease; }
+  .download-page__card:hover, .download-page__card:focus-visible { transform: translate(-3px, -3px); box-shadow: 14px 14px 0 var(--ink); }
+  .download-page__card:focus-visible { outline: 2px solid var(--white); outline-offset: 4px; }
+  .download-page__card strong { font-size: 30px; letter-spacing: -.04em; }
+  .download-page__card > span:not(.download-page__cta) { color: var(--muted); font-size: 14px; font-weight: 600; }
+  .download-page__card small { color: var(--dim); font: 700 11px/1.4 var(--font-mono); word-break: break-all; }
+  .download-page__cta { margin-top: 14px; color: var(--coral); font: 800 12px/1 var(--font-mono); letter-spacing: .08em; }
+  .download-page__more { margin: 0 auto 80px; color: var(--muted); font-size: 14px; }
+  .download-page__more a { color: var(--white); }
+  .download-back-row { display: flex; }
+  .download-back { gap: 8px; }
+  .download-back:focus-visible { outline: 2px solid var(--white); outline-offset: 4px; }
+  @media (max-width: 900px) {
+    .download-page__band { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    .download-page__grid { grid-template-columns: 1fr; }
+  }
+</style>

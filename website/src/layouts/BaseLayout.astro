@@ -1,0 +1,85 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://kindyrlauncher.pages.dev');
+const socialImage = new URL('/og-cover.svg', canonicalURL);
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Kindyr',
+  description,
+  applicationCategory: 'GameApplication',
+  operatingSystem: 'Windows, Linux',
+  isAccessibleForFree: true,
+  url: canonicalURL.toString(),
+  downloadUrl: 'https://github.com/iDontrixss/KindyrLauncher/releases',
+  codeRepository: 'https://github.com/iDontrixss/KindyrLauncher',
+  featureList: [
+    'Gestión de instancias de Minecraft',
+    'Integración con Modrinth',
+    'Importación de paquetes .mrpack',
+    'Compatibilidad con múltiples loaders',
+    'Gestión de cuentas Microsoft',
+  ],
+  author: {
+    '@type': 'Person',
+    name: 'iDontrixss',
+    url: 'https://github.com/iDontrixss',
+  },
+};
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#061840" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content={description} />
+    <meta name="keywords" content="Kindyr, launcher de Minecraft, Minecraft launcher, Modrinth, modpacks, Forge, Fabric, NeoForge, Quilt, open source" />
+    <meta name="author" content="iDontrixss" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="canonical" href={canonicalURL} />
+    <link rel="icon" type="image/png" href="/kindyr-favicon.png?v=3" sizes="500x500" />
+    <link rel="apple-touch-icon" href="/kindyr-favicon.png?v=3" />
+    <link rel="preload" href="/kindyr-logo.png" as="image" />
+    <link rel="preload" href="/fonts/yuyu/Yuyu-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/indie-flower/IndieFlower-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/sue-ellen-francisco/SueEllenFrancisco-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_UY" />
+    <meta property="og:site_name" content="Kindyr" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:image" content={socialImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Kindyr, el launcher de Minecraft para jugar a tu manera" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImage} />
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+    <script is:inline>document.documentElement.classList.add('js');</script>
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+    <slot />
+  </body>
+</html>

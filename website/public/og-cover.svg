@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0v36" fill="none" stroke="#4c8dff" stroke-opacity=".14"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="#030f2b"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <path fill="#ff5a3c" stroke="#010712" stroke-width="8" d="M1000-90h340v340h-340z" transform="rotate(35 1170 80)"/>
+  <path fill="#4c8dff" stroke="#010712" stroke-width="8" d="M-90 430h290v290H-90z" transform="rotate(-18 55 575)"/>
+  <rect x="75" y="88" width="1050" height="454" rx="0" fill="#0a2559" stroke="#010712" stroke-width="9"/>
+  <rect x="75" y="88" width="1050" height="64" fill="#061840" stroke="#010712" stroke-width="9"/>
+  <circle cx="1058" cy="120" r="10" fill="#ff5a3c" stroke="#010712" stroke-width="4"/>
+  <circle cx="1024" cy="120" r="10" fill="#f5c518" stroke="#010712" stroke-width="4"/>
+  <circle cx="990" cy="120" r="10" fill="#4c8dff" stroke="#010712" stroke-width="4"/>
+  <rect x="107" y="185" width="412" height="272" fill="#061840" stroke="#010712" stroke-width="7"/>
+  <path fill="#ff5a3c" stroke="#010712" stroke-width="7" d="M153 225h96v96h-96z"/>
+  <text x="201" y="293" text-anchor="middle" fill="#f4f8ff" font-family="Arial, sans-serif" font-size="48" font-weight="800">K</text>
+  <text x="281" y="245" fill="#22c17f" font-family="monospace" font-size="15" font-weight="800">LISTA PARA JUGAR</text>
+  <text x="281" y="292" fill="#f4f8ff" font-family="Arial, sans-serif" font-size="39" font-weight="800">Keo Optimized</text>
+  <text x="281" y="326" fill="#a9cdff" font-family="monospace" font-size="15">Fabric · 1.21.4 · 24 mods</text>
+  <rect x="153" y="369" width="318" height="54" fill="#ff5a3c" stroke="#010712" stroke-width="6"/>
+  <text x="312" y="403" text-anchor="middle" fill="#f4f8ff" font-family="monospace" font-size="18" font-weight="800">▶ JUGAR</text>
+  <text x="578" y="236" fill="#a9cdff" font-family="monospace" font-size="18" font-weight="800" letter-spacing="3">LAUNCHER DE MINECRAFT</text>
+  <text x="578" y="335" fill="#f4f8ff" font-family="Arial, sans-serif" font-size="91" font-weight="800" letter-spacing="-5">KINDYR</text>
+  <text x="578" y="405" fill="#4c8dff" font-family="Arial, sans-serif" font-size="46" font-weight="800">LISTO PARA JUGAR.</text>
+  <text x="578" y="452" fill="#aacdff" font-family="Arial, sans-serif" font-size="20">Instancias · Modrinth · Modpacks · Open source</text>
+  <rect x="867" y="492" width="226" height="48" fill="#f5c518" stroke="#010712" stroke-width="6" transform="rotate(-3 980 516)"/>
+  <text x="980" y="522" text-anchor="middle" fill="#010712" font-family="monospace" font-size="14" font-weight="800" transform="rotate(-3 980 516)">SIN ANUNCIOS</text>
+</svg>

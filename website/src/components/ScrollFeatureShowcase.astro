@@ -1,0 +1,375 @@
+﻿---
+import FeatureCard from './FeatureCard.astro';
+
+const features = [
+  {
+    number: '01',
+    label: 'INSTANCIAS',
+    title: 'Cada partida, en su lugar.',
+    description: 'Separá versiones, loaders y mods. Probá otra configuración sin tocar la partida que ya funciona.',
+    view: 'instances',
+    accent: 'blue',
+  },
+  {
+    number: '02',
+    label: 'MODRINTH',
+    title: 'Encontrá tu próximo mod.',
+    description: 'Explorá mods, modpacks y shaders desde Kindyr, con la versión y el loader de la instancia a la vista.',
+    view: 'discover',
+    accent: 'green',
+  },
+  {
+    number: '03',
+    label: 'IMPORTACIÓN .MRPACK',
+    title: 'De paquete a partida.',
+    description: 'Importá un modpack .mrpack y organizalo como una instancia lista para configurar.',
+    view: 'import',
+    accent: 'coral',
+  },
+  {
+    number: '04',
+    label: 'CUENTAS',
+    title: 'Tus perfiles, a mano.',
+    description: 'Tené tus cuentas Microsoft disponibles mientras preparás la próxima sesión.',
+    view: 'accounts',
+    accent: 'yellow',
+  },
+];
+---
+
+<section class="feature-story" id="funciones" aria-labelledby="feature-story-title" data-feature-story>
+  <div class="feature-story__stage" data-feature-stage>
+    <div class="feature-story__content section-grid">
+      <header class="feature-story__heading">
+        <div class="section-kicker"><span>01</span> FUNCIONES DEL LAUNCHER</div>
+        <h2 id="feature-story-title">TODO LISTO.<br /><em>MÁS JUEGO.</em></h2>
+        <p class="yuyu-text">Un recorrido por las herramientas que mantienen cada partida organizada.</p>
+      </header>
+
+      <p class="feature-story__progress" data-feature-progress aria-live="polite">Desplazate para explorar las funciones</p>
+
+      <div class="feature-story__row" data-feature-row>
+        {features.map((feature) => (
+          <FeatureCard {...feature} />
+        ))}
+      </div>
+
+       <div class="feature-story__footer">
+         <button class="feature-story__skip" type="button" data-feature-skip>SALTAR RECORRIDO <span aria-hidden="true">↘</span></button>
+        <i></i>
+        <span aria-label="Cuatro funciones">01 — 04</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .feature-story {
+    position: relative;
+    height: 900vh;
+    background: linear-gradient(180deg, rgba(6, 24, 64, .48), rgba(3, 15, 43, .94));
+    border-block: 3px solid var(--ink);
+  }
+
+  .feature-story__stage {
+    position: sticky;
+    top: 0;
+    display: grid;
+    align-items: center;
+    height: 100vh;
+    height: 100svh;
+    min-height: 640px;
+    overflow: clip;
+    isolation: isolate;
+  }
+
+  .feature-story__stage::before,
+  .feature-story__stage::after {
+    position: absolute;
+    z-index: -1;
+    width: min(44vw, 640px);
+    aspect-ratio: 1;
+    border: 1px solid rgba(76, 141, 255, .13);
+    border-radius: 50%;
+    content: '';
+    pointer-events: none;
+  }
+
+  .feature-story__stage::before { top: -48%; left: -15%; }
+  .feature-story__stage::after { right: -15%; bottom: -58%; width: min(55vw, 760px); }
+
+  .feature-story__content {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    align-items: center;
+    height: min(100%, 900px);
+    padding-top: 100px;
+    padding-bottom: 28px;
+  }
+
+  .feature-story__heading { max-width: 700px; }
+  .feature-story__heading h2 { margin: 19px 0 0; font-size: clamp(40px, 5vw, 66px); line-height: .91; letter-spacing: -.055em; }
+  .feature-story__heading h2 em { color: var(--coral); font-style: normal; }
+  .feature-story__heading > p { max-width: 520px; margin: 13px 0 0; color: var(--muted); font-size: 22px; font-weight: 500; }
+  .feature-story__progress { position: absolute; top: 116px; right: 0; max-width: 230px; color: var(--blue-pale); font: 700 8px/1.5 var(--font-mono); letter-spacing: .08em; text-align: right; text-transform: uppercase; }
+
+  .feature-story__row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: center;
+    gap: clamp(10px, 1.5vw, 20px);
+    width: 100%;
+    margin-top: 20px;
+    perspective: 1200px;
+  }
+
+  .feature-story__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--dim); font: 700 7px/1 var(--font-mono); letter-spacing: .1em; }
+  .feature-story.is-skipping [data-feature-card] { transition: transform 420ms cubic-bezier(.2,.75,.2,1), opacity 420ms ease, scale 180ms ease; }
+  .feature-story.is-shortening { transition: height 480ms cubic-bezier(.2,.75,.2,1); }
+  .feature-story__skip { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; padding: 11px 13px; border: 2px solid var(--ink); background: var(--coral); color: var(--white); box-shadow: 3px 3px 0 var(--ink); font: 800 8px/1 var(--font-mono); letter-spacing: .08em; transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease; }
+  .feature-story__skip span { font-size: 13px; }
+  .feature-story__skip:hover, .feature-story__skip:focus-visible { transform: translate(-2px, -2px); box-shadow: 5px 5px 0 var(--ink); background: #ff6d53; }
+  .feature-story__skip:focus-visible { outline: 2px solid var(--white); outline-offset: 4px; }
+  .feature-story__footer i { position: relative; flex: 1; height: 1px; overflow: hidden; background: var(--line); }
+  .feature-story__footer i::after { position: absolute; inset: 0 auto 0 0; width: 25%; background: var(--coral); content: ''; }
+
+  @media (max-width: 900px) {
+    .feature-story__content { padding-top: 114px; }
+    .feature-story__progress { top: 130px; }
+    .feature-story__row { gap: 9px; }
+  }
+
+  @media (max-width: 900px) {
+    .feature-story { height: auto; padding-block: 90px; }
+    .feature-story__stage { position: relative; display: block; height: auto; min-height: 0; overflow: visible; }
+    .feature-story__content { display: block; height: auto; padding-top: 0; padding-bottom: 0; }
+    .feature-story__progress { position: static; max-width: none; margin: 18px 0; text-align: left; }
+    .feature-story__row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 24px; }
+    .feature-story__footer { margin-top: 27px; }
+  }
+
+  @media (max-width: 700px) {
+    .feature-story { height: auto; padding-block: 90px; }
+    .feature-story__stage { position: relative; display: block; height: auto; min-height: 0; overflow: visible; }
+    .feature-story__content { display: block; height: auto; padding-top: 0; padding-bottom: 0; }
+    .feature-story__heading h2 { font-size: clamp(39px, 11vw, 56px); }
+    .feature-story__heading > p { font-size: 21px; }
+    .feature-story__progress { position: static; max-width: none; margin: 18px 0; text-align: left; }
+    .feature-story__row { grid-template-columns: 1fr; gap: 18px; margin-top: 24px; }
+    .feature-story__footer { margin-top: 27px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feature-story { height: auto; padding-block: 90px; }
+    .feature-story__stage { position: relative; display: block; height: auto; min-height: 0; overflow: visible; }
+    .feature-story__content { display: block; height: auto; padding-top: 0; padding-bottom: 0; }
+    .feature-story__progress { position: static; max-width: none; margin: 18px 0; text-align: left; }
+    .feature-story__row { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 24px; }
+    .feature-story__footer { display: none; }
+  }
+
+  @media (max-width: 700px) and (prefers-reduced-motion: reduce) {
+    .feature-story__row { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  type FeatureCardState = {
+    element: HTMLElement;
+    number: string;
+    offsetX: number;
+    offsetY: number;
+    focusScale: number;
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-feature-story]').forEach((story) => {
+    const stage = story.querySelector<HTMLElement>('[data-feature-stage]');
+    const progressLabel = story.querySelector<HTMLElement>('[data-feature-progress]');
+    const cards: FeatureCardState[] = Array.from(story.querySelectorAll<HTMLElement>('[data-feature-card]')).map((element) => ({
+      element,
+      number: element.dataset.featureNumber ?? '01',
+      offsetX: 0,
+      offsetY: 0,
+      focusScale: 1.2,
+    }));
+    const mobileQuery = window.matchMedia('(max-width: 900px)');
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const skipButton = story.querySelector<HTMLButtonElement>('[data-feature-skip]');
+    let frame = 0;
+    let measuredTop = 0;
+    let scrollDistance = 1;
+    let previousActive = '';
+    let enabled = false;
+    let skipped = false;
+
+    const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
+    const easeInOut = (value: number) => {
+      const t = clamp(value);
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    };
+
+    const clearInlineStyles = () => {
+      cards.forEach(({ element }) => {
+        element.style.removeProperty('transform');
+        element.style.removeProperty('opacity');
+        element.style.removeProperty('z-index');
+        element.removeAttribute('aria-current');
+        element.classList.remove('is-active');
+      });
+      previousActive = '';
+    };
+
+    const measure = () => {
+      if (!stage || !enabled) return;
+      const previousTransforms = cards.map(({ element }) => element.style.transform);
+      cards.forEach(({ element }) => { element.style.transform = 'none'; });
+      const stageRect = stage.getBoundingClientRect();
+      const pageTop = window.scrollY + stageRect.top;
+      const viewportWidth = document.documentElement.clientWidth;
+      const viewportHeight = window.innerHeight;
+
+      measuredTop = window.scrollY + story.getBoundingClientRect().top;
+      scrollDistance = Math.max(1, story.offsetHeight - viewportHeight);
+
+      cards.forEach((card) => {
+        const rect = card.element.getBoundingClientRect();
+        card.offsetX = viewportWidth / 2 - (rect.left + rect.width / 2);
+        card.offsetY = pageTop + viewportHeight / 2 - (window.scrollY + rect.top + rect.height / 2);
+
+        const width = card.element.offsetWidth;
+        const height = card.element.offsetHeight;
+        card.focusScale = Math.max(1, Math.min(1.65, (viewportWidth - 80) / (width * 1.18), (viewportHeight - 170) / height));
+      });
+
+      cards.forEach((card, index) => {
+        if (previousTransforms[index]) card.element.style.transform = previousTransforms[index];
+        else card.element.style.removeProperty('transform');
+      });
+    };
+
+    const update = () => {
+      frame = 0;
+      if (!enabled) return;
+
+      const progress = clamp((window.scrollY - measuredTop) / scrollDistance);
+      const fadeOthers = easeInOut(progress / 0.035);
+      let activeNumber = '';
+
+      cards.forEach((card, index) => {
+        const localProgress = progress * cards.length - index;
+        const isInSequence = localProgress >= 0 && localProgress <= 1;
+        const enter = easeInOut(localProgress / 0.2);
+        const leave = 1 - easeInOut((localProgress - 0.8) / 0.2);
+        const focus = isInSequence ? Math.min(enter, leave) : 0;
+        const idleScale = 1 - fadeOthers * 0.1;
+        const scale = idleScale + (card.focusScale - idleScale) * focus;
+        const scaleX = scale * (1 + focus * 0.18);
+        const opacity = 1 - fadeOthers * 0.48 + focus * fadeOthers * 0.48;
+        const x = card.offsetX * focus;
+        const y = card.offsetY * focus;
+
+        card.element.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scale(${scaleX.toFixed(4)}, ${scale.toFixed(4)})`;
+        card.element.style.opacity = opacity.toFixed(3);
+        card.element.style.zIndex = focus > 0 ? String(10 + index) : '1';
+
+        if (focus > 0.02) activeNumber = card.number;
+      });
+
+      if (activeNumber && activeNumber !== previousActive) {
+        const activeIndex = cards.findIndex((card) => card.number === activeNumber);
+        const activeCard = cards[activeIndex]?.element;
+        activeCard?.setAttribute('aria-current', 'step');
+        activeCard?.classList.add('is-active');
+        if (previousActive) {
+          const previousCard = cards.find((card) => card.number === previousActive)?.element;
+          previousCard?.removeAttribute('aria-current');
+          previousCard?.classList.remove('is-active');
+        }
+        if (progressLabel) progressLabel.textContent = `Función ${String(activeIndex + 1).padStart(2, '0')} de ${String(cards.length).padStart(2, '0')} · ${activeCard?.querySelector('h3')?.textContent ?? ''}`;
+        previousActive = activeNumber;
+      } else if (!activeNumber && progress >= 0.99 && previousActive) {
+        const previousCard = cards.find((card) => card.number === previousActive)?.element;
+        previousCard?.removeAttribute('aria-current');
+        previousCard?.classList.remove('is-active');
+        previousActive = '';
+      }
+    };
+
+    const requestUpdate = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+
+    const configure = () => {
+      enabled = !skipped && !mobileQuery.matches && !motionQuery.matches;
+      if (enabled) {
+        clearInlineStyles();
+        measure();
+        requestUpdate();
+      } else {
+        clearInlineStyles();
+        if (progressLabel) progressLabel.textContent = 'Cuatro funciones para preparar cada partida';
+      }
+    };
+
+    skipButton?.addEventListener('click', () => {
+      skipped = true;
+      story.classList.add('is-skipping');
+      enabled = false;
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = 0;
+
+      if (mobileQuery.matches) {
+        clearInlineStyles();
+        return;
+      }
+
+      const storyTop = window.scrollY + story.getBoundingClientRect().top;
+      const reduceMotion = motionQuery.matches;
+      const collapse = () => {
+        window.removeEventListener('scrollend', collapse);
+        // Las tarjetas se limpian recién aquí, con la página ya arriba de la sección,
+        // para que no salten desde la posición del recorrido.
+        clearInlineStyles();
+        if (stage) {
+          story.classList.add('is-shortening');
+          story.style.height = `${stage.offsetHeight}px`;
+        }
+      };
+
+      if (reduceMotion || Math.abs(window.scrollY - storyTop) < 2) {
+        collapse();
+        return;
+      }
+
+      // Llevamos al inicio de la sección y luego la colapsamos a una sola pantalla,
+      // así la página sigue con scroll normal y sin recorrido pendiente.
+      window.addEventListener('scrollend', collapse, { once: true });
+      window.scrollTo({ top: storyTop, behavior: 'smooth' });
+      window.setTimeout(collapse, 900);
+    });
+
+    window.addEventListener('scroll', requestUpdate, { passive: true });
+    window.addEventListener('resize', () => {
+      if (enabled) {
+        measure();
+        requestUpdate();
+      }
+    }, { passive: true });
+    mobileQuery.addEventListener('change', configure);
+    motionQuery.addEventListener('change', configure);
+
+    if ('ResizeObserver' in window && stage) {
+      const resizeObserver = new ResizeObserver(() => {
+        if (enabled) {
+          measure();
+          requestUpdate();
+        }
+      });
+      resizeObserver.observe(stage);
+      cards.forEach(({ element }) => resizeObserver.observe(element));
+    }
+
+    configure();
+  });
+</script>

@@ -1,0 +1,138 @@
+﻿{
+    "source":  "Modrinth search API (snapshot)",
+    "captured":  "2026-10-12",
+    "total_hits":  77070,
+    "per_page":  8,
+    "projects":  [
+                     {
+                         "title":  "Fabric API",
+                         "slug":  "fabric-api",
+                         "author":  "modmuss50",
+                         "description":  "Lightweight and modular API providing common hooks and intercompatibility measures utilized by mods using the Fabric toolchain.",
+                         "categories":  [
+                                            "fabric",
+                                            "library"
+                                        ],
+                         "downloads":  275560643,
+                         "follows":  36813,
+                         "icon_url":  "https://cdn.modrinth.com/data/P7dR8mSH/icon.png",
+                         "date_modified":  "2026-10-06T15:49:54.482455+00:00"
+                     },
+                     {
+                         "title":  "Sodium",
+                         "slug":  "sodium",
+                         "author":  "jellysquid3",
+                         "description":  "A high-performance rendering engine replacement for Minecraft, which greatly improves frame rates and reduces micro-stutter.",
+                         "categories":  [
+                                            "fabric",
+                                            "neoforge",
+                                            "optimization",
+                                            "quilt"
+                                        ],
+                         "downloads":  242793522,
+                         "follows":  41673,
+                         "icon_url":  "https://cdn.modrinth.com/data/AANobbMI/295862f4724dc3f78df3447ad6072b2dcd3ef0c9_96.webp",
+                         "date_modified":  "2026-09-20T21:27:06.329936+00:00"
+                     },
+                     {
+                         "title":  "Iris Shaders",
+                         "slug":  "iris",
+                         "author":  "coderbot",
+                         "description":  "A modern shader pack loader for Minecraft intended to be compatible with existing OptiFine shader packs",
+                         "categories":  [
+                                            "decoration",
+                                            "fabric",
+                                            "neoforge",
+                                            "optimization",
+                                            "quilt"
+                                        ],
+                         "downloads":  188651868,
+                         "follows":  29921,
+                         "icon_url":  "https://cdn.modrinth.com/data/YL57xq9U/18d0e7f076d3d6ed5bedd472b853909aac5da202_96.webp",
+                         "date_modified":  "2026-09-30T02:58:18.855057+00:00"
+                     },
+                     {
+                         "title":  "Entity Culling",
+                         "slug":  "entityculling",
+                         "author":  "tr7zw",
+                         "description":  "Using async path-tracing to hide Block-/Entities that are not visible",
+                         "categories":  [
+                                            "babric",
+                                            "fabric",
+                                            "forge",
+                                            "neoforge",
+                                            "optimization",
+                                            "quilt"
+                                        ],
+                         "downloads":  180280412,
+                         "follows":  17785,
+                         "icon_url":  "https://cdn.modrinth.com/data/NNAgCjsB/7873452d6cede4daed12da3d7d8c193ab88b4fd6_96.webp",
+                         "date_modified":  "2026-10-08T16:52:20.326661+00:00"
+                     },
+                     {
+                         "title":  "Cloth Config API",
+                         "slug":  "cloth-config",
+                         "author":  "shedaniel",
+                         "description":  "Configuration Library for Minecraft Mods",
+                         "categories":  [
+                                            "fabric",
+                                            "forge",
+                                            "library",
+                                            "neoforge"
+                                        ],
+                         "downloads":  178156673,
+                         "follows":  16870,
+                         "icon_url":  "https://cdn.modrinth.com/data/9s6osm5g/ed8a2316cbb6f4fc5f510e8e13a59a85cbbbff4d_96.webp",
+                         "date_modified":  "2026-09-23T07:00:50.158851+00:00"
+                     },
+                     {
+                         "title":  "FerriteCore",
+                         "slug":  "ferrite-core",
+                         "author":  "malte0811",
+                         "description":  "Memory usage optimizations",
+                         "categories":  [
+                                            "fabric",
+                                            "forge",
+                                            "neoforge",
+                                            "optimization",
+                                            "quilt",
+                                            "utility"
+                                        ],
+                         "downloads":  159760134,
+                         "follows":  16571,
+                         "icon_url":  "https://cdn.modrinth.com/data/uXXizFIs/222a126f26f8f9ae1eb339f3b767677f18bff31f_96.webp",
+                         "date_modified":  "2026-03-24T18:31:48.941879+00:00"
+                     },
+                     {
+                         "title":  "Mod Menu",
+                         "slug":  "modmenu",
+                         "author":  "Prospector",
+                         "description":  "Adds a mod menu to view the list of mods you have installed.",
+                         "categories":  [
+                                            "fabric",
+                                            "quilt",
+                                            "utility"
+                                        ],
+                         "downloads":  154091373,
+                         "follows":  27571,
+                         "icon_url":  "https://cdn.modrinth.com/data/mOgUt4GM/5a20ed1450a0e1e79a1fe04e61bb4e5878bf1d20.png",
+                         "date_modified":  "2026-09-24T20:44:01.940592+00:00"
+                     },
+                     {
+                         "title":  "Lithium",
+                         "slug":  "lithium",
+                         "author":  "jellysquid3",
+                         "description":  "No-compromises game logic optimization mod, useful for both single-player games and multi-player servers.",
+                         "categories":  [
+                                            "fabric",
+                                            "neoforge",
+                                            "optimization",
+                                            "quilt"
+                                        ],
+                         "downloads":  135908671,
+                         "follows":  23868,
+                         "icon_url":  "https://cdn.modrinth.com/data/gvQqBUqZ/bcc8686c13af0143adf4285d741256af824f70b7_96.webp",
+                         "date_modified":  "2026-09-28T03:43:31.367717+00:00"
+                     }
+                 ]
+}
