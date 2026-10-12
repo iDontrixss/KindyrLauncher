@@ -4,11 +4,18 @@
 import homeSource from '../vendor/inicio.html?raw';
 import instancesSource from '../vendor/instancias.html?raw';
 import discoverSource from '../vendor/descubrir.html?raw';
+import skinsSource from '../vendor/skins.html?raw';
+import settingsSource from '../vendor/ajustes.html?raw';
 import indexSource from '../vendor/index.html?raw';
 import featured from '../data/modrinth-featured.json';
 import categoryLabels from '../data/category-labels.json';
+import prismSvg from '../vendor/external/prism.svg?raw';
+import curseforgeSvg from '../vendor/external/curseforge.svg?raw';
+import modrinthSvg from '../vendor/external/modrinth.svg?raw';
+import sklauncherSvg from '../vendor/external/sklauncher.svg?raw';
+import officialSvg from '../vendor/external/official.svg?raw';
 
-type View = 'home' | 'instances' | 'discover' | 'import' | 'accounts';
+type View = 'home' | 'instances' | 'discover' | 'import' | 'accounts' | 'skins' | 'settings' | 'migrate';
 interface Props { view: View }
 
 const { view } = Astro.props;
@@ -164,12 +171,42 @@ if (view === 'home') {
     .replace('id="discover-loaders"></div>', `id="discover-loaders">${loaderMarkup}</div>`)
     .replace('<div class="discover-results" id="discover-results"></div>', `<div class="discover-results" id="discover-results">${featured.projects.map(projectCard).join('')}</div>`)
     .replace('<span id="discover-page-summary">1 / 1</span>', `<span id="discover-page-summary">Página 1 de ${pages}</span>`);
+} else if (view === 'skins') {
+  content = extractSection(skinsSource, '<style>');
+} else if (view === 'settings') {
+  content = extractSection(settingsSource, '<div class="page-head');
+} else if (view === 'migrate') {
+  // Estructura real de instances.js:loadExternalLaunchers + textos de common.js (external.*).
+  const launchers = [
+    ['official', 'Minecraft oficial', 'Trae perfiles desde el launcher oficial de Minecraft', officialSvg],
+    ['curseforge', 'CurseForge', 'Trae instancias desde la aplicación CurseForge', curseforgeSvg],
+    ['modrinth', 'Modrinth App', 'Trae instancias desde la aplicación Modrinth', modrinthSvg],
+    ['prism', 'Prism Launcher', 'Trae instancias desde Prism Launcher', prismSvg],
+    ['sklauncher', 'SKLauncher', 'Trae instancias desde SKLauncher', sklauncherSvg],
+  ];
+  const rows = launchers.map(([, label, desc, svg]) =>
+    '<button type="button" class="external-pick-row" tabindex="-1">' +
+      `<span class="external-pick-icon">${svg}</span>` +
+      `<span class="external-pick-main"><strong>${escapeHtml(label)}</strong><small>${escapeHtml(desc)}</small></span>` +
+      '<i class="fa-solid fa-chevron-right external-pick-chevron" aria-hidden="true"></i>' +
+    '</button>').join('');
+  content = '<div class="modal-backdrop active"><div class="create-modal" role="dialog" aria-modal="true">' +
+    '<div class="modal-head"><div class="modal-title">Importar desde otro launcher</div>' +
+    '<button type="button" class="modal-close" tabindex="-1">×</button></div>' +
+    '<div class="create-body">' +
+      '<div class="section-label">Importar desde otro launcher</div>' +
+      '<div class="external-subtitle">Elige dónde están tus instancias</div>' +
+      `<div class="external-pick-list">${rows}</div>` +
+      '<div class="external-foot"><span></span><span class="external-foot-actions">' +
+        '<button type="button" class="secondary-btn" tabindex="-1">Volver</button>' +
+      '</span></div>' +
+    '</div></div></div>';
 } else {
   const modalId = view === 'import' ? 'import-modpack-modal' : 'account-modal';
   content = extractDiv(indexSource, modalId).replace('class="modal-backdrop"', 'class="modal-backdrop active"');
 }
 
-const isModal = view === 'import' || view === 'accounts';
+const isModal = view === 'import' || view === 'accounts' || view === 'migrate';
 const homeMarkup = extractSection(homeSource, '<div class="home-intro">');
 const staticMarkup = isModal
   ? `<main class="content">${homeMarkup}</main>${content}`
