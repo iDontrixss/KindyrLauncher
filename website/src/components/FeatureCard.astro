@@ -15,8 +15,6 @@ const { number, label, title, description, view, accent } = Astro.props;
 
 <article
   class={`feature-card feature-card--${accent}`}
-  data-feature-card
-  data-feature-number={number}
   aria-labelledby={`feature-title-${number}`}
 >
   <div class="feature-card__topline">
