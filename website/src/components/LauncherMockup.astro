@@ -1,0 +1,232 @@
+---
+import homeSource from '../../../sections/inicio.html?raw';
+import instancesSource from '../../../sections/instancias.html?raw';
+import discoverSource from '../../../sections/descubrir.html?raw';
+import indexSource from '../../../index.html?raw';
+import commonSource from '../../../common.js?raw';
+import featured from '../data/modrinth-featured.json';
+
+type View = 'home' | 'instances' | 'discover' | 'import' | 'accounts';
+interface Props { view: View }
+
+const { view } = Astro.props;
+
+function removeHandlers(markup: string) {
+  return markup.replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*')/gi, '');
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+}
+
+function extractSection(source: string, marker: string) {
+  const start = source.indexOf(marker);
+  if (start < 0) return '';
+  const end = source.indexOf('<script', start);
+  return removeHandlers(source.slice(start, end < 0 ? undefined : end));
+}
+
+function extractDiv(source: string, id: string) {
+  const markerIndex = source.indexOf(`id="${id}"`);
+  if (markerIndex < 0) return '';
+  const start = source.lastIndexOf('<div', markerIndex);
+  const tags = /<\/?div\b[^>]*>/gi;
+  tags.lastIndex = start;
+  let depth = 0;
+  let match: RegExpExecArray | null;
+  while ((match = tags.exec(source))) {
+    depth += match[0].startsWith('</') ? -1 : 1;
+    if (depth === 0) return removeHandlers(source.slice(start, tags.lastIndex));
+  }
+  return '';
+}
+
+function loaderIcon(id: string) {
+  const iconsStart = discoverSource.indexOf('const LOADER_ICONS = {');
+  const iconsEnd = discoverSource.indexOf('\n}', iconsStart);
+  const iconsSource = discoverSource.slice(iconsStart, iconsEnd);
+  const iconMatch = iconsSource.match(new RegExp(`"${id}"\\s*:\\s*("(?:\\\\.|[^"\\\\])*")`));
+  if (!iconMatch) return '<i class="fa-solid fa-cube" aria-hidden="true"></i>';
+  return `<span class="loader-svg" aria-hidden="true">${JSON.parse(iconMatch[1])}</span>`;
+}
+
+// Etiquetas de categoría en español: mismo diccionario cat.<slug> de common.js (bloque ES).
+const esDictionary = commonSource.slice(0, commonSource.indexOf("'discover.downloads': 'Downloads'"));
+const categoryNames = new Map<string, string>();
+for (const match of esDictionary.matchAll(/'cat\.([a-z0-9-]+)':\s*'((?:\\.|[^'\\])*)'/g)) {
+  if (!categoryNames.has(match[1])) categoryNames.set(match[1], match[2]);
+}
+function categoryLabel(slug: string) {
+  const key = slug.toLowerCase();
+  if (categoryNames.has(key)) return categoryNames.get(key) as string;
+  return slug.split('-').map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : '')).join(' ');
+}
+
+function formatCompact(value: number) {
+  const number = Number(value) || 0;
+  if (number >= 1000000) return (number / 1000000).toFixed(1) + 'M';
+  if (number >= 1000) return (number / 1000).toFixed(1) + 'K';
+  return String(number);
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString('es-UY', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+// Instancias con los nombres por defecto que genera main.js (defaultName).
+const demoInstances = [
+  { name: 'Minecraft 26.3', version: '26.3', loader: 'vanilla' },
+  { name: 'Neoforge 1.20.1', version: '1.20.1', loader: 'neoforge' },
+  { name: 'Forge 1.8.9', version: '1.8.9', loader: 'forge' },
+  { name: 'Fabric 1.21.1', version: '1.21.1', loader: 'fabric' },
+  { name: 'Quilt 1.20.6', version: '1.20.6', loader: 'quilt' },
+];
+
+function instanceCard(instance: { name: string; version: string; loader: string }) {
+  const initial = escapeHtml(instance.name.charAt(0).toUpperCase());
+  return '<div class="version-row instance-card">' +
+    '<div class="instance-card-head">' +
+      `<div class="instance-card-icon">${initial}</div>` +
+      '<div class="version-info">' +
+        `<strong>${escapeHtml(instance.name)}</strong>` +
+        `<span>${escapeHtml(instance.loader + ' · ' + instance.version)}</span>` +
+      '</div>' +
+      `<div class="version-badge">${escapeHtml(instance.loader)}</div>` +
+    '</div>' +
+    '<div class="instance-card-footer">' +
+      `<span class="instance-version-chip"><i class="fa-solid fa-cube"></i> ${escapeHtml(instance.version)}</span>` +
+      '<div class="instance-card-actions">' +
+        '<button type="button" class="icon-action" tabindex="-1" title="Abrir carpeta"><i class="fa-regular fa-folder-open"></i></button>' +
+        '<button type="button" class="version-action" tabindex="-1">Abrir <i class="fa-solid fa-arrow-right"></i></button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function projectCard(project: (typeof featured.projects)[number]) {
+  const categories = (project.display_categories || [])
+    .filter((category) => typeof category === 'string' && category.length < 32)
+    .slice(0, 2);
+  return '<article class="project-card">' +
+    '<div class="project-card-top">' +
+      `<div class="project-icon"><img src="${escapeHtml(project.icon_url)}" alt=""></div>` +
+      '<div class="project-identity">' +
+        '<span class="project-kind">Mod</span>' +
+        `<div class="project-title" title="${escapeHtml(project.title)}">${escapeHtml(project.title)}</div>` +
+        `<div class="project-author">por ${escapeHtml(project.author)}</div>` +
+      '</div>' +
+    '</div>' +
+    `<div class="project-desc">${escapeHtml(project.description)}</div>` +
+    `<div class="project-tags">${categories.map((tag) => `<span class="project-tag">${escapeHtml(categoryLabel(tag))}</span>`).join('')}</div>` +
+    '<div class="project-stats">' +
+      `<span><i class="fa-solid fa-download"></i><strong>${formatCompact(project.downloads)}</strong><small>Descargas</small></span>` +
+      `<span><i class="fa-solid fa-heart"></i><strong>${formatCompact(project.follows)}</strong><small>Seguidores</small></span>` +
+      `<span class="project-updated"><i class="fa-solid fa-clock"></i><small>${escapeHtml(formatDate(project.date_modified))}</small></span>` +
+    '</div>' +
+    '<div class="project-actions">' +
+      '<button type="button" class="secondary-btn" tabindex="-1"><i class="fa-solid fa-arrow-up-right-from-square"></i>Ver</button>' +
+      '<button type="button" class="primary-btn" tabindex="-1"><i class="fa-solid fa-download"></i>Instalar</button>' +
+    '</div>' +
+  '</article>';
+}
+
+let content = '';
+if (view === 'home') {
+  content = extractSection(homeSource, '<div class="home-intro">')
+    .replace('id="recent-instances-grid"></div>', 'id="recent-instances-grid"><div class="recent-empty">Todavía no hay instancias recientes. Elegí una en Instancias o pulsá Jugar.</div></div>');
+} else if (view === 'instances') {
+  const cards = demoInstances.map(instanceCard).join('');
+  const modded = demoInstances.filter((instance) => instance.loader !== 'vanilla').length;
+  content = extractSection(instancesSource, '<div class="page-head')
+    .replace('id="versions-list"></div>', `id="versions-list">${cards}</div>`)
+    .replace('<strong id="instances-total">0</strong>', `<strong id="instances-total">${demoInstances.length}</strong>`)
+    .replace('<strong id="instances-vanilla">0</strong>', `<strong id="instances-vanilla">${demoInstances.length - modded}</strong>`)
+    .replace('<strong id="instances-modded">0</strong>', `<strong id="instances-modded">${modded}</strong>`)
+    .replace('<strong id="instances-visible">0</strong>', `<strong id="instances-visible">${demoInstances.length}</strong>`);
+} else if (view === 'discover') {
+  const typeOptions = [
+    ['all', 'Todo', 'fa-border-all'],
+    ['mod', 'Mods', 'fa-cube'],
+    ['modpack', 'Modpacks', 'fa-box-archive'],
+    ['resourcepack', 'Resource packs', 'fa-palette'],
+    ['shader', 'Shaderpacks', 'fa-wand-magic-sparkles'],
+    ['datapack', 'Datapacks', 'fa-database'],
+    ['plugin', 'Plugins', 'fa-plug'],
+  ];
+  const typeMarkup = typeOptions.map(([id, label, icon]) => `<button type="button" class="type-chip${id === 'all' ? ' active' : ''}" tabindex="-1"><i class="fa-solid ${icon}"></i><span>${label}</span></button>`).join('');
+  const loaderMarkup = [
+    ['fabric', 'Fabric'],
+    ['forge', 'Forge'],
+    ['neoforge', 'NeoForge'],
+    ['quilt', 'Quilt'],
+  ].map(([id, label]) => `<button type="button" class="type-chip discover-chip" tabindex="-1">${loaderIcon(id)}<span>${label}</span></button>`).join('');
+  const pages = Math.ceil(featured.total_hits / 18);
+  content = extractSection(discoverSource, '<div class="page-head')
+    .replace('id="discover-types"></div>', `id="discover-types">${typeMarkup}</div>`)
+    .replace('id="discover-loaders"></div>', `id="discover-loaders">${loaderMarkup}</div>`)
+    .replace('<div class="discover-results" id="discover-results"></div>', `<div class="discover-results" id="discover-results">${featured.projects.map(projectCard).join('')}</div>`)
+    .replace('<span id="discover-page-summary">1 / 1</span>', `<span id="discover-page-summary">Página 1 de ${pages}</span>`);
+} else {
+  const modalId = view === 'import' ? 'import-modpack-modal' : 'account-modal';
+  content = extractDiv(indexSource, modalId).replace('class="modal-backdrop"', 'class="modal-backdrop active"');
+}
+
+const isModal = view === 'import' || view === 'accounts';
+const homeMarkup = extractSection(homeSource, '<div class="home-intro">');
+const staticMarkup = isModal
+  ? `<main class="content">${homeMarkup}</main>${content}`
+  : `<main class="content">${content}</main>`;
+const documentHtml = `<!doctype html><html lang="es"><head><meta charset="utf-8"><link rel="stylesheet" href="/launcher-preview.css"><link rel="stylesheet" href="/fonts/css/all.min.css"><style>html,body{width:1280px;height:720px;margin:0;overflow:hidden;background:#1a1a1a}body{display:flex;pointer-events:none}.content{flex:none;width:1280px;height:720px;min-height:0;overflow:hidden;contain:none;content-visibility:visible}.modal-backdrop.active{animation:none}</style></head><body inert>${staticMarkup}</body></html>`;
+---
+
+<div class={`launcher-preview-frame launcher-preview-frame--${view}`} aria-hidden="true">
+  <iframe
+    class={`launcher-preview launcher-preview--${view}`}
+    srcdoc={documentHtml}
+    title={`Vista estática de Kindyr: ${view}`}
+    tabindex="-1"
+    loading="eager"
+  ></iframe>
+</div>
+
+<style>
+  .launcher-preview-frame {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .launcher-preview {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1280px;
+    height: 720px;
+    border: 0;
+    transform-origin: 0 0;
+    pointer-events: none;
+  }
+</style>
+
+<script>
+  // Cubre todo el rectángulo del contenedor (escala "cover", centrado y recortado),
+  // así no quedan píxeles sin pintar aunque la proporción no sea 16:9.
+  const fitPreview = (frame: HTMLElement) => {
+    const iframe = frame.querySelector<HTMLIFrameElement>('.launcher-preview');
+    if (!iframe) return;
+    const { width, height } = frame.getBoundingClientRect();
+    if (!width || !height) return;
+    const scale = Math.max(width / 1280, height / 720);
+    const x = (width - 1280 * scale) / 2;
+    const y = (height - 720 * scale) / 2;
+    iframe.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scale(${scale.toFixed(5)})`;
+  };
+
+  document.querySelectorAll<HTMLElement>('.launcher-preview-frame').forEach((frame) => {
+    fitPreview(frame);
+    const observer = new ResizeObserver(() => fitPreview(frame));
+    observer.observe(frame);
+    frame.querySelector('iframe')?.addEventListener('load', () => fitPreview(frame), { once: true });
+  });
+</script>

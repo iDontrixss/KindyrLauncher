@@ -1,0 +1,97 @@
+﻿---
+import LauncherMockup from './LauncherMockup.astro';
+
+interface Props {
+  number: string;
+  label: string;
+  title: string;
+  description: string;
+  view: 'instances' | 'discover' | 'import' | 'accounts';
+  accent: 'blue' | 'green' | 'coral' | 'yellow';
+}
+
+const { number, label, title, description, view, accent } = Astro.props;
+---
+
+<article
+  class={`feature-card feature-card--${accent}`}
+  data-feature-card
+  data-feature-number={number}
+  aria-labelledby={`feature-title-${number}`}
+>
+  <div class="feature-card__topline">
+    <span>{number} / 04</span>
+    <b>{label}</b>
+  </div>
+  <div class="feature-card__image-wrap">
+    <LauncherMockup view={view} />
+  </div>
+  <div class="feature-card__copy">
+    <h3 id={`feature-title-${number}`}>{title}</h3>
+    <p class="yuyu-text">{description}</p>
+  </div>
+  <span class="feature-card__index" aria-hidden="true">{number}</span>
+</article>
+
+<style>
+  .feature-card {
+    --feature-accent: var(--blue-bright);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 420px;
+    padding: clamp(14px, 1.5vw, 21px);
+    overflow: hidden;
+    border: 2px solid var(--ink);
+    background: linear-gradient(155deg, rgba(14, 51, 111, .98), rgba(6, 24, 64, .98));
+    box-shadow: 7px 7px 0 var(--ink), 10px 10px 0 color-mix(in srgb, var(--feature-accent) 68%, transparent);
+    opacity: 1;
+    scale: 1;
+    transform: translate(0, 0) scale(1);
+    transform-origin: center center;
+    transition: scale 180ms ease;
+  }
+
+  .feature-card--green { --feature-accent: var(--green); }
+  .feature-card--coral { --feature-accent: var(--coral); }
+  .feature-card--yellow { --feature-accent: var(--yellow); }
+  .feature-card::before { position: absolute; top: 0; left: 0; width: 54px; height: 4px; background: var(--feature-accent); content: ''; }
+  .feature-card__topline { display: flex; justify-content: space-between; gap: 8px; color: var(--blue-pale); font: 700 7px/1.4 var(--font-mono); letter-spacing: .08em; }
+  .feature-card__topline b { color: var(--feature-accent); text-align: right; }
+  .feature-card__image-wrap { position: relative; z-index: 1; flex: 0 0 auto; width: 100%; aspect-ratio: 16 / 9; margin-top: 18px; overflow: hidden; border: 2px solid var(--ink); background: var(--navy); box-shadow: 3px 3px 0 var(--ink); }
+  .feature-card__picture { display: block; width: 100%; height: 100%; }
+  .feature-card__image { display: block; width: 100%; height: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: center; }
+  .feature-card__copy { position: relative; z-index: 1; padding-top: 16px; }
+  .feature-card__copy h3 { max-width: 290px; margin: 0; font-size: clamp(18px, 1.65vw, 25px); line-height: .98; letter-spacing: -.045em; }
+  .feature-card__copy p { margin: 10px 0 0; color: var(--muted); font-size: 17px; font-weight: 500; line-height: 1.5; }
+  .feature-card__index { position: absolute; right: -8px; bottom: -32px; color: rgba(255, 255, 255, .055); font: 800 112px/.9 var(--font-mono); letter-spacing: -.12em; pointer-events: none; }
+
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .feature-card:hover { scale: 1.05; }
+  }
+
+  @media (max-width: 900px) {
+    .feature-card { min-height: 390px; padding: 12px; }
+    .feature-card__image-wrap { margin-top: 14px; }
+    .feature-card__copy { padding-top: 14px; }
+    .feature-card__copy h3 { font-size: clamp(16px, 2.5vw, 22px); }
+    .feature-card__copy p { font-size: 16px; }
+  }
+
+  @media (max-width: 700px) {
+    .feature-card { min-height: 0; padding: 18px; opacity: 1 !important; transform: none !important; transition: none; }
+    .feature-card__image-wrap { margin-top: 20px; }
+    .feature-card__copy { padding: 18px 0 0; }
+    .feature-card__copy h3 { max-width: 380px; font-size: 25px; }
+    .feature-card__copy p { max-width: 440px; font-size: 18px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feature-card { min-height: 390px; opacity: 1 !important; transform: none !important; transition: none; }
+  }
+
+  @media (max-width: 700px) and (prefers-reduced-motion: reduce) {
+    .feature-card { min-height: 0; }
+  }
+</style>

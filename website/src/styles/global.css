@@ -304,6 +304,11 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
 .faq-item summary i { justify-self: end; color: var(--coral); font: 800 26px/1 var(--font-mono); font-style: normal; transition: transform 150ms ease; }
 .faq-item[open] summary i { transform: rotate(45deg); }
 .faq-item p { margin: 0; padding: 0 70px 22px; color: var(--muted); font-size: 13px; font-weight: 500; line-height: 1.65; }
+@supports (interpolate-size: allow-keywords) {
+  .faq-item { interpolate-size: allow-keywords; }
+  .faq-item::details-content { block-size: 0; overflow: clip; transition: block-size 360ms cubic-bezier(.2,.75,.2,1), content-visibility 360ms allow-discrete; }
+  .faq-item[open]::details-content { block-size: auto; }
+}
 
 .download { position: relative; display: grid; grid-template-columns: minmax(330px,.7fr) minmax(0,1.3fr); align-items: center; gap: clamp(40px,7vw,100px); min-height: 650px; padding: 90px max(24px,calc((100vw - var(--max))/2)); overflow: hidden; border-block: 3px solid var(--ink); background: var(--coral); box-shadow: inset 0 7px 0 rgba(1,7,18,.28); }
 .download-grid { position: absolute; inset: 0; opacity: .22; background-image: linear-gradient(var(--ink) 1px,transparent 1px),linear-gradient(90deg,var(--ink) 1px,transparent 1px); background-size: 42px 42px; }
@@ -317,6 +322,8 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
 .download h2 em { color: var(--white); font-style: normal; text-shadow: 4px 4px 0 var(--ink); }
 .download-copy > p { max-width: 700px; margin: 25px 0 0; font-size: 18px; font-weight: 600; line-height: 1.6; }
 .download-actions { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 35px; }
+.download-alt { margin: 18px 0 0; font: 700 11px/1.6 var(--font-mono); letter-spacing: .04em; }
+.download-alt a { color: var(--white); text-decoration: underline; text-underline-offset: 3px; }
 .download-copy > small { display: block; margin-top: 24px; font: 700 8px/1.5 var(--font-mono); opacity: .78; }
 
 .site-footer { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 30px; width: min(calc(100% - 48px),var(--max)); min-height: 190px; margin-inline: auto; }
@@ -444,6 +451,7 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .faq-item::details-content { transition-duration: .01ms !important; }
   .reveal, .js .reveal { opacity: 1; transform: none; }
 }
 
@@ -451,7 +459,53 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
   .button, .benefit-card, .app-window, .discover-window, .instance-manager, .faq-item { border-color: ButtonText; }
 }
 
-.launcher-shot { display: block; width: 100%; height: auto; }
-.app-window.has-shot { min-height: 0; }
-.discover-window.has-shot { min-height: 0; padding: 0; }
-.instance-manager.has-shot { min-height: 0; }
+.app-window.has-shot, .discover-window.has-shot, .instance-manager.has-shot { height: auto; min-height: 0; aspect-ratio: 16 / 9; padding: 0; }
+.app-window.has-shot { transform: rotate(.5deg); }
+.discover-window.has-shot { transform: rotate(.8deg); }
+.instance-manager.has-shot { transform: rotate(-.7deg); }
+
+/* Fuente Yuyu (SIL OFL 1.1, ver public/fonts/yuyu/OFL.txt) para descripciones. */
+@font-face {
+  font-family: 'Yuyu';
+  src: url('/fonts/yuyu/Yuyu-Regular.woff2') format('woff2'), url('/fonts/yuyu/Yuyu-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+.yuyu-text, .yuyu-text * { font-family: 'Yuyu', var(--font-sans); font-weight: 400; }
+.hero-lead, .showcase-copy > p, .why-heading p, .download-copy > p, .feature-points span, .big-statements span, .comparison-row > span:last-child, .value-card p, .faq-item p, .feature-card__copy p { font-family: 'Yuyu', var(--font-sans); font-weight: 400; }
+
+/* Indie Flower y Sue Ellen Francisco (SIL OFL 1.1, licencias en public/fonts) para el ciclo del hero. */
+@font-face {
+  font-family: 'Indie Flower';
+  src: url('/fonts/indie-flower/IndieFlower-Regular.woff2') format('woff2'), url('/fonts/indie-flower/IndieFlower-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Sue Ellen Francisco';
+  src: url('/fonts/sue-ellen-francisco/SueEllenFrancisco-Regular.woff2') format('woff2'), url('/fonts/sue-ellen-francisco/SueEllenFrancisco-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Las manuscritas se leen chicas: se suben los tamaños de las descripciones. */
+.hero-lead { font-size: clamp(26px, 2.6vw, 34px); }
+.showcase-copy > p { font-size: 26px; }
+.why-heading p { font-size: 25px; }
+.download-copy > p { font-size: 27px; }
+.download-page__copy > p { font-size: 27px; }
+.feature-points span { font-size: 21px; }
+.big-statements span { font-size: 20px; }
+.comparison-row > span:last-child { font-size: 18px; }
+.value-card p { font-size: 23px; }
+.faq-item p { font-size: 22px; }
+@media (max-width: 680px) {
+  .showcase-copy > p { font-size: 23px; }
+  .download-copy > p, .download-page__copy > p { font-size: 24px; }
+  .value-card p { font-size: 22px; }
+  .faq-item p { font-size: 21px; }
+  .hero-break { display: none; }
+}
