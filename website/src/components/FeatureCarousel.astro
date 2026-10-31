@@ -1,105 +1,126 @@
 ---
 import FeatureCard from './FeatureCard.astro';
+import { getLangFromUrl, useTranslations } from '../i18n/utils';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
 
 const features = [
   {
     number: '01',
-    label: 'INSTANCIAS',
-    title: 'Cada partida, en su lugar.',
-    description: 'Separá versiones, loaders y mods. Probá otra configuración sin tocar la partida que ya funciona.',
+    label: t('feature.01.label'),
+    title: t('feature.01.title'),
+    description: t('feature.01.description'),
     view: 'instances',
     accent: 'blue',
   },
   {
     number: '02',
-    label: 'MODRINTH',
-    title: 'Encontrá tu próximo mod.',
-    description: 'Explorá mods, modpacks y shaders desde Kindyr, con la versión y el loader de la instancia a la vista.',
+    label: t('feature.02.label'),
+    title: t('feature.02.title'),
+    description: t('feature.02.description'),
     view: 'discover',
     accent: 'green',
   },
   {
     number: '03',
-    label: 'IMPORTACIÓN .MRPACK',
-    title: 'De paquete a partida.',
-    description: 'Importá un modpack .mrpack y organizalo como una instancia lista para configurar.',
+    label: t('feature.03.label'),
+    title: t('feature.03.title'),
+    description: t('feature.03.description'),
     view: 'import',
     accent: 'coral',
   },
   {
     number: '04',
-    label: 'CUENTAS',
-    title: 'Tus perfiles, a mano.',
-    description: 'Tené tus cuentas Microsoft disponibles mientras preparás la próxima sesión.',
+    label: t('feature.04.label'),
+    title: t('feature.04.title'),
+    description: t('feature.04.description'),
     view: 'accounts',
     accent: 'yellow',
   },
   {
     number: '05',
-    label: 'MIGRAR LAUNCHER',
-    title: 'Traé todo con vos.',
-    description: 'Prism, CurseForge, Modrinth App, SKLauncher u oficial: elegí el origen e importá tus instancias.',
+    label: t('feature.05.label'),
+    title: t('feature.05.title'),
+    description: t('feature.05.description'),
     view: 'migrate',
     accent: 'blue',
   },
   {
     number: '06',
-    label: 'INSTALACIÓN OPTIMIZADA',
-    title: 'Más FPS en un clic.',
-    description: 'La tarjeta de Inicio instala el pack Keo Optimized y deja el juego fluido con estética vanilla.',
+    label: t('feature.06.label'),
+    title: t('feature.06.title'),
+    description: t('feature.06.description'),
     view: 'home',
     accent: 'green',
   },
   {
     number: '07',
-    label: 'SKINS',
-    title: 'Cambiá de piel.',
-    description: 'Buscá por usuario, guardá favoritas, subí la tuya y mirala en 3D antes de aplicar.',
+    label: t('feature.07.label'),
+    title: t('feature.07.title'),
+    description: t('feature.07.description'),
     view: 'skins',
     accent: 'coral',
   },
   {
     number: '08',
-    label: 'JAVA Y RENDIMIENTO',
-    title: 'Sin pelearte con Java.',
-    description: 'El launcher descarga el Java justo y verificado, y ajustás la RAM con sliders.',
+    label: t('feature.08.label'),
+    title: t('feature.08.title'),
+    description: t('feature.08.description'),
     view: 'settings',
     accent: 'yellow',
   },
 ];
 ---
 
-<section class="feature-carousel" id="funciones" aria-labelledby="feature-carousel-title" data-carousel>
+<section
+  class="feature-carousel"
+  id="funciones"
+  aria-labelledby="feature-carousel-title"
+  data-carousel
+  data-label-pause={t('carousel.pause')}
+  data-label-resume={t('carousel.resume')}
+  data-label-card={t('carousel.card')}
+  data-label-of={t('carousel.of')}
+>
   <div class="section-grid">
-    <div class="section-kicker"><span>01</span> FUNCIONES DEL LAUNCHER</div>
-    <h2 id="feature-carousel-title">TODO LISTO.<br /><em>MÁS JUEGO.</em></h2>
-    <p class="yuyu-text">Ocho tarjetas que giran solas: lo que Kindyr hace por tus partidas.</p>
+    <div class="section-kicker"><span>01</span> {t('features.kicker')}</div>
+    <h2 id="feature-carousel-title" set:html={t('features.subtitle')}></h2>
+    <p class="yuyu-text">{t('features.description')}</p>
   </div>
 
   <div
     class="carousel-viewport"
     data-carousel-viewport
-    aria-roledescription="carrusel"
-    aria-label="Funciones del launcher"
+    aria-roledescription="carousel"
+    aria-label={t('carousel.label')}
   >
     <div class="carousel-track" data-carousel-track>
       {features.map((feature, index) => (
-        <div class="carousel-slide" data-carousel-slide data-slide-title={feature.title} data-slide-index={String(index + 1)}>
-          <FeatureCard {...feature} />
+        <div
+          class="carousel-slide"
+          role="group"
+          aria-roledescription="slide"
+          aria-label={`${t('carousel.card')} ${index + 1} ${t('carousel.of')} ${features.length}`}
+          data-carousel-slide
+          data-slide-title={feature.title}
+        >
+          <FeatureCard {...feature} total={features.length} />
         </div>
       ))}
     </div>
-    <button class="carousel-nav carousel-nav--prev" type="button" data-carousel-prev aria-label="Tarjeta anterior">
+    <button class="carousel-nav carousel-nav--prev" type="button" data-carousel-prev aria-label={t('carousel.prev')}>
       <span aria-hidden="true">‹</span>
     </button>
-    <button class="carousel-nav carousel-nav--next" type="button" data-carousel-next aria-label="Tarjeta siguiente">
+    <button class="carousel-nav carousel-nav--next" type="button" data-carousel-next aria-label={t('carousel.next')}>
       <span aria-hidden="true">›</span>
     </button>
   </div>
 
   <div class="carousel-footer section-grid">
-    <div class="carousel-dots" data-carousel-dots role="group" aria-label="Elegir tarjeta"></div>
-    <p class="carousel-status" data-carousel-status role="status"></p>
+    <button class="carousel-toggle" type="button" data-carousel-toggle aria-pressed="false">{t('carousel.pause')}</button>
+    <div class="carousel-dots" data-carousel-dots role="group" aria-label={t('carousel.select')}></div>
+    <p class="carousel-status" data-carousel-status aria-live="off"></p>
   </div>
 </section>
 
@@ -107,11 +128,14 @@ const features = [
   .feature-carousel { padding: 130px 0 140px; overflow: clip; }
   .feature-carousel h2 { margin: 28px 0 0; font-size: clamp(43px, 4.8vw, 68px); font-weight: 700; line-height: .9; letter-spacing: -.055em; text-transform: uppercase; }
   .feature-carousel h2 em { color: var(--coral); font-style: normal; }
-  .feature-carousel > div > p { max-width: 560px; margin: 22px 0 0; font-size: 21px; font-weight: 500; line-height: 1.6; }
+  /* Antes era ".feature-carousel > div > p" y también atrapaba al texto de estado del footer. */
+  .feature-carousel .section-grid > p.yuyu-text { max-width: 560px; margin: 22px 0 0; font-size: 21px; font-weight: 500; line-height: 1.6; }
 
   .carousel-viewport {
     position: relative;
-    margin-top: 54px;
+    margin-top: 24px;
+    /* aire arriba/abajo: la perspectiva agranda el borde cercano de las tarjetas laterales y las sombras duras (10px) se cortaban */
+    padding: 56px 0 64px;
     overflow: hidden;
     touch-action: pan-y;
   }
@@ -125,8 +149,7 @@ const features = [
     top: 0;
     left: 50%;
     width: min(400px, 82vw);
-    transition: transform 700ms cubic-bezier(.2, .75, .2, 1), opacity 700ms ease, visibility 700ms;
-    will-change: transform;
+    transition: transform 450ms cubic-bezier(.2, .75, .2, 1), opacity 450ms ease, visibility 450ms;
   }
   .carousel-slide .feature-card { width: 100%; }
 
@@ -150,109 +173,152 @@ const features = [
   }
   .carousel-nav:hover { transform: translate(-2px, calc(-50% - 2px)); box-shadow: 5px 5px 0 var(--ink); }
   .carousel-nav:focus-visible { outline: 2px solid var(--white); outline-offset: 4px; }
-  .carousel-nav--prev { left: max(18px, calc((100vw - var(--max)) / 2)); }
-  .carousel-nav--next { right: max(18px, calc((100vw - var(--max)) / 2)); }
+  .carousel-nav--prev { left: max(18px, calc((100% - var(--max)) / 2)); }
+  .carousel-nav--next { right: max(18px, calc((100% - var(--max)) / 2)); }
   .carousel-nav span { transform: translateY(-3px); }
 
-  .carousel-footer { display: flex; align-items: center; gap: 18px; margin-top: 30px; }
-  .carousel-dots { display: flex; flex-wrap: wrap; gap: 9px; }
+  /* Solo visual: todo el footer (Pausar, dots y estado) se oculta pero los nodos
+     siguen en el DOM porque el JS los usa. No borrarlos. */
+  .carousel-footer { display: none; }
+  .carousel-toggle, .carousel-status { display: none; }
+  .carousel-toggle {
+    padding: 6px 12px;
+    border: 2px solid var(--ink);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: 700 10px/1.4 var(--font-mono);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .carousel-toggle:hover { background: var(--coral); color: var(--white); }
+  .carousel-toggle:focus-visible { outline: 2px solid var(--white); outline-offset: 3px; }
+  .carousel-dots { display: flex; flex-wrap: wrap; gap: 0; }
+  /* botón de 24px (objetivo táctil mínimo) con el punto visual de 13px dibujado en ::before */
   .carousel-dot {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  .carousel-dot::before {
     width: 13px;
     height: 13px;
-    padding: 0;
     border: 2px solid var(--ink);
     border-radius: 50%;
     background: transparent;
-    cursor: pointer;
+    content: '';
     transition: background-color 160ms ease, transform 160ms ease;
   }
-  .carousel-dot:hover { transform: scale(1.25); }
-  .carousel-dot.active { background: var(--coral); }
-  .carousel-dot:focus-visible { outline: 2px solid var(--white); outline-offset: 3px; }
-  .carousel-status { margin: 0; color: var(--dim); font: 700 10px/1.5 var(--font-mono); letter-spacing: .06em; }
+  .carousel-dot:hover::before { transform: scale(1.25); }
+  .carousel-dot.active::before { background: var(--coral); }
+  .carousel-dot:focus-visible { outline: 2px solid var(--white); outline-offset: 0; }
+  .carousel-status { margin: 0; color: var(--dim); font: 700 11px/1.5 var(--font-mono); letter-spacing: .06em; }
 
   @media (max-width: 680px) {
     .feature-carousel { padding: 100px 0; }
     .feature-carousel h2 { font-size: clamp(39px, 11vw, 55px); }
+    .carousel-viewport { padding: 40px 0 48px; }
     .carousel-nav { width: 44px; height: 44px; font-size: 25px; }
     .carousel-nav--prev { left: 10px; }
     .carousel-nav--next { right: 10px; }
-    .carousel-footer { flex-direction: column; align-items: flex-start; }
+    .carousel-footer { flex-wrap: wrap; align-items: flex-start; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .carousel-viewport { overflow: visible; }
+    .carousel-viewport { padding: 0; overflow: visible; }
     .carousel-track { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px; height: auto !important; perspective: none; }
     .carousel-slide { position: static; width: auto; margin: 0; }
-    .carousel-nav, .carousel-dots { display: none; }
+    .carousel-nav, .carousel-footer { display: none; }
   }
 </style>
 
 <script>
-  document.querySelectorAll('[data-carousel]').forEach((root) => {
-    const track = root.querySelector('[data-carousel-track]');
-    const viewport = root.querySelector('[data-carousel-viewport]');
-    const slides = Array.from(track.querySelectorAll('[data-carousel-slide]'));
-    const prevBtn = root.querySelector('[data-carousel-prev]');
-    const nextBtn = root.querySelector('[data-carousel-next]');
-    const dotsWrap = root.querySelector('[data-carousel-dots]');
-    const status = root.querySelector('[data-carousel-status]');
+  document.querySelectorAll<HTMLElement>('[data-carousel]').forEach((root) => {
+    const track = root.querySelector<HTMLElement>('[data-carousel-track]')!;
+    const viewport = root.querySelector<HTMLElement>('[data-carousel-viewport]')!;
+    const slides = Array.from(track.querySelectorAll<HTMLElement>('[data-carousel-slide]'));
+    const prevBtn = root.querySelector<HTMLButtonElement>('[data-carousel-prev]')!;
+    const nextBtn = root.querySelector<HTMLButtonElement>('[data-carousel-next]')!;
+    const toggleBtn = root.querySelector<HTMLButtonElement>('[data-carousel-toggle]')!;
+    const dotsWrap = root.querySelector<HTMLElement>('[data-carousel-dots]')!;
+    const status = root.querySelector<HTMLElement>('[data-carousel-status]');
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const total = slides.length;
+    const INTERVAL = 4500;
+    const carouselLabels = {
+      pause: root.dataset.labelPause || 'Pause',
+      resume: root.dataset.labelResume || 'Resume',
+      card: root.dataset.labelCard || 'Card',
+      of: root.dataset.labelOf || '/',
+    };
+
     let active = 0;
     let timer = 0;
-    let hovering = false;
+    let hovered = false;
+    let focused = false;
+    let inView = true;
+    let userPaused = false;
+    let step = 0;
 
-    slides.forEach((slide, index) => {
+    slides.forEach((_, index) => {
       const dot = document.createElement('button');
       dot.type = 'button';
       dot.className = 'carousel-dot';
-      dot.setAttribute('aria-label', 'Ir a la tarjeta ' + (index + 1) + ' de ' + total);
-      dot.addEventListener('click', () => { goTo(index); restart(); });
+      dot.setAttribute('aria-label', `${carouselLabels.card} ${index + 1} ${carouselLabels.of} ${total}`);
+      dot.addEventListener('click', () => userGo(index));
       dotsWrap.appendChild(dot);
     });
-    const dots = Array.from(dotsWrap.children);
+    const dots = Array.from(dotsWrap.children) as HTMLElement[];
 
-    const offsetOf = (index) => {
+    const offsetOf = (index: number) => {
       let offset = (index - active) % total;
       if (offset > total / 2) offset -= total;
       if (offset < -total / 2) offset += total;
       return offset;
     };
 
-    const layout = () => {
+    // Medir es caro (fuerza reflow): solo al cambiar el tamaño o cargar fuentes, no en cada cambio de tarjeta.
+    const measure = () => {
       if (motionQuery.matches) return;
-      const slideWidth = slides[0] ? slides[0].offsetWidth : 320;
-      const step = slideWidth * 0.52 + Math.min(64, slideWidth * 0.16);
+      const slideWidth = slides[0].offsetWidth || 320;
+      step = slideWidth * 0.52 + Math.min(64, slideWidth * 0.16);
       let maxHeight = 0;
       slides.forEach((slide) => { maxHeight = Math.max(maxHeight, slide.offsetHeight); });
       track.style.height = maxHeight + 'px';
+    };
+
+    // Colocar solo escribe estilos: sin lecturas del DOM.
+    const place = () => {
+      if (motionQuery.matches) return;
       slides.forEach((slide, index) => {
-        if (index === 0) slide.style.marginLeft = (-slideWidth / 2) + 'px';
         const offset = offsetOf(index);
         const distance = Math.abs(offset);
         const x = offset * step;
         const z = -distance * 230;
-        const rotate = offset === 0 ? 0 : (offset > 0 ? -1 : 1) * Math.min(50, 24 + distance * 9);
-        slide.style.transform = 'translateX(' + x.toFixed(1) + 'px) translateZ(' + z + 'px) rotateY(' + rotate + 'deg)';
-        slide.style.opacity = distance === 0 ? '1' : distance === 1 ? '0.9' : distance === 2 ? '0.55' : '0';
+        const rotate = offset === 0 ? 0 : (offset > 0 ? -1 : 1) * Math.min(35, 24 + distance * 9);
+        // left:50% + translateX(-50%) centra TODAS las slides (antes solo la primera tenía margin-left).
+        slide.style.transform = `translateX(-50%) translateX(${x.toFixed(1)}px) translateZ(${z}px) rotateY(${rotate}deg)`;
+        // Se ven la activa y 4 tarjetas más (2 a cada lado).
+        slide.style.opacity = distance === 0 ? '1' : distance === 1 ? '0.9' : distance === 2 ? '0.5' : '0';
         slide.style.zIndex = String(100 - distance);
         slide.style.visibility = distance > 2 ? 'hidden' : 'visible';
         slide.style.pointerEvents = distance > 2 ? 'none' : '';
+        slide.setAttribute('aria-hidden', distance === 0 ? 'false' : 'true');
         const isActive = index === active;
         dots[index].classList.toggle('active', isActive);
         dots[index].setAttribute('aria-current', isActive ? 'true' : 'false');
       });
-      const current = slides[active];
-      if (status && current) {
-        status.textContent = 'Tarjeta ' + (active + 1) + ' de ' + total + ' · ' + (current.dataset.slideTitle || '');
+      if (status) {
+        status.textContent = `${carouselLabels.card} ${active + 1} ${carouselLabels.of} ${total} · ${slides[active].dataset.slideTitle || ''}`;
       }
     };
 
-    const goTo = (index) => {
-      active = ((index % total) + total) % total;
-      layout();
-    };
+    const layout = () => { measure(); place(); };
 
     const stop = () => {
       if (timer) window.clearInterval(timer);
@@ -261,37 +327,76 @@ const features = [
 
     const start = () => {
       stop();
-      if (motionQuery.matches || hovering || document.hidden) return;
-      timer = window.setInterval(() => goTo(active + 1), 4500);
+      if (motionQuery.matches || userPaused || hovered || focused || !inView || document.hidden) return;
+      timer = window.setInterval(() => goTo(active + 1), INTERVAL);
     };
 
-    const restart = () => start();
+    const goTo = (index: number) => {
+      active = ((index % total) + total) % total;
+      place();
+    };
 
-    prevBtn.addEventListener('click', () => { goTo(active - 1); restart(); });
-    nextBtn.addEventListener('click', () => { goTo(active + 1); restart(); });
+    // Navegación del usuario: los lectores de pantalla pasan a recibir el aviso; el autoplay no se pisa.
+    const userGo = (index: number) => {
+      status?.setAttribute('aria-live', 'polite');
+      goTo(index);
+      start();
+    };
 
-    viewport.addEventListener('pointerenter', () => { hovering = true; stop(); });
-    viewport.addEventListener('pointerleave', () => { hovering = false; start(); });
-    viewport.addEventListener('focusin', () => { hovering = true; stop(); });
-    viewport.addEventListener('focusout', () => { hovering = false; start(); });
-    document.addEventListener('visibilitychange', () => start());
+    prevBtn.addEventListener('click', () => userGo(active - 1));
+    nextBtn.addEventListener('click', () => userGo(active + 1));
 
-    let dragStart = null;
-    viewport.addEventListener('pointerdown', (event) => { dragStart = event.clientX; });
+    toggleBtn.addEventListener('click', () => {
+      userPaused = !userPaused;
+      toggleBtn.setAttribute('aria-pressed', String(userPaused));
+      toggleBtn.textContent = userPaused ? carouselLabels.resume : carouselLabels.pause;
+      start();
+    });
+
+    // Hover y foco son dos fuentes distintas: cada una con su bandera.
+    viewport.addEventListener('pointerenter', () => { hovered = true; start(); });
+    viewport.addEventListener('pointerleave', () => { hovered = false; start(); });
+    viewport.addEventListener('focusin', () => { focused = true; start(); });
+    viewport.addEventListener('focusout', () => { focused = false; start(); });
+    document.addEventListener('visibilitychange', start);
+
+    // No animar mientras el carrusel no se ve en pantalla.
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(([entry]) => {
+        inView = entry.isIntersecting;
+        start();
+      }, { threshold: 0.15 }).observe(root);
+    }
+
+    root.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') { event.preventDefault(); userGo(active - 1); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); userGo(active + 1); }
+    });
+
+    let dragStart: number | null = null;
+    viewport.addEventListener('pointerdown', (event) => {
+      if ((event.target as HTMLElement).closest('button')) return;
+      dragStart = event.clientX;
+    });
     viewport.addEventListener('pointerup', (event) => {
       if (dragStart === null) return;
       const delta = event.clientX - dragStart;
       dragStart = null;
       if (Math.abs(delta) < 50) return;
-      goTo(active + (delta < 0 ? 1 : -1));
-      restart();
+      userGo(active + (delta < 0 ? 1 : -1));
     });
     viewport.addEventListener('pointercancel', () => { dragStart = null; });
 
-    window.addEventListener('resize', () => layout(), { passive: true });
     if ('ResizeObserver' in window) {
-      new ResizeObserver(() => layout()).observe(viewport);
+      // Observa viewport y slides: si cambia el texto o cargan las fuentes, se recalcula la altura.
+      const ro = new ResizeObserver(() => layout());
+      ro.observe(viewport);
+      slides.forEach((slide) => ro.observe(slide));
+    } else {
+      window.addEventListener('resize', layout, { passive: true });
     }
+    document.fonts?.ready.then(layout);
+
     motionQuery.addEventListener('change', () => {
       if (motionQuery.matches) {
         stop();
@@ -302,7 +407,7 @@ const features = [
           slide.style.zIndex = '';
           slide.style.visibility = '';
           slide.style.pointerEvents = '';
-          slide.style.marginLeft = '';
+          slide.removeAttribute('aria-hidden');
         });
       } else {
         layout();

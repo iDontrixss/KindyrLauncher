@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { getLangFromUrl } from '../i18n/utils';
 
 interface Props {
   title: string;
@@ -7,8 +8,19 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
+const lang = getLangFromUrl(Astro.url);
+
 const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://kindyrlauncher.pages.dev');
 const socialImage = new URL('/og-cover.svg', canonicalURL);
+
+const localeMap: Record<string, string> = {
+  en: 'en_US',
+  es: 'es_UY',
+  ru: 'ru_RU',
+  pt: 'pt_BR',
+};
+const ogLocale = localeMap[lang] || 'es_UY';
+
 const structuredData = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
@@ -32,11 +44,12 @@ const structuredData = {
     name: 'iDontrixss',
     url: 'https://github.com/iDontrixss',
   },
+  inLanguage: lang,
 };
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -51,9 +64,15 @@ const structuredData = {
     <link rel="icon" type="image/png" href="/kindyr-favicon.png?v=3" sizes="500x500" />
     <link rel="apple-touch-icon" href="/kindyr-favicon.png?v=3" />
     <link rel="preload" href="/kindyr-logo.png" as="image" />
-    <link rel="preload" href="/fonts/yuyu/Yuyu-Regular.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/indie-flower/IndieFlower-Regular.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/sue-ellen-francisco/SueEllenFrancisco-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    {lang === 'ru' ? (
+      <link rel="preload" href="/fonts/caveat/Caveat-Regular-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
+      <link rel="preload" href="/fonts/neucha/Neucha-Regular-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
+      <link rel="preload" href="/fonts/lobster/Lobster-Regular-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
+    ) : (
+      <link rel="preload" href="/fonts/yuyu/Yuyu-Regular.woff2" as="font" type="font/woff2" crossorigin />
+      <link rel="preload" href="/fonts/indie-flower/IndieFlower-Regular.woff2" as="font" type="font/woff2" crossorigin />
+      <link rel="preload" href="/fonts/sue-ellen-francisco/SueEllenFrancisco-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    )}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -61,7 +80,7 @@ const structuredData = {
       rel="stylesheet"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:locale" content="es_UY" />
+    <meta property="og:locale" content={ogLocale} />
     <meta property="og:site_name" content="Kindyr" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />

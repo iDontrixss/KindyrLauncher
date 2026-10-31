@@ -1,0 +1,220 @@
+---
+import { languages } from '../i18n/ui';
+import { getLangFromUrl, getRouteFromUrl, useTranslations } from '../i18n/utils';
+
+const currentLang = getLangFromUrl(Astro.url);
+const t = useTranslations(currentLang);
+const currentRoute = getRouteFromUrl(Astro.url);
+
+const langOptions = [
+  { code: 'en', name: languages.en, initial: 'EN' },
+  { code: 'es', name: languages.es, initial: 'ES' },
+  { code: 'ru', name: languages.ru, initial: 'RU' },
+  { code: 'pt', name: languages.pt, initial: 'PT' },
+];
+
+const currentLangData = langOptions.find((l) => l.code === currentLang) || langOptions[0];
+---
+
+<div class="language-selector" data-language-selector>
+  <button
+    class="language-trigger"
+    type="button"
+    aria-expanded="false"
+    aria-haspopup="true"
+    aria-label={t('a11y.changeLang')}
+  >
+    <span class="language-initial">{currentLangData.initial}</span>
+    <svg class="language-chevron" aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M6 9l6 6 6-6"/>
+    </svg>
+  </button>
+  <div class="language-dropdown" role="menu">
+    {langOptions.map((option) => (
+      <a
+        class={`language-option ${option.code === currentLang ? 'language-option--active' : ''}`}
+        href={`/${option.code}${currentRoute ? '/' + currentRoute : ''}`}
+        role="menuitem"
+        lang={option.code}
+        aria-current={option.code === currentLang ? 'true' : 'false'}
+      >
+        <span class="language-option-initial">{option.initial}</span>
+        <span class="language-option-name">{option.name}</span>
+      </a>
+    ))}
+  </div>
+</div>
+
+<style>
+  .language-selector {
+    position: relative;
+    z-index: 1000;
+  }
+
+  .language-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 15px;
+    border: 2px solid var(--ink);
+    background: var(--coral);
+    color: var(--white);
+    box-shadow: 3px 3px 0 var(--ink);
+    cursor: pointer;
+    font: 800 10px/1 var(--font-mono);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  }
+
+  .language-trigger:hover {
+    background: var(--blue-bright);
+    color: var(--ink);
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 var(--ink);
+  }
+
+  .language-trigger:active {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+
+  .language-trigger:focus-visible {
+    outline: 2px solid var(--white);
+    outline-offset: 3px;
+  }
+
+  .language-trigger[aria-expanded="true"] .language-chevron {
+    transform: rotate(180deg);
+  }
+
+  .language-initial {
+    font-size: 11px;
+  }
+
+  .language-chevron {
+    width: 12px;
+    height: 12px;
+    fill: currentColor;
+    transition: transform 140ms ease;
+  }
+
+  .language-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 180px;
+    padding: 8px;
+    border: 2px solid var(--ink);
+    background: var(--navy);
+    box-shadow: 6px 6px 0 var(--ink);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+  }
+
+  .language-dropdown.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .language-option {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 2px solid transparent;
+    color: var(--white);
+    text-decoration: none;
+    transition: background-color 140ms ease, border-color 140ms ease;
+  }
+
+  .language-option:hover {
+    border-color: var(--ink);
+    background: var(--coral);
+    color: var(--white);
+  }
+
+  .language-option:focus-visible {
+    outline: 2px solid var(--white);
+    outline-offset: -2px;
+  }
+
+  .language-option--active {
+    border-color: var(--ink);
+    background: rgba(255, 90, 60, 0.25);
+  }
+
+  .language-option-initial {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--ink);
+    background: var(--blue-bright);
+    color: var(--ink);
+    box-shadow: 2px 2px 0 var(--ink);
+    font: 700 11px/1 var(--font-mono);
+    letter-spacing: .08em;
+  }
+
+  .language-option-name {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  @media (max-width: 700px) {
+    .language-dropdown {
+      right: auto;
+      left: 0;
+    }
+  }
+</style>
+
+<script>
+(() => {
+  const selector = document.querySelector('[data-language-selector]');
+  if (!selector) return;
+
+  const trigger = selector.querySelector<HTMLButtonElement>('.language-trigger');
+  const dropdown = selector.querySelector<HTMLDivElement>('.language-dropdown');
+
+  if (!trigger || !dropdown) return;
+
+  const isOpen = () => trigger.getAttribute('aria-expanded') === 'true';
+
+  const open = () => {
+    trigger.setAttribute('aria-expanded', 'true');
+    dropdown.classList.add('is-open');
+  };
+
+  const close = () => {
+    trigger.setAttribute('aria-expanded', 'false');
+    dropdown.classList.remove('is-open');
+  };
+
+  const toggle = () => (isOpen() ? close() : open());
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggle();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (isOpen() && !selector.contains(e.target as Node)) {
+      close();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen()) {
+      close();
+      trigger.focus();
+    }
+  });
+})();
+</script>

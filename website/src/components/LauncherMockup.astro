@@ -14,11 +14,21 @@ import curseforgeSvg from '../vendor/external/curseforge.svg?raw';
 import modrinthSvg from '../vendor/external/modrinth.svg?raw';
 import sklauncherSvg from '../vendor/external/sklauncher.svg?raw';
 import officialSvg from '../vendor/external/official.svg?raw';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 type View = 'home' | 'instances' | 'discover' | 'import' | 'accounts' | 'skins' | 'settings' | 'migrate';
 interface Props { view: View }
 
 const { view } = Astro.props;
+
+// Si existe public/previews/<vista>.webp se usa una imagen estática (mucho más liviana).
+// Si no existe, cae al iframe de siempre. PREVIEW_IFRAME=1 fuerza los iframes
+// (lo usa scripts/snap-previews.mjs para generar las capturas).
+const previewImage = `/previews/${view}.webp`;
+const useImage =
+  process.env.PREVIEW_IFRAME !== '1' &&
+  existsSync(join(process.cwd(), 'public', 'previews', `${view}.webp`));
 
 function removeHandlers(markup: string) {
   return markup.replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*')/gi, '');
@@ -214,15 +224,29 @@ const staticMarkup = isModal
 const documentHtml = `<!doctype html><html lang="es"><head><meta charset="utf-8"><link rel="stylesheet" href="/launcher-preview.css"><link rel="stylesheet" href="/fonts/css/all.min.css"><style>html,body{width:1280px;height:720px;margin:0;overflow:hidden;background:#1a1a1a}body{display:flex;pointer-events:none}.content{flex:none;width:1280px;height:720px;min-height:0;overflow:hidden;contain:none;content-visibility:visible}.modal-backdrop.active{animation:none}</style></head><body inert>${staticMarkup}</body></html>`;
 ---
 
-<div class={`launcher-preview-frame launcher-preview-frame--${view}`} aria-hidden="true">
-  <iframe
-    class={`launcher-preview launcher-preview--${view}`}
-    srcdoc={documentHtml}
-    title={`Vista estática de Kindyr: ${view}`}
-    tabindex="-1"
-    loading="eager"
-  ></iframe>
-</div>
+{useImage ? (
+  <div class={`launcher-preview-frame launcher-preview-frame--${view}`} aria-hidden="true">
+    <img
+      class="launcher-preview-img"
+      src={previewImage}
+      width="960"
+      height="540"
+      alt=""
+      decoding="async"
+      draggable="false"
+    />
+  </div>
+) : (
+  <div class={`launcher-preview-frame launcher-preview-frame--${view}`} aria-hidden="true">
+    <iframe
+      class={`launcher-preview launcher-preview--${view}`}
+      srcdoc={documentHtml}
+      title={`Vista estática de Kindyr: ${view}`}
+      tabindex="-1"
+      loading="eager"
+    ></iframe>
+  </div>
+)}
 
 <style>
   .launcher-preview-frame {
@@ -230,6 +254,14 @@ const documentHtml = `<!doctype html><html lang="es"><head><meta charset="utf-8"
     inset: 0;
     overflow: hidden;
     pointer-events: none;
+  }
+
+  .launcher-preview-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
   }
 
   .launcher-preview {
@@ -250,7 +282,8 @@ const documentHtml = `<!doctype html><html lang="es"><head><meta charset="utf-8"
   const fitPreview = (frame: HTMLElement) => {
     const iframe = frame.querySelector<HTMLIFrameElement>('.launcher-preview');
     if (!iframe) return;
-    const { width, height } = frame.getBoundingClientRect();
+    const width = frame.offsetWidth;
+    const height = frame.offsetHeight;
     if (!width || !height) return;
     const scale = Math.max(width / 1280, height / 720);
     const x = (width - 1280 * scale) / 2;
@@ -259,6 +292,7 @@ const documentHtml = `<!doctype html><html lang="es"><head><meta charset="utf-8"
   };
 
   document.querySelectorAll<HTMLElement>('.launcher-preview-frame').forEach((frame) => {
+    if (!frame.querySelector('iframe')) return;
     fitPreview(frame);
     const observer = new ResizeObserver(() => fitPreview(frame));
     observer.observe(frame);

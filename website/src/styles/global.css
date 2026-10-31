@@ -144,10 +144,6 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
 .discover-panel > strong { display: block; max-width: 210px; margin-top: 26px; font-size: 18px; line-height: 1; }
 .discover-panel > div:last-child { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 20px; }
 .discover-panel > div:last-child span { padding: 7px 8px; border: 1px solid var(--ink); background: var(--navy); font: 700 6px/1 var(--font-mono); }
-.floating-tag { position: absolute; z-index: 4; padding: 9px 11px; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font: 800 8px/1 var(--font-mono); }
-.floating-tag-loader { top: 92px; right: -30px; background: var(--yellow); color: var(--ink); transform: rotate(3deg); }
-.floating-tag-ready { bottom: 110px; left: -24px; display: inline-flex; align-items: center; gap: 7px; background: var(--white); color: var(--ink); transform: rotate(-3deg); }
-.floating-tag-ready i { width: 7px; height: 7px; background: var(--green); }
 .product-sticker { position: absolute; right: -22px; bottom: 0; z-index: 5; padding: 12px 15px; border: 2px solid var(--ink); background: var(--coral); color: var(--white); box-shadow: 4px 4px 0 var(--ink); transform: rotate(-3deg); font: 800 8px/1.3 var(--font-mono); text-align: center; }
 .product-sticker strong { font-size: 12px; }
 
@@ -271,14 +267,14 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
 .why-heading h2 em { color: var(--white); text-shadow: 4px 4px 0 var(--ink); }
 .why-heading p { max-width: 560px; margin: 25px 0 0; font-size: 16px; font-weight: 600; line-height: 1.65; }
 .comparison-table { border: 3px solid var(--ink); background: var(--white); box-shadow: var(--shadow-large); }
-.comparison-head, .comparison-row { display: grid; grid-template-columns: .85fr .75fr 1.4fr; gap: 14px; align-items: center; min-height: 67px; padding: 12px 16px; border-bottom: 2px solid var(--ink); }
+.comparison-head, .comparison-row { display: grid; grid-template-columns: .7fr 1fr 1fr 1fr; gap: 14px; align-items: center; min-height: 67px; padding: 12px 16px; border-bottom: 2px solid var(--ink); }
 .comparison-head { min-height: 52px; background: var(--navy); color: var(--blue-pale); font: 800 7px/1 var(--font-mono); }
 .comparison-head strong { color: var(--green); }
 .comparison-row:last-child { border-bottom: 0; }
-.comparison-row > span:first-child { font-size: 12px; font-weight: 700; }
-.comparison-row strong { display: inline-flex; align-items: center; gap: 8px; color: var(--navy); font-size: 11px; }
-.comparison-row strong i { display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid var(--ink); background: var(--green); font-style: normal; }
-.comparison-row > span:last-child { color: #46516a; font-size: 10px; font-weight: 500; }
+.comparison-label { font-size: 12px; font-weight: 700; }
+.comparison-win { display: inline-flex; align-items: center; gap: 8px; color: var(--navy); font-size: 11px; }
+.comparison-win i { display: grid; place-items: center; width: 24px; height: 24px; flex: none; border: 2px solid var(--ink); background: var(--green); font-style: normal; }
+.comparison-cell { color: #46516a; font-size: 10px; font-weight: 500; }
 
 .values { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; padding-top: 135px; padding-bottom: 145px; }
 .value-card { position: relative; min-height: 430px; padding: 23px; overflow: hidden; border: 3px solid var(--ink); box-shadow: var(--shadow); }
@@ -326,13 +322,6 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
 .download-alt a { color: var(--white); text-decoration: underline; text-underline-offset: 3px; }
 .download-copy > small { display: block; margin-top: 24px; font: 700 8px/1.5 var(--font-mono); opacity: .78; }
 
-.site-footer { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 30px; width: min(calc(100% - 48px),var(--max)); min-height: 190px; margin-inline: auto; }
-.footer-brand img { width: 45px; height: 45px; }
-.site-footer > p:not(.legal-note) { color: var(--dim); font-size: 12px; font-weight: 500; text-align: center; }
-.footer-links { display: flex; gap: 17px; color: var(--blue-pale); font: 800 8px/1 var(--font-mono); }
-.footer-links a:last-child { color: var(--coral); }
-.legal-note { grid-column: 1/-1; margin: -38px 0 24px; color: var(--dim); font: 500 8px/1.5 var(--font-mono); text-align: center; }
-
 .reveal { opacity: 1; transform: none; }
 .js .reveal { opacity: 0; transform: translateY(24px); }
 .js .reveal.is-visible { animation: reveal-in 620ms cubic-bezier(.2,.75,.2,1) both; }
@@ -372,9 +361,6 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
   .faq-heading { max-width: 720px; }
   .download { grid-template-columns: 1fr; }
   .download-logo { width: min(100%,520px); min-height: 310px; }
-  .site-footer { grid-template-columns: 1fr auto; padding-block: 42px; }
-  .site-footer > p:not(.legal-note) { grid-column: 1/-1; grid-row: 2; text-align: left; }
-  .legal-note { margin: 0; text-align: left; }
 }
 
 @media (max-width: 680px) {
@@ -403,8 +389,6 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
   .app-panels { grid-template-columns: 1fr; }
   .app-panels > article { min-height: 150px; }
   .instances-panel { display: none; }
-  .floating-tag-loader { right: -5px; top: 74px; }
-  .floating-tag-ready { left: -5px; bottom: 90px; }
   .product-sticker { right: -3px; bottom: -18px; }
   .benefits { padding-block: 100px; }
   .section-heading { grid-template-columns: 1fr; }
@@ -430,10 +414,13 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
   .setting-row { align-items: flex-start; flex-direction: column; }
   .big-statements { grid-template-columns: 1fr; }
   .why-kindyr { padding-block: 100px; }
-  .comparison-head, .comparison-row { grid-template-columns: 1fr; gap: 9px; }
-  .comparison-head span:last-child { display: none; }
+  .comparison-head { display: none; }
+  .comparison-row { grid-template-columns: 1fr; gap: 9px; }
   .comparison-row { padding-block: 17px; }
-  .comparison-row > span:last-child { padding-top: 8px; border-top: 1px solid #d7dce5; }
+  .comparison-label { font-size: 13px; }
+  .comparison-win, .comparison-cell { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid #d7dce5; }
+  .comparison-win { grid-template-columns: 24px 1fr; align-items: center; }
+  .comparison-win::before, .comparison-cell::before { grid-column: 1 / -1; content: attr(data-launcher); color: var(--navy); font: 800 7px/1.4 var(--font-mono); letter-spacing: .1em; }
   .values { padding-block: 100px; }
   .faq { padding-block: 100px; }
   .faq-item summary { grid-template-columns: 36px 1fr 24px; min-height: 76px; padding-inline: 12px; font-size: 13px; }
@@ -444,8 +431,6 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
   .download-logo { min-height: 280px; }
   .download-actions { flex-direction: column; }
   .download-actions .button { width: 100%; }
-  .site-footer { width: calc(100% - 30px); grid-template-columns: 1fr; }
-  .footer-links { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -473,7 +458,7 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
   font-display: swap;
 }
 .yuyu-text, .yuyu-text * { font-family: 'Yuyu', var(--font-sans); font-weight: 400; }
-.hero-lead, .showcase-copy > p, .why-heading p, .download-copy > p, .feature-points span, .big-statements span, .comparison-row > span:last-child, .value-card p, .faq-item p, .feature-card__copy p { font-family: 'Yuyu', var(--font-sans); font-weight: 400; }
+.hero-lead, .showcase-copy > p, .why-heading p, .download-copy > p, .feature-points span, .big-statements span, .comparison-cell, .value-card p, .faq-item p, .feature-card__copy p { font-family: 'Yuyu', var(--font-sans); font-weight: 400; }
 
 /* Indie Flower y Sue Ellen Francisco (SIL OFL 1.1, licencias en public/fonts) para el ciclo del hero. */
 @font-face {
@@ -491,15 +476,101 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
   font-display: swap;
 }
 
+/* Manuscritas con cirílico (SIL OFL 1.1, licencias en public/fonts) para el ciclo
+   del hero en ruso: Caveat, Neucha y Lobster. */
+@font-face {
+  font-family: 'Caveat';
+  src: url('/fonts/caveat/Caveat-Regular-cyrillic-ext.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Caveat';
+  src: url('/fonts/caveat/Caveat-Regular-cyrillic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Caveat';
+  src: url('/fonts/caveat/Caveat-Regular-latin-ext.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Caveat';
+  src: url('/fonts/caveat/Caveat-Regular-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Neucha';
+  src: url('/fonts/neucha/Neucha-Regular-cyrillic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Neucha';
+  src: url('/fonts/neucha/Neucha-Regular-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lobster';
+  src: url('/fonts/lobster/Lobster-Regular-cyrillic-ext.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lobster';
+  src: url('/fonts/lobster/Lobster-Regular-cyrillic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lobster';
+  src: url('/fonts/lobster/Lobster-Regular-latin-ext.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lobster';
+  src: url('/fonts/lobster/Lobster-Regular-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /* Las manuscritas se leen chicas: se suben los tamaños de las descripciones. */
 .hero-lead { font-size: clamp(26px, 2.6vw, 34px); }
+/* Cada línea del lead es un bloque sin partición: el hero siempre tiene
+   3 líneas y las palabras no cambian de posición entre fuentes. */
+.hero-lead-line { display: block; white-space: nowrap; }
 .showcase-copy > p { font-size: 26px; }
 .why-heading p { font-size: 25px; }
 .download-copy > p { font-size: 27px; }
 .download-page__copy > p { font-size: 27px; }
 .feature-points span { font-size: 21px; }
 .big-statements span { font-size: 20px; }
-.comparison-row > span:last-child { font-size: 18px; }
+.comparison-cell { font-size: 18px; }
 .value-card p { font-size: 23px; }
 .faq-item p { font-size: 22px; }
 @media (max-width: 680px) {
@@ -507,5 +578,4 @@ svg { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin:
   .download-copy > p, .download-page__copy > p { font-size: 24px; }
   .value-card p { font-size: 22px; }
   .faq-item p { font-size: 21px; }
-  .hero-break { display: none; }
 }

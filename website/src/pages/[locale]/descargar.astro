@@ -1,22 +1,37 @@
 ﻿---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import { downloads, VERSION, RELEASES_URL } from '../data/downloads';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import { downloads, VERSION, RELEASES_URL } from '../../data/downloads';
+import { getLangFromUrl, useTranslations } from '../../i18n/utils';
+
+export async function getStaticPaths() {
+  return [
+    { params: { locale: 'en' } },
+    { params: { locale: 'es' } },
+    { params: { locale: 'ru' } },
+    { params: { locale: 'pt' } },
+  ];
+}
+
+const { locale } = Astro.params;
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
 
 const options = Object.values(downloads);
 ---
 
-<BaseLayout title="Descargar Kindyr" description="Descargá Kindyr para Windows o Linux.">
+<BaseLayout title={t('downloadPage.eyebrow')} description={t('downloadPage.description')}>
   <div class="site-shell">
     <main id="contenido" class="download-page">
       <div class="section-grid download-back-row">
-        <a class="button button-dark button-small download-back" href="/" data-back>← VOLVER</a>
+        <a class="button button-dark button-small download-back" href={`/${lang}`} data-back>{t('downloadPage.back')}</a>
       </div>
       <section class="download download-page__band" aria-labelledby="descargar-titulo">
         <div class="download-grid" aria-hidden="true"></div>
         <div class="download-copy download-page__copy">
-          <div class="eyebrow"><span></span> DESCARGAS · v{VERSION}</div>
-          <h1 id="descargar-titulo">ELEGÍ TU<br /><em>SISTEMA.</em></h1>
-          <p class="yuyu-text">Kindyr está disponible para Windows y Linux. Descargá la versión que corresponde a tu equipo.</p>
+          <div class="eyebrow"><span></span> {t('downloadPage.eyebrow')} v{VERSION}</div>
+          <h1 id="descargar-titulo" set:html={t('downloadPage.title')}></h1>
+          <p class="yuyu-text">{t('downloadPage.description')}</p>
         </div>
         <div class="download-page__grid">
           {options.map((option) => (
@@ -24,16 +39,17 @@ const options = Object.values(downloads);
               <strong>{option.label}</strong>
               <span>{option.detail}</span>
               <small>{option.file}</small>
-              <span class="download-page__cta">DESCARGAR <span aria-hidden="true">↓</span></span>
+              <span class="download-page__cta">{t('downloadPage.download')} <span aria-hidden="true">↓</span></span>
             </a>
           ))}
         </div>
       </section>
 
       <p class="download-page__more section-grid">
-        Otras versiones y notas de cambios: <a href={RELEASES_URL} target="_blank" rel="noreferrer">ver todas las releases ↗</a>
+        {t('downloadPage.more')}<a href={RELEASES_URL} target="_blank" rel="noreferrer">{t('downloadPage.releases')}</a>
       </p>
     </main>
+    <SiteFooter />
   </div>
   <script is:inline>
     // Vuelve a la página anterior del mismo sitio; si no hay historial, va al inicio.

@@ -1,0 +1,516 @@
+﻿---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LauncherMockup from '../../components/LauncherMockup.astro';
+import FeatureCarousel from '../../components/FeatureCarousel.astro';
+import LanguageSelector from '../../components/LanguageSelector.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+
+import { downloads } from '../../data/downloads';
+import { getLangFromUrl, useTranslations } from '../../i18n/utils';
+
+export async function getStaticPaths() {
+  return [
+    { params: { locale: 'en' } },
+    { params: { locale: 'es' } },
+    { params: { locale: 'ru' } },
+    { params: { locale: 'pt' } },
+  ];
+}
+
+const { locale } = Astro.params;
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+
+// En ruso rotan manuscritas con cirílico (las latinas no traen esos glifos).
+const cycleFontList = lang === 'ru'
+  ? ['Caveat', 'Neucha', 'Lobster']
+  : ['Yuyu', 'Indie Flower', 'Sue Ellen Francisco'];
+
+// El lead siempre son 3 líneas fijas (una por span, sin partición):
+// así las palabras quedan en su línea en todas las fuentes e idiomas.
+const heroLeadLines = t('hero.lead').split(/<br[^>]*>/).slice(0, 3);
+while (heroLeadLines.length < 3) heroLeadLines.push('');
+
+const githubURL = 'https://github.com/iDontrixss/KindyrLauncher';
+const releasesURL = `${githubURL}/releases`;
+const pageDownloadsURL = `/${lang}/descargar`;
+
+// [etiqueta, textoKindyr, ganaKindyr, textoOficial, ganaOficial, textoTlauncher, ganaTlauncher]
+// La celda ganadora de cada fila se resalta con el estilo actual (✓ verde).
+const comparisonRows = [
+  [t('why.row1'), t('why.row1Kindyr'), true, t('why.row1Official'), true, t('why.row1Tlauncher'), false],
+  [t('why.row2'), t('why.row2Kindyr'), true, t('why.row2Official'), false, t('why.row2Tlauncher'), false],
+  [t('why.row3'), t('why.row3Kindyr'), true, t('why.row3Official'), true, t('why.row3Tlauncher'), false],
+  [t('why.row4'), t('why.row4Kindyr'), true, t('why.row4Official'), false, t('why.row4Tlauncher'), false],
+  [t('why.row5'), t('why.row5Kindyr'), true, t('why.row5Official'), false, t('why.row5Tlauncher'), false],
+  [t('why.row6'), t('why.row6Kindyr'), true, t('why.row6Official'), false, t('why.row6Tlauncher'), false],
+  [t('why.row7'), t('why.row7Kindyr'), true, t('why.row7Official'), true, t('why.row7Tlauncher'), false],
+  [t('why.row8'), t('why.row8Kindyr'), true, t('why.row8Official'), false, t('why.row8Tlauncher'), false],
+  [t('why.row9'), t('why.row9Kindyr'), true, t('why.row9Official'), false, t('why.row9Tlauncher'), false],
+  [t('why.row10'), t('why.row10Kindyr'), false, t('why.row10Official'), true, t('why.row10Tlauncher'), false],
+  [t('why.row11'), t('why.row11Kindyr'), false, t('why.row11Official'), false, t('why.row11Tlauncher'), true],
+];
+
+const faqItems = [
+  {
+    question: t('faq.q1'),
+    answer: t('faq.a1'),
+  },
+  {
+    question: t('faq.q2'),
+    answer: t('faq.a2'),
+  },
+  {
+    question: t('faq.q3'),
+    answer: t('faq.a3'),
+  },
+  {
+    question: t('faq.q4'),
+    answer: t('faq.a4'),
+  },
+];
+---
+
+<BaseLayout
+  title={t('meta.title')}
+  description={t('meta.description')}
+>
+  <div class="site-shell">
+    <header class="site-header" data-header>
+      <a class="brand" href="#inicio" aria-label={t('a11y.brandHome')}>
+        <img src="/kindyr-logo.png" alt="" width="52" height="52" />
+        <span class="brand-copy">
+          <strong>KINDYR</strong>
+          <span>MINECRAFT LAUNCHER</span>
+        </span>
+      </a>
+
+      <nav class="desktop-nav" aria-label={t('a11y.mainNav')}>
+        <a href="#funciones">{t('nav.features')}</a>
+        <a href="#modrinth">{t('nav.content')}</a>
+        <a href="#comparativa">{t('nav.why')}</a>
+        <a href="#preguntas">{t('nav.faq')}</a>
+      </nav>
+
+      <div class="header-actions">
+        <a class="header-github" href={githubURL} target="_blank" rel="noreferrer">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49v-1.91c-2.78.62-3.37-1.2-3.37-1.2-.45-1.19-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.55-1.14-4.55-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.34 9.34 0 0 1 12 6.93a9.4 9.4 0 0 1 2.5.34c1.9-1.33 2.74-1.05 2.74-1.05.55 1.42.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.79-4.56 5.04.36.32.68.94.68 1.9v2.82c0 .27.18.59.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z"/></svg>
+          <span>{t('nav.github')}</span>
+        </a>
+        <LanguageSelector />
+        <a class="button button-small" href="#descargar">{t('nav.download')}</a>
+        <button class="menu-toggle" type="button" aria-label={t('a11y.openMenu')} aria-expanded="false" data-menu-toggle>
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+
+      <nav class="mobile-nav" aria-label={t('a11y.mobileNav')} data-mobile-nav>
+        <a href="#funciones">{t('nav.features')}</a>
+        <a href="#modrinth">{t('nav.content')}</a>
+        <a href="#comparativa">{t('nav.why')}</a>
+        <a href="#preguntas">{t('nav.faq')}</a>
+        <a href={releasesURL} target="_blank" rel="noreferrer">{t('nav.download')} ↗</a>
+        <a href={githubURL} target="_blank" rel="noreferrer">{t('nav.github')} ↗</a>
+      </nav>
+    </header>
+
+    <main id="contenido">
+      <section class="hero section-grid" id="inicio">
+        <div class="hero-copy reveal">
+          <div class="eyebrow"><span></span> {t('hero.eyebrow')}</div>
+          <h1>
+            {t('hero.title')}<br />
+            <span>{t('hero.titleSpan')}</span>
+          </h1>
+          <p class="hero-lead yuyu-text" data-font-cycle>
+            {heroLeadLines.map((line) => (<span class="hero-lead-line" data-cycle-line set:html={line}></span>))}
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary button-large" href={downloads.windows.url} rel="noreferrer" data-download-main>
+              <span data-download-label>{t('hero.download')}</span>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            </a>
+            <a class="text-link" href={githubURL} target="_blank" rel="noreferrer">{t('hero.github')} <span>↗</span></a>
+          </div>
+          <div class="hero-meta" aria-label={t('a11y.heroMeta')}>
+            <span><i></i> {t('hero.windows')}</span>
+            <span><i></i> {t('hero.noAds')}</span>
+            <span><i></i> {t('hero.openSource')}</span>
+          </div>
+        </div>
+
+        <div class="hero-product reveal reveal-delay" aria-label={t('a11y.heroView')}>
+          <div class="app-window has-shot">
+            <LauncherMockup view="home" />
+          </div>
+          <div class="product-sticker" set:html={t('hero.tag')}></div>
+        </div>
+      </section>
+
+      <FeatureCarousel />
+
+      <section class="showcase showcase-discover section-grid" id="modrinth">
+        <div class="showcase-copy reveal">
+          <div class="section-kicker"><span>02</span> {t('modrinth.kicker')}</div>
+          <h2 set:html={t('modrinth.title')}></h2>
+          <p class="yuyu-text">{t('modrinth.description')}</p>
+          <ul class="feature-points">
+            <li><i>✓</i><span><strong>{t('modrinth.point1')}</strong>{t('modrinth.point1Desc')}</span></li>
+            <li><i>✓</i><span><strong>{t('modrinth.point2')}</strong>{t('modrinth.point2Desc')}</span></li>
+            <li><i>✓</i><span><strong>{t('modrinth.point3')}</strong>{t('modrinth.point3Desc')}</span></li>
+          </ul>
+        </div>
+
+        <div class="discover-window has-shot reveal reveal-delay" aria-label={t('a11y.discoverView')}>
+          <LauncherMockup view="discover" />
+        </div>
+      </section>
+
+      <section class="showcase showcase-instances section-grid">
+        <div class="instance-manager has-shot reveal" aria-label={t('a11y.instancesView')}>
+          <LauncherMockup view="instances" />
+        </div>
+
+        <div class="showcase-copy reveal">
+          <div class="section-kicker"><span>03</span> {t('instances.kicker')}</div>
+          <h2 set:html={t('instances.title')}></h2>
+          <p class="yuyu-text">{t('instances.description')}</p>
+          <div class="big-statements">
+            <article><strong>{t('instances.noConflicts')}</strong><span>{t('instances.noConflictsDesc')}</span></article>
+            <article><strong>{t('instances.noGuessing')}</strong><span>{t('instances.noGuessingDesc')}</span></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="why-kindyr" id="comparativa">
+        <div class="why-inner section-grid">
+          <div class="why-heading reveal">
+            <div class="section-kicker"><span>04</span> {t('why.kicker')}</div>
+            <h2 set:html={t('why.title')}></h2>
+            <p class="yuyu-text">{t('why.description')}</p>
+          </div>
+
+          <div class="comparison-table reveal" role="table" aria-label={t('a11y.comparison')}>
+            <div class="comparison-head" role="row">
+              <span role="columnheader">{t('why.feature')}</span>
+              <strong role="columnheader">{t('why.kindyr')}</strong>
+              <span role="columnheader">{t('why.official')}</span>
+              <span role="columnheader">{t('why.tlauncher')}</span>
+            </div>
+            {comparisonRows.map((row) => (
+              <div class="comparison-row" role="row">
+                <span class="comparison-label" role="cell">{row[0]}</span>
+                {[
+                  { text: row[1], win: row[2], launcher: t('why.kindyr') },
+                  { text: row[3], win: row[4], launcher: t('why.official') },
+                  { text: row[5], win: row[6], launcher: t('why.tlauncher') },
+                ].map((cell) => (
+                  cell.win
+                    ? <strong class="comparison-win" role="cell" data-launcher={cell.launcher}><i>✓</i>{cell.text}</strong>
+                    : <span class="comparison-cell" role="cell" data-launcher={cell.launcher}>{cell.text}</span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section class="values section-grid">
+        <article class="value-card value-open reveal">
+          <span>{t('value.01')}</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m8 5-5 7 5 7M16 5l5 7-5 7M14 3l-4 18"/></svg>
+          <h3 set:html={t('value.01Title')}></h3>
+          <p>{t('value.01Desc')}</p>
+          <a href={githubURL} target="_blank" rel="noreferrer">{t('value.01Link')}</a>
+        </article>
+        <article class="value-card value-clean reveal">
+          <span>{t('value.02')}</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>
+          <h3 set:html={t('value.02Title')}></h3>
+          <p>{t('value.02Desc')}</p>
+        </article>
+        <article class="value-card value-platform reveal">
+          <span>{t('value.03')}</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16v11H4zM8 20h8M12 16v4"/></svg>
+          <h3 set:html={t('value.03Title')}></h3>
+          <p>{t('value.03Desc')}</p>
+        </article>
+      </section>
+
+      <section class="faq section-grid" id="preguntas">
+        <div class="faq-heading reveal">
+          <div class="section-kicker"><span>05</span> {t('faq.kicker')}</div>
+          <h2 set:html={t('faq.title')}></h2>
+        </div>
+        <div class="faq-list">
+          {faqItems.map((item, index) => (
+            <details class="faq-item reveal">
+              <summary><span>{String(index + 1).padStart(2, '0')}</span>{item.question}<i>+</i></summary>
+              <p>{item.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section class="download" id="descargar">
+        <div class="download-grid" aria-hidden="true"></div>
+        <div class="download-logo reveal">
+          <img src="/kindyr-logo.png" alt="" width="240" height="240" loading="lazy" />
+          <span>{t('download.logo')}</span>
+        </div>
+        <div class="download-copy reveal">
+          <div class="eyebrow"><span></span> {t('download.eyebrow')}</div>
+          <h2 set:html={t('download.title')}></h2>
+          <p class="yuyu-text">{t('download.description')}</p>
+          <div class="download-actions">
+            <a class="button button-light button-large" href={downloads.windows.url} rel="noreferrer" data-download-main>
+              <span data-download-label>{t('hero.download')}</span>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            </a>
+            <a class="button button-dark button-large" href={githubURL} target="_blank" rel="noreferrer">{t('download.code')}</a>
+          </div>
+          <p class="download-alt" data-download-alt>
+            <span data-download-question>{t('download.notWindows')}</span>
+            <a href={downloads.linux.url} rel="noreferrer" data-download-linux>{t('download.linux')}</a>
+            · <a href={pageDownloadsURL}>{t('download.allOptions')}</a>
+          </p>
+          <small>{t('download.legal')}</small>
+        </div>
+      </section>
+    </main>
+
+    <SiteFooter />
+  </div>
+
+  <script define:vars={{ downloadUrls: { windows: downloads.windows.url, linux: downloads.linux.url }, downloadLabels: { mainFor: t('download.mainFor'), notFor: t('download.notFor'), otherFor: t('download.otherFor') }, cycleFontList }}>
+    // Detecta el sistema del visitante y ajusta los botones de descarga.
+    // Si no es Linux ni Windows, se mantiene Windows como opción principal.
+    const downloadLinks = {
+      windows: { url: downloadUrls.windows },
+      linux: { url: downloadUrls.linux },
+    };
+    const detectOS = () => {
+      // El user agent manda: los Client Hints (userAgentData) pueden no coincidir con el
+      // sistema real en algunos navegadores. Solo se usan si el user agent no alcanza.
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes('windows')) return 'windows';
+      // Android también incluye "linux" en el user agent: no es el AppImage de escritorio.
+      if (!ua.includes('android') && (ua.includes('linux') || ua.includes('x11'))) return 'linux';
+      const hint = (navigator.userAgentData?.platform || '').toLowerCase();
+      if (hint === 'linux') return 'linux';
+      return 'windows';
+    };
+    const applyDownloadOS = () => {
+      const os = detectOS();
+      const other = os === 'windows' ? 'linux' : 'windows';
+      const name = os === 'windows' ? 'Windows' : 'Linux';
+      const otherName = other === 'windows' ? 'Windows' : 'Linux';
+      document.querySelectorAll('[data-download-main]').forEach((link) => {
+        link.href = downloadLinks[os].url;
+      });
+      document.querySelectorAll('[data-download-label]').forEach((label) => {
+        label.textContent = downloadLabels.mainFor.replace('{os}', name.toUpperCase());
+      });
+      const alt = document.querySelector('[data-download-alt]');
+      const altLink = document.querySelector('[data-download-linux]');
+      if (altLink) {
+        altLink.href = downloadLinks[other].url;
+        altLink.textContent = downloadLabels.otherFor.replace('{os}', otherName);
+      }
+      const question = document.querySelector('[data-download-question]');
+      if (question) question.textContent = downloadLabels.notFor.replace('{os}', name);
+      if (alt) alt.dataset.os = os;
+    };
+    applyDownloadOS();
+
+    // El texto del hero rota cada 0.3 s entre manuscritas.
+    // Solo rotan las fuentes que de verdad dibujan el texto: ninguna trae cirílico,
+    // así que en ruso el ciclo quedaría saltando entre el mismo fallback a 3 tamaños.
+    // Con movimiento reducido o una sola fuente útil, queda fijo.
+    const cycleEl = document.querySelector('[data-font-cycle]');
+    if (cycleEl && !window.matchMedia('(prefers-reduced-motion: reduce)').matches && document.fonts && document.fonts.load) {
+      const cycleFonts = cycleFontList;
+      // Alto de caja por línea = CYCLE_LINE_HEIGHT × tamaño base, igual para
+      // todas las fuentes (cada una usa CYCLE_LINE_HEIGHT / su escala).
+      const CYCLE_LINE_HEIGHT = 1.6;
+      const probe = Array.from(new Set((cycleEl.textContent || '').replace(/\s+/g, '')))
+        .filter((ch) => (ch.codePointAt(0) || 0) > 0x2FF).slice(0, 12).join('');
+      const verifyCtx = probe ? document.createElement('canvas').getContext('2d') : null;
+      let verifyFallbackW = 0;
+      if (verifyCtx) {
+        verifyCtx.font = '40px monospace';
+        verifyFallbackW = verifyCtx.measureText(probe).width;
+      }
+      // true si la fuente ya dibuja el texto (no el fallback).
+      const coversText = (name) => {
+        if (!verifyCtx) return true;
+        verifyCtx.font = '40px "' + name + '", monospace';
+        return Math.abs(verifyCtx.measureText(probe).width - verifyFallbackW) > 1;
+      };
+      const loads = cycleFonts.map((name) => document.fonts.load('40px "' + name + '"', probe || 'abc').catch(() => []));
+      // Espera real a las fuentes: load() resuelve vacío si el @font-face aún
+      // no existe (CSS en camino), así que se sondea hasta que la cobertura se
+      // estabiliza o se acaba el tiempo. Sin esto se mide el fallback y las
+      // escalas salen mal (overflow).
+      const waitUsable = () => new Promise((resolve) => {
+        const t0 = performance.now();
+        const TIMEOUT = 3500;
+        let lastKey = '';
+        let stable = 0;
+        const tick = () => {
+          const ok = cycleFonts.filter(coversText);
+          const key = ok.join('|');
+          stable = key === lastKey ? stable + 1 : 0;
+          lastKey = key;
+          if (stable >= 2 || performance.now() - t0 > TIMEOUT) return resolve(ok);
+          setTimeout(tick, 120);
+        };
+        tick();
+      });
+      Promise.all(loads).then(() => waitUsable().then((usable) => {
+        if (usable.length < 2) return;
+        const reference = usable[0];
+        const scales = {};
+        let cycleIndex = 0;
+        let cycleBaseSize = 0;
+        const readCycleBaseSize = () => {
+          const prevSize = cycleEl.style.fontSize;
+          cycleEl.style.fontSize = '';
+          cycleBaseSize = parseFloat(window.getComputedStyle(cycleEl).fontSize) || 0;
+          cycleEl.style.fontSize = prevSize;
+        };
+        // Las líneas llevan la fuente en su propio inline: la regla
+        // `.yuyu-text *` fija font-family directo en los hijos y le gana
+        // a la herencia del contenedor (así se había apagado el ciclo).
+        // Tracking por fuente: comprime las más anchas para que pidan
+        // menos escala y queden más grandes.
+        const cycleTracking = {
+          'Indie Flower': '-0.09em',
+          'Lobster': '-0.05em',
+        };
+        const cycleTargets = () => {
+          const found = cycleEl.querySelectorAll('[data-cycle-line]');
+          return found.length ? Array.from(found) : [cycleEl];
+        };
+        const applyCycleFont = (name) => {
+          const family = '"' + name + '", var(--font-sans)';
+          // Caja de línea constante: tamaño × interlineado = CYCLE_LINE_HEIGHT
+          // siempre, así las 3 líneas no se mueven en vertical entre fuentes
+          // (como hacía la tabla original: 0.941×1.58 ≈ 0.794×1.87).
+          const lh = cycleBaseSize > 0 && scales[name]
+            ? (CYCLE_LINE_HEIGHT / scales[name])
+            : CYCLE_LINE_HEIGHT;
+          cycleTargets().forEach((target) => {
+            target.style.fontFamily = family;
+            target.style.letterSpacing = cycleTracking[name] || '0em';
+            target.style.lineHeight = lh;
+            if (cycleBaseSize > 0 && scales[name]) target.style.fontSize = (cycleBaseSize * scales[name]) + 'px';
+          });
+        };
+        // Medición por canvas (determinista): el scrollWidth del DOM dio valores
+        // contradictorios entre pasadas (estado heredado + swap de fuentes),
+        // así que los anchos se miden acá y el DOM solo aplica y fija altura.
+        const measureCtx = document.createElement('canvas').getContext('2d');
+        const normalizeCycle = () => {
+          readCycleBaseSize();
+          if (!cycleBaseSize || !measureCtx) return;
+          const targets = cycleTargets();
+          const containerW = cycleEl.clientWidth || 1;
+          const lineTexts = targets.map((t) => (t.textContent || '').replace(/\s+/g, ' ').trim());
+          const trackPx = (name, sizePx) => {
+            const em = parseFloat(cycleTracking[name] || '0') || 0;
+            return (em * sizePx) + 'px';
+          };
+          const canvasWidth = (name, sizePx) => {
+            measureCtx.font = sizePx + 'px "' + name + '", monospace';
+            try { measureCtx.letterSpacing = trackPx(name, sizePx); } catch (e) {}
+            let w = 0;
+            lineTexts.forEach((txt) => { w = Math.max(w, measureCtx.measureText(txt).width); });
+            return w || 1;
+          };
+          // Ancho máximo de línea por fuente (cada línea es nowrap: no se parte).
+          const widths = {};
+          usable.forEach((name) => { widths[name] = canvasWidth(name, cycleBaseSize); });
+          const refW = widths[reference] || 1;
+          const ownWs = {};
+          usable.forEach((name) => {
+            // Igualado suave al 25 % + encaje propio: cada fuente solo se
+            // achica si ELLA desborda; la que entra cómoda queda grande.
+            const match = refW / widths[name];
+            const matched = 1 + (match - 1) * 0.25;
+            ownWs[name] = canvasWidth(name, cycleBaseSize * matched);
+            // Margen del 4 %: las swashes manuscritas (Lobster) pintan más allá
+            // de su avance y el scrollWidth no las ve.
+            const ownFit = Math.min(1, (containerW * 0.96) / (ownWs[name] || 1));
+            scales[name] = Math.min(1.3, Math.max(0.45, matched * ownFit));
+          });
+          let maxH = 0;
+          usable.forEach((name) => {
+            applyCycleFont(name);
+            maxH = Math.max(maxH, cycleEl.offsetHeight);
+          });
+          cycleEl.style.minHeight = maxH + 'px';
+          applyCycleFont(usable[cycleIndex]);
+          window.__cycleDebug = { usable, widths, ownWs, scales, containerW, baseSize: cycleBaseSize };
+        };
+        normalizeCycle();
+        // La primera pasada puede medir con el fallback si la fuente aún no
+        // terminó de aplicarse: se repite cuando las fuentes asientan y una
+        // vez más con demora. Es idempotente y conserva la fuente visible.
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { normalizeCycle(); });
+        window.setTimeout(normalizeCycle, 800);
+        window.setInterval(() => {
+          cycleIndex = (cycleIndex + 1) % usable.length;
+          applyCycleFont(usable[cycleIndex]);
+        }, 300);
+        let cycleResizeTimer = 0;
+        window.addEventListener('resize', () => {
+          window.clearTimeout(cycleResizeTimer);
+          cycleResizeTimer = window.setTimeout(normalizeCycle, 200);
+        });
+      }));
+    }
+
+    const menuToggle = document.querySelector('[data-menu-toggle]');
+    const mobileNav = document.querySelector('[data-mobile-nav]');
+    const header = document.querySelector('[data-header]');
+
+    const closeMenu = () => {
+      menuToggle?.setAttribute('aria-expanded', 'false');
+      mobileNav?.classList.remove('is-open');
+    };
+
+    menuToggle?.addEventListener('click', () => {
+      const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
+      menuToggle.setAttribute('aria-expanded', String(!isOpen));
+      mobileNav?.classList.toggle('is-open', !isOpen);
+    });
+
+    mobileNav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+
+    const syncHeader = () => header?.classList.toggle('is-scrolled', window.scrollY > 24);
+    syncHeader();
+    window.addEventListener('scroll', syncHeader, { passive: true });
+
+    document.querySelectorAll('[data-year]').forEach((node) => {
+      node.textContent = String(new Date().getFullYear());
+    });
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduceMotion && 'IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -40px' });
+      document.querySelectorAll('.reveal').forEach((element) => observer.observe(element));
+    } else {
+      document.querySelectorAll('.reveal').forEach((element) => element.classList.add('is-visible'));
+    }
+  </script>
+</BaseLayout>
+
+

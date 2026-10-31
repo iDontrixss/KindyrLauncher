@@ -1,394 +1,120 @@
-﻿---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import LauncherMockup from '../components/LauncherMockup.astro';
-import FeatureCarousel from '../components/FeatureCarousel.astro';
+---
+import '../styles/global.css';
+import { languages } from '../i18n/ui';
 
-import { downloads } from '../data/downloads';
-
-const githubURL = 'https://github.com/iDontrixss/KindyrLauncher';
-const releasesURL = `${githubURL}/releases`;
-const pageDownloadsURL = '/descargar';
-
-const comparisonRows = [
-  ['Instancias separadas', 'Incluido', 'Carpetas y perfiles manuales'],
-  ['Mods y modpacks', 'Dentro del launcher', 'Navegador + descargas + mover archivos'],
-  ['Importación .mrpack', 'Flujo directo', 'Varios pasos y configuración'],
-  ['Loaders', 'Desde la creación de instancia', 'Instaladores por separado'],
-  ['Código abierto', 'Sí', 'Depende de cada herramienta'],
-];
-
-const faqItems = [
-  {
-    question: '¿Qué puedo hacer con Kindyr?',
-    answer: 'Crear y administrar instancias de Minecraft, trabajar con diferentes versiones y loaders, explorar contenido de Modrinth, importar paquetes .mrpack y gestionar cuentas desde una sola aplicación.',
-  },
-  {
-    question: '¿Qué loaders contempla?',
-    answer: 'Kindyr está pensado para trabajar con experiencias Vanilla y con loaders como Fabric, Forge, NeoForge y Quilt. La compatibilidad exacta depende de cada versión y del estado de desarrollo.',
-  },
-  {
-    question: '¿Kindyr tiene anuncios?',
-    answer: 'No. La propuesta del launcher es mantener una experiencia limpia, directa y sin publicidad integrada.',
-  },
-  {
-    question: '¿Es gratuito y open source?',
-    answer: 'Sí. El código del proyecto está disponible públicamente en GitHub, junto con los avances, reportes y releases.',
-  },
+// Puerta de entrada: detecta el idioma del visitante y lo manda a su locale.
+// Solo actúa en "/" (los enlaces /es/, /en/... se quedan donde están).
+// Orden: 1) idioma del navegador, 2) zona horaria, 3) inglés por defecto
+// (el más hablado en la comunidad de Minecraft y en el mundo).
+// Sin JS: se muestra el selector y un meta-refresh lleva a /en/.
+const site = Astro.site ?? 'https://kindyrlauncher.pages.dev';
+const localeLinks = [
+  { code: 'en', href: '/en/' },
+  { code: 'es', href: '/es/' },
+  { code: 'ru', href: '/ru/' },
+  { code: 'pt', href: '/pt/' },
 ];
 ---
 
-<BaseLayout
-  title="Kindyr — El launcher de Minecraft para jugar a tu manera"
-  description="Creá instancias, instalá mods y modpacks desde Modrinth, importá .mrpack y organizá Minecraft desde un launcher open source, claro y sin anuncios."
->
-  <div class="site-shell">
-    <header class="site-header" data-header>
-      <a class="brand" href="#inicio" aria-label="Kindyr, volver al inicio">
-        <img src="/kindyr-logo.png" alt="" width="52" height="52" />
-        <span class="brand-copy">
-          <strong>KINDYR</strong>
-          <span>MINECRAFT LAUNCHER</span>
-        </span>
-      </a>
-
-      <nav class="desktop-nav" aria-label="Navegación principal">
-        <a href="#funciones">Funciones</a>
-        <a href="#modrinth">Contenido</a>
-        <a href="#comparativa">Por qué Kindyr</a>
-        <a href="#preguntas">FAQ</a>
-      </nav>
-
-      <div class="header-actions">
-        <a class="header-github" href={githubURL} target="_blank" rel="noreferrer">
-          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49v-1.91c-2.78.62-3.37-1.2-3.37-1.2-.45-1.19-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.55-1.14-4.55-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.34 9.34 0 0 1 12 6.93a9.4 9.4 0 0 1 2.5.34c1.9-1.33 2.74-1.05 2.74-1.05.55 1.42.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.79-4.56 5.04.36.32.68.94.68 1.9v2.82c0 .27.18.59.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z"/></svg>
-          <span>GitHub</span>
-        </a>
-        <a class="button button-small" href={downloads.windows.url} rel="noreferrer" data-download-main>DESCARGAR</a>
-        <button class="menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" data-menu-toggle>
-          <span></span><span></span><span></span>
-        </button>
-      </div>
-
-      <nav class="mobile-nav" aria-label="Navegación móvil" data-mobile-nav>
-        <a href="#funciones">Funciones</a>
-        <a href="#modrinth">Contenido</a>
-        <a href="#comparativa">Por qué Kindyr</a>
-        <a href="#preguntas">FAQ</a>
-        <a href={releasesURL} target="_blank" rel="noreferrer">Descargar ↗</a>
-        <a href={githubURL} target="_blank" rel="noreferrer">GitHub ↗</a>
-      </nav>
-    </header>
-
-    <main id="contenido">
-      <section class="hero section-grid" id="inicio">
-        <div class="hero-copy reveal">
-          <div class="eyebrow"><span></span> LAUNCHER DE MINECRAFT · OPEN SOURCE</div>
-          <h1>
-            TU MINECRAFT.<br />
-            <span>LISTO PARA JUGAR.</span>
-          </h1>
-          <p class="hero-lead yuyu-text" data-font-cycle>
-            Creá instancias, instalá mods y modpacks,<br class="hero-break" />cambiá de versión y entrá al juego desde un solo<br class="hero-break" />lugar. Sin anuncios y sin pelearte con carpetas.
-          </p>
-          <div class="hero-actions">
-            <a class="button button-primary button-large" href={downloads.windows.url} rel="noreferrer" data-download-main>
-              <span data-download-label>DESCARGAR PARA WINDOWS</span>
-              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#061840" />
+    <meta name="color-scheme" content="dark" />
+    <title>Kindyr — Choose your language</title>
+    <meta
+      name="description"
+      content="Choose your language: English, Español, Português, Русский."
+    />
+    <link rel="canonical" href={new URL('/en/', site)} />
+    <link rel="alternate" hreflang="en" href={new URL('/en/', site)} />
+    <link rel="alternate" hreflang="es" href={new URL('/es/', site)} />
+    <link rel="alternate" hreflang="ru" href={new URL('/ru/', site)} />
+    <link rel="alternate" hreflang="pt" href={new URL('/pt/', site)} />
+    <link rel="alternate" hreflang="x-default" href={new URL('/en/', site)} />
+    <link rel="icon" type="image/png" href="/kindyr-favicon.png?v=3" sizes="500x500" />
+    <meta http-equiv="refresh" content="4;url=/en/" />
+  </head>
+  <body>
+    <div class="site-shell locale-gate">
+      <main id="contenido" class="section-grid locale-gate__inner">
+        <img src="/kindyr-logo.png" alt="Kindyr" width="72" height="72" />
+        <h1>Kindyr</h1>
+        <p data-locale-gate-note>Detecting your language…</p>
+        <div class="locale-gate__grid">
+          {localeLinks.map((option) => (
+            <a class="button button-small locale-gate__btn" href={option.href} lang={option.code}>
+              {languages[option.code as keyof typeof languages]}
             </a>
-            <a class="text-link" href={githubURL} target="_blank" rel="noreferrer">VER EN GITHUB <span>↗</span></a>
-          </div>
-          <div class="hero-meta" aria-label="Características principales">
-            <span><i></i> WINDOWS + LINUX</span>
-            <span><i></i> SIN PUBLICIDAD</span>
-            <span><i></i> CÓDIGO ABIERTO</span>
-          </div>
-        </div>
-
-        <div class="hero-product reveal reveal-delay" aria-label="Vista de la interfaz de Kindyr">
-          <div class="app-window has-shot">
-            <LauncherMockup view="home" />
-          </div>
-          <span class="floating-tag floating-tag-loader">FABRIC · 1.21.4</span>
-          <span class="floating-tag floating-tag-ready"><i></i> LISTO</span>
-          <div class="product-sticker">TODO TU JUEGO.<br /><strong>UN SOLO LUGAR.</strong></div>
-        </div>
-      </section>
-
-      <FeatureCarousel />
-
-      <section class="showcase showcase-discover section-grid" id="modrinth">
-        <div class="showcase-copy reveal">
-          <div class="section-kicker"><span>02</span> CONTENIDO INTEGRADO</div>
-          <h2>ENCONTRÁ TU PRÓXIMA<br /><em>EXPERIENCIA.</em></h2>
-          <p class="yuyu-text">Explorá mods y modpacks de Modrinth desde el launcher. Elegí una instancia y mantené cada descarga donde corresponde.</p>
-          <ul class="feature-points">
-            <li><i>✓</i><span><strong>Búsqueda integrada</strong>Encontrá contenido sin abrir diez pestañas.</span></li>
-            <li><i>✓</i><span><strong>Contexto de instancia</strong>Sabés para qué versión y loader estás instalando.</span></li>
-            <li><i>✓</i><span><strong>Importación .mrpack</strong>Pasá de un paquete a una instancia organizada.</span></li>
-          </ul>
-        </div>
-
-        <div class="discover-window has-shot reveal reveal-delay" aria-label="Explorador de contenido de Modrinth en Kindyr">
-          <LauncherMockup view="discover" />
-        </div>
-      </section>
-
-      <section class="showcase showcase-instances section-grid">
-        <div class="instance-manager has-shot reveal" aria-label="Configuración de una instancia en Kindyr">
-          <LauncherMockup view="instances" />
-        </div>
-
-        <div class="showcase-copy reveal">
-          <div class="section-kicker"><span>03</span> INSTANCIAS</div>
-          <h2>CADA PARTIDA,<br /><em>A SU MANERA.</em></h2>
-          <p class="yuyu-text">Tené una instancia Vanilla, otra con Fabric y otra para probar un modpack. Cada una conserva su versión, loader, contenido y configuración.</p>
-          <div class="big-statements">
-            <article><strong>SIN CONFLICTOS</strong><span>Lo que instalás en una instancia no desarma las demás.</span></article>
-            <article><strong>SIN ADIVINAR</strong><span>Siempre ves qué perfil estás editando y dónde se guardan los cambios.</span></article>
-          </div>
-        </div>
-      </section>
-
-      <section class="why-kindyr" id="comparativa">
-        <div class="why-inner section-grid">
-          <div class="why-heading reveal">
-            <div class="section-kicker"><span>04</span> POR QUÉ KINDYR</div>
-            <h2>DEL ARCHIVO SUELTO<br /><em>A TODO ORGANIZADO.</em></h2>
-            <p class="yuyu-text">Kindyr reemplaza el recorrido de descargar, mover, instalar y volver a configurar por una experiencia conectada.</p>
-          </div>
-
-          <div class="comparison-table reveal" role="table" aria-label="Comparación entre Kindyr y la configuración manual">
-            <div class="comparison-head" role="row">
-              <span role="columnheader">TAREA</span>
-              <strong role="columnheader">CON KINDYR</strong>
-              <span role="columnheader">CONFIGURACIÓN MANUAL</span>
-            </div>
-            {comparisonRows.map((row) => (
-              <div class="comparison-row" role="row">
-                <span role="cell">{row[0]}</span>
-                <strong role="cell"><i>✓</i>{row[1]}</strong>
-                <span role="cell">{row[2]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section class="values section-grid">
-        <article class="value-card value-open reveal">
-          <span>01 / OPEN SOURCE</span>
-          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m8 5-5 7 5 7M16 5l5 7-5 7M14 3l-4 18"/></svg>
-          <h3>EL CÓDIGO<br />ESTÁ A LA VISTA.</h3>
-          <p>Revisá cómo funciona, seguí el desarrollo y participá desde GitHub.</p>
-          <a href={githubURL} target="_blank" rel="noreferrer">ABRIR REPOSITORIO ↗</a>
-        </article>
-        <article class="value-card value-clean reveal">
-          <span>02 / EXPERIENCIA LIMPIA</span>
-          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>
-          <h3>SIN ANUNCIOS.<br />SIN DISTRACCIONES.</h3>
-          <p>El launcher se concentra en tus instancias, tu contenido y el botón de jugar.</p>
-        </article>
-        <article class="value-card value-platform reveal">
-          <span>03 / MULTIPLATAFORMA</span>
-          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16v11H4zM8 20h8M12 16v4"/></svg>
-          <h3>WINDOWS<br />Y LINUX.</h3>
-          <p>Una misma propuesta visual y funcional para los dos sistemas principales del proyecto.</p>
-        </article>
-      </section>
-
-      <section class="faq section-grid" id="preguntas">
-        <div class="faq-heading reveal">
-          <div class="section-kicker"><span>05</span> PREGUNTAS FRECUENTES</div>
-          <h2>LO IMPORTANTE,<br /><em>SIN VUELTAS.</em></h2>
-        </div>
-        <div class="faq-list">
-          {faqItems.map((item, index) => (
-            <details class="faq-item reveal">
-              <summary><span>{String(index + 1).padStart(2, '0')}</span>{item.question}<i>+</i></summary>
-              <p>{item.answer}</p>
-            </details>
           ))}
         </div>
-      </section>
+      </main>
+    </div>
 
-      <section class="download" id="descargar">
-        <div class="download-grid" aria-hidden="true"></div>
-        <div class="download-logo reveal">
-          <img src="/kindyr-logo.png" alt="" width="240" height="240" loading="lazy" />
-          <span>OPEN SOURCE</span>
-        </div>
-        <div class="download-copy reveal">
-          <div class="eyebrow"><span></span> EMPEZÁ TU PRÓXIMA PARTIDA</div>
-          <h2>DEJÁ DE ORDENAR<br /><em>CARPETAS.</em></h2>
-          <p class="yuyu-text">Descargá Kindyr y prepará Minecraft desde un launcher diseñado para mantener todo en su lugar.</p>
-          <div class="download-actions">
-            <a class="button button-light button-large" href={downloads.windows.url} rel="noreferrer" data-download-main>
-              <span data-download-label>DESCARGAR PARA WINDOWS</span>
-              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
-            </a>
-            <a class="button button-dark button-large" href={githubURL} target="_blank" rel="noreferrer">VER EL CÓDIGO ↗</a>
-          </div>
-          <p class="download-alt" data-download-alt>
-            <span data-download-question>¿No es para Windows?</span>
-            <a href={downloads.linux.url} rel="noreferrer" data-download-linux>Descargar para Linux</a>
-            · <a href={pageDownloadsURL}>Ver todas las opciones</a>
-          </p>
-          <small>Proyecto independiente. No afiliado con Mojang Studios ni Microsoft.</small>
-        </div>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <a class="brand footer-brand" href="#inicio">
-        <img src="/kindyr-logo.png" alt="" width="46" height="46" loading="lazy" />
-        <span class="brand-copy"><strong>KINDYR</strong><span>MINECRAFT LAUNCHER</span></span>
-      </a>
-      <p>Tu Minecraft. Listo para jugar.</p>
-      <div class="footer-links"><a href={releasesURL} target="_blank" rel="noreferrer">DESCARGAR ↗</a><a href={githubURL} target="_blank" rel="noreferrer">GITHUB ↗</a></div>
-      <p class="legal-note">© <span data-year></span> Kindyr. Minecraft es una marca de Microsoft. Kindyr no es un producto oficial.</p>
-    </footer>
-  </div>
-
-  <script define:vars={{ downloadUrls: { windows: downloads.windows.url, linux: downloads.linux.url } }}>
-    // Detecta el sistema del visitante y ajusta los botones de descarga.
-    // Si no es Linux ni Windows, se mantiene Windows como opción principal.
-    const downloadLinks = {
-      windows: { url: downloadUrls.windows },
-      linux: { url: downloadUrls.linux },
-    };
-    const detectOS = () => {
-      // El user agent manda: los Client Hints (userAgentData) pueden no coincidir con el
-      // sistema real en algunos navegadores. Solo se usan si el user agent no alcanza.
-      const ua = navigator.userAgent.toLowerCase();
-      if (ua.includes('windows')) return 'windows';
-      // Android también incluye "linux" en el user agent: no es el AppImage de escritorio.
-      if (!ua.includes('android') && (ua.includes('linux') || ua.includes('x11'))) return 'linux';
-      const hint = (navigator.userAgentData?.platform || '').toLowerCase();
-      if (hint === 'linux') return 'linux';
-      return 'windows';
-    };
-    const applyDownloadOS = () => {
-      const os = detectOS();
-      const other = os === 'windows' ? 'linux' : 'windows';
-      const name = os === 'windows' ? 'Windows' : 'Linux';
-      const otherName = other === 'windows' ? 'Windows' : 'Linux';
-      document.querySelectorAll('[data-download-main]').forEach((link) => {
-        link.href = downloadLinks[os].url;
-      });
-      document.querySelectorAll('[data-download-label]').forEach((label) => {
-        label.textContent = `DESCARGAR PARA ${name.toUpperCase()}`;
-      });
-      const alt = document.querySelector('[data-download-alt]');
-      const altLink = document.querySelector('[data-download-linux]');
-      if (altLink) {
-        altLink.href = downloadLinks[other].url;
-        altLink.textContent = `Descargar para ${otherName}`;
-      }
-      const question = document.querySelector('[data-download-question]');
-      if (question) question.textContent = `¿No es para ${name}?`;
-      if (alt) alt.dataset.os = os;
-    };
-    applyDownloadOS();
-
-    // El texto del hero rota cada 0.3 s entre Yuyu, Indie Flower y Sue Ellen Francisco (prueba).
-    // Con movimiento reducido se queda en Yuyu.
-    const cycleEl = document.querySelector('[data-font-cycle]');
-    if (cycleEl && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const cycleFonts = ['Yuyu', 'Indie Flower', 'Sue Ellen Francisco'];
-      // Cada fuente se ajusta en tres ejes para igualar la caja (Yuyu manda, sin cambios):
-      // escala = tamaño de letra, tracking = ancho de caja, interlineado = alto de caja.
-      const cycleTuning = {
-        'Yuyu': { scale: 0.941, tracking: '0em', lineHeight: '1.58' },
-        'Indie Flower': { scale: 0.794, tracking: '-0.08em', lineHeight: '1.87' },
-        'Sue Ellen Francisco': { scale: 0.882, tracking: '0.04em', lineHeight: '1.69' },
-      };
-      let cycleIndex = 0;
-      let cycleBaseSize = 0;
-      const readCycleBaseSize = () => {
-        const prevSize = cycleEl.style.fontSize;
-        cycleEl.style.fontSize = '';
-        cycleBaseSize = parseFloat(window.getComputedStyle(cycleEl).fontSize) || 0;
-        cycleEl.style.fontSize = prevSize;
-      };
-      const applyCycleFont = (name) => {
-        const tune = cycleTuning[name] || cycleTuning['Yuyu'];
-        cycleEl.style.fontFamily = "'" + name + "', var(--font-sans)";
-        if (cycleBaseSize > 0) cycleEl.style.fontSize = (cycleBaseSize * tune.scale) + 'px';
-        cycleEl.style.letterSpacing = tune.tracking;
-        cycleEl.style.lineHeight = tune.lineHeight;
-      };
-      // Altura mínima = la más alta de las tres fuentes (cada una con su escala),
-      // para que el cambio no mueva el layout.
-      const fixCycleHeight = () => {
-        readCycleBaseSize();
-        let max = 0;
-        cycleFonts.forEach((name) => {
-          applyCycleFont(name);
-          max = Math.max(max, cycleEl.offsetHeight);
-        });
-        applyCycleFont(cycleFonts[cycleIndex]);
-        cycleEl.style.minHeight = max + 'px';
-      };
-      const startCycle = () => {
-        fixCycleHeight();
-        window.setInterval(() => {
-          cycleIndex = (cycleIndex + 1) % cycleFonts.length;
-          applyCycleFont(cycleFonts[cycleIndex]);
-        }, 300);
-      };
-      if (document.fonts && document.fonts.ready) {
-        cycleFonts.forEach((name) => document.fonts.load('20px "' + name + '"').catch(() => {}));
-        document.fonts.ready.then(startCycle);
-      } else {
-        startCycle();
-      }
-      let cycleResizeTimer = 0;
-      window.addEventListener('resize', () => {
-        window.clearTimeout(cycleResizeTimer);
-        cycleResizeTimer = window.setTimeout(fixCycleHeight, 200);
-      });
-    }
-
-    const menuToggle = document.querySelector('[data-menu-toggle]');
-    const mobileNav = document.querySelector('[data-mobile-nav]');
-    const header = document.querySelector('[data-header]');
-
-    const closeMenu = () => {
-      menuToggle?.setAttribute('aria-expanded', 'false');
-      mobileNav?.classList.remove('is-open');
-    };
-
-    menuToggle?.addEventListener('click', () => {
-      const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
-      menuToggle.setAttribute('aria-expanded', String(!isOpen));
-      mobileNav?.classList.toggle('is-open', !isOpen);
-    });
-
-    mobileNav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
-
-    const syncHeader = () => header?.classList.toggle('is-scrolled', window.scrollY > 24);
-    syncHeader();
-    window.addEventListener('scroll', syncHeader, { passive: true });
-
-    document.querySelectorAll('[data-year]').forEach((node) => {
-      node.textContent = String(new Date().getFullYear());
-    });
-
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!reduceMotion && 'IntersectionObserver' in window) {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
-            observer.unobserve(entry.target);
+    <script is:inline>
+      (() => {
+        // Idioma primario del tag (es-UY -> es). Catalán, gallego y euskera
+        // conviven con el español en España.
+        const LANG_TO_LOCALE = {
+          es: 'es', en: 'en', pt: 'pt', ru: 'ru', ca: 'es', gl: 'es', eu: 'es',
+        };
+        const localeFromLanguages = (list) => {
+          for (const raw of list) {
+            const primary = String(raw || '').toLowerCase().replace('_', '-').split('-')[0];
+            if (LANG_TO_LOCALE[primary]) return LANG_TO_LOCALE[primary];
           }
-        });
-      }, { threshold: 0.1, rootMargin: '0px 0px -40px' });
-      document.querySelectorAll('.reveal').forEach((element) => observer.observe(element));
-    } else {
-      document.querySelectorAll('.reveal').forEach((element) => element.classList.add('is-visible'));
-    }
-  </script>
-</BaseLayout>
+          return null;
+        };
+        // Respaldo por zona horaria (tabla acotada: lo no listado cae a inglés).
+        const TIMEZONE_TO_LOCALE = {
+          // Español
+          'Europe/Madrid': 'es', 'Atlantic/Canary': 'es', 'Africa/Ceuta': 'es', 'Africa/Melilla': 'es',
+          'America/Mexico_City': 'es', 'America/Cancun': 'es', 'America/Monterrey': 'es', 'America/Tijuana': 'es',
+          'America/Bogota': 'es', 'America/Lima': 'es', 'America/Santiago': 'es', 'America/Guayaquil': 'es',
+          'America/Buenos_Aires': 'es', 'America/Cordoba': 'es', 'America/Mendoza': 'es', 'America/Montevideo': 'es',
+          'America/Asuncion': 'es', 'America/Caracas': 'es', 'America/La_Paz': 'es',
+          'America/Santo_Domingo': 'es', 'America/Havana': 'es', 'America/Puerto_Rico': 'es', 'America/Panama': 'es',
+          'America/Costa_Rica': 'es', 'America/Guatemala': 'es', 'America/Tegucigalpa': 'es', 'America/Managua': 'es',
+          'America/El_Salvador': 'es',
+          // Portugués
+          'Europe/Lisbon': 'pt', 'Atlantic/Madeira': 'pt', 'Atlantic/Azores': 'pt',
+          'America/Sao_Paulo': 'pt', 'America/Bahia': 'pt', 'America/Belem': 'pt', 'America/Fortaleza': 'pt',
+          'America/Recife': 'pt', 'America/Maceio': 'pt', 'America/Araguaina': 'pt', 'America/Campo_Grande': 'pt',
+          'America/Cuiaba': 'pt', 'America/Santarem': 'pt', 'America/Porto_Velho': 'pt', 'America/Boa_Vista': 'pt',
+          'America/Manaus': 'pt', 'America/Rio_Branco': 'pt', 'America/Noronha': 'pt',
+          'Africa/Maputo': 'pt', 'Africa/Luanda': 'pt', 'Africa/Bissau': 'pt', 'Atlantic/Cape_Verde': 'pt',
+          'Africa/Sao_Tome': 'pt', 'Asia/Macau': 'pt',
+          // Ruso
+          'Europe/Moscow': 'ru', 'Europe/Kaliningrad': 'ru', 'Europe/Simferopol': 'ru', 'Europe/Volgograd': 'ru',
+          'Europe/Samara': 'ru', 'Asia/Yekaterinburg': 'ru', 'Asia/Omsk': 'ru', 'Asia/Novosibirsk': 'ru',
+          'Asia/Krasnoyarsk': 'ru', 'Asia/Irkutsk': 'ru', 'Asia/Yakutsk': 'ru', 'Asia/Vladivostok': 'ru',
+          'Asia/Magadan': 'ru', 'Asia/Kamchatka': 'ru', 'Asia/Anadyr': 'ru', 'Asia/Sakhalin': 'ru',
+          'Europe/Minsk': 'ru',
+        };
+        const localeFromTimeZone = () => {
+          try {
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (tz && TIMEZONE_TO_LOCALE[tz]) return TIMEZONE_TO_LOCALE[tz];
+          } catch (e) {}
+          return null;
+        };
+        const nav = Array.isArray(navigator.languages) && navigator.languages.length
+          ? navigator.languages
+          : [navigator.language];
+        const locale = localeFromLanguages(nav.filter(Boolean)) || localeFromTimeZone() || 'en';
+        window.location.replace('/' + locale + '/');
+      })();
+    </script>
 
-
+    <style>
+      .locale-gate { display: grid; min-height: 100vh; place-items: center; }
+      .locale-gate__inner { display: grid; justify-items: center; gap: 18px; text-align: center; }
+      .locale-gate__inner h1 { margin: 0; font-size: clamp(40px, 6vw, 64px); letter-spacing: -0.04em; text-transform: uppercase; }
+      .locale-gate__inner p { margin: 0; color: var(--muted); font-size: 15px; }
+      .locale-gate__grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+      .locale-gate__btn { min-width: 150px; }
+    </style>
+  </body>
+</html>
