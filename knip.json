@@ -2,7 +2,12 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
     "preload*.js",
+    "main.js",
     "*.html",
+    "ui-actions.js",
+    "html-sanitizer.js",
+    "app-init.js",
+    "sections/**/*.js",
     "common.js",
     "navigation.js",
     "accounts.js",
@@ -15,8 +20,12 @@
   "project": [
     "**/*.js"
   ],
+  "ignore": [
+    "auditoria/**"
+  ],
   "ignoreDependencies": [
     "@fortawesome/fontawesome-free",
-    "asar"
+    "app-builder-lib",
+    "@electron/asar"
   ]
 }
