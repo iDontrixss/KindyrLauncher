@@ -3,7 +3,7 @@
 ## Código y dependencias
 
 - [ ] El árbol de trabajo contiene únicamente los cambios destinados a la versión.
-- [ ] `pnpm install`, `pnpm check:syntax`, `pnpm test` y `pnpm ls --include=dev` pasan.
+- [ ] `pnpm install`, `pnpm check:syntax`, `pnpm check:innerhtml`, `pnpm check:csp`, `pnpm test` y `pnpm ls --include=dev` pasan.
 - [ ] `pnpm audit --omit=dev` informa cero vulnerabilidades.
 - [ ] MCLC, herramientas de diagnóstico y archivos de respaldo no aparecen en el ASAR.
 - [ ] La versión coincide en `package.json`, nombres de artefactos y etiqueta Git (changelog es local, no se commitea — ver `CHANGELOG.md` ignorado).
@@ -24,6 +24,9 @@
 
 - [ ] Configurar el remoto `origin` y verificar el repositorio de publicación.
 - [ ] Activar protección de rama y CI.
+- [ ] Generar la clave de firma de actualizaciones una vez (`pnpm release:keygen`), commitear `main/update-public-keys.js` y respaldar la clave privada y su passphrase fuera de GitHub. El `afterPack` se niega a generar instaladores sin una clave Ed25519 válida (solo la CI, que no publica, usa `KINDYR_ALLOW_NO_UPDATE_KEYS=1`).
+- [ ] Firmar cada release: `pnpm release:sign` y subir `update-manifest.json` + `update-manifest.json.sig` junto al instalador, `latest*.yml` y `.blockmap`.
+- [ ] Publicar primero una versión que ya incluya la clave pública: las versiones instaladas antes no la conocen y no aceptarán actualizaciones firmadas.
 - [ ] Configurar y verificar firma de código de Windows.
 - [ ] Definir firma o checksums verificables para AppImage.
 - [ ] Confirmar obligaciones de redistribución GPL-3.0-or-later: `LICENSE` incluida en el artefacto y cabeceras `SPDX` en cada fuente.

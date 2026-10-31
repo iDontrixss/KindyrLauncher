@@ -21,7 +21,7 @@ Depending on the feature used, the application talks directly to the following s
 | **Quilt** | Loader metadata | `https://meta.quiltmc.org/v3` |
 | **Forge** | Metadata and artifacts | `https://maven.minecraftforge.net` |
 | **NeoForge** | Metadata and artifacts | `https://maven.neoforged.net/releases` |
-| **GitHub** | Update checks and the `update.json` gate | `https://api.github.com/repos/iDontrixss/KindyrLauncher`, `https://raw.githubusercontent.com/iDontrixss/KindyrLauncher` |
+| **GitHub** | Update checks (releases and signed manifest) | `https://api.github.com/repos/iDontrixss/KindyrLauncher`, `https://github.com/iDontrixss/KindyrLauncher/releases` |
 | **mc-heads.net** | Avatars and skin previews | `https://mc-heads.net` |
 | **jsDelivr / skinview3d** | 3D skin-render library | `https://cdn.jsdelivr.net/npm/skinview3d@3.4.1` |
 

@@ -69,4 +69,15 @@ Neo-brutalista hard-shadow: `border-radius: 0` en todo, bordes gruesos `2-3px so
 5. Foco visible del navegador + `outline 2px var(--kindyr-accent)` si se refuerza; números/tamaños en `JetBrains Mono`.
 6. Acciones en lote (`Todas`/`Ninguna`) con `.secondary-btn`; el CTA de confirmar con `.primary-btn` deshabilitado si no hay selección.
 
+## 11. Acciones y scripts (CSP sin código inline)
+
+La CSP de la app prohíbe scripts y manejadores inline (`script-src 'self'; script-src-attr 'none'`). Un `onclick="..."` **no se ejecuta**.
+
+1. Acciones con atributos: `data-click="nombreFuncion"` y, si lleva argumentos, `data-args='["valor","$this"]'` (JSON). Otros eventos: `data-change`, `data-input`, `data-keydown` (+ `data-key="Enter"`), `data-error`, `data-dragover`/`data-dragleave`/`data-drop`.
+2. Tokens en `data-args`: `$this` (el elemento), `$event`, `$value`, `$checked`, `$data:nombre` (dataset), `$id:elemento` (getElementById).
+3. `data-stop` equivale a `event.stopPropagation()` (p. ej. un botón dentro de una card clickeable); `data-prevent` a `preventDefault()`.
+4. En HTML generado desde JS, los argumentos dinámicos van SIEMPRE con `uiArgs(...)`: `'data-args="' + uiArgs(id, '$this') + '"'`. Nunca concatenar valores dentro del JSON.
+5. La función debe ser global (`function nombre() {}` en el nivel superior del script) y estar en la lista `UI_ACTIONS` de `ui-actions.js`; `test/ui-actions.test.js` lo verifica.
+6. La lógica de cada sección vive en `sections/<nombre>.js` (nunca `<script>` inline en `sections/*.html`).
+
 > **Obligatorio:** Antes de agregar cualquier componente, importa este archivo y copia un componente existente. No inventes paletas ni radios.

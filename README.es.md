@@ -37,24 +37,19 @@ Los artefactos se crean en `dist/`. Las credenciales de Microsoft se cifran con 
 
 La versión declarada es `0.2.0-beta.2`. Antes de publicar, debe completarse [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md), incluida la validación en una instalación limpia, la firma de artefactos y la configuración del repositorio remoto. El changelog es local (`CHANGELOG.md` ignorado en git) — no se commitea.
 
-### Publicar una actualización (control manual)
+### Publicar una actualización (firmada)
 
-El auto-update es manual y más seguro: aunque subas una release a GitHub, **no se ofrece hasta que ejecutes `pnpm update-kindyr`**.
+El launcher **solo ofrece una actualización si su manifiesto está firmado** con tu clave privada. Subir o reemplazar una release en GitHub no basta: sin la firma, los launchers la ignoran.
 
 ```bash
-# Desde la carpeta del proyecto (importante):
-cd KindyrLauncher
-pnpm update-kindyr
+# Una sola vez: genera el par de claves (la privada queda fuera del repo, cifrada)
+pnpm release:keygen        # commitea main/update-public-keys.js
 
-# Si estás en otra carpeta, usa:
-pnpm --dir <ruta-a>/KindyrLauncher update-kindyr
-# o
-node <ruta-a>/KindyrLauncher/scripts/update-kindyr.js
-
-# También podés hacer doble click en update-kindyr.bat
+# En cada release, tras compilar (pnpm build / pnpm build:linux):
+pnpm release:sign          # crea dist/update-manifest.json y .sig
 ```
 
-El comando actualiza `update.json` (`approvedAt` nuevo) y habilita **un solo ciclo** 5s→3s→5s en todos los launchers. Sin ese comando, una release vulnerada subida a GitHub queda mitigada — no se descarga en silencio (nota: es una mitigación, no una prueba criptográfica; quien también pueda pushear `update.json` igual puede habilitar el ciclo).
+Sube a la release de GitHub: el instalador, `latest*.yml`, los `.blockmap`, `update-manifest.json` y `update-manifest.json.sig`. El launcher verifica la firma con la clave pública embebida, exige versión mayor que la instalada y comprueba que el hash del instalador (`latest.yml`) coincida con el firmado. Guarda una copia de la clave privada y su passphrase fuera de GitHub; sin ella no puedes firmar más versiones. Detalles en [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
 
 ## Reportar problemas
 

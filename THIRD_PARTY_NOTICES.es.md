@@ -21,7 +21,7 @@ Según la función utilizada, la aplicación se comunica directamente con los si
 | **Quilt** | Metadatos de loader | `https://meta.quiltmc.org/v3` |
 | **Forge** | Metadatos y artefactos | `https://maven.minecraftforge.net` |
 | **NeoForge** | Metadatos y artefactos | `https://maven.neoforged.net/releases` |
-| **GitHub** | Comprobación de actualizaciones y puerta `update.json` | `https://api.github.com/repos/iDontrixss/KindyrLauncher`, `https://raw.githubusercontent.com/iDontrixss/KindyrLauncher` |
+| **GitHub** | Comprobación de actualizaciones (releases y manifiesto firmado) | `https://api.github.com/repos/iDontrixss/KindyrLauncher`, `https://github.com/iDontrixss/KindyrLauncher/releases` |
 | **mc-heads.net** | Avatares y previsualización de skins | `https://mc-heads.net` |
 | **jsDelivr / skinview3d** | Librería de render 3D de skins | `https://cdn.jsdelivr.net/npm/skinview3d@3.4.1` |
 

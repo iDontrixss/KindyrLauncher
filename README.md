@@ -37,24 +37,19 @@ Artifacts are created in `dist/`. Microsoft credentials are encrypted with the O
 
 The declared version is `0.2.0-beta.2`. Before publishing, [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) must be completed, including clean-install validation, artifact signing and remote repository setup. The changelog is local (`CHANGELOG.md` ignored in git) — it is not committed.
 
-### Publishing an update (manual control)
+### Publishing an update (signed)
 
-Auto-update is manual and safer: even if you upload a release to GitHub, **it is not offered until you run `pnpm update-kindyr`**.
+The launcher **only offers an update whose manifest is signed** with your private key. Uploading or replacing a release on GitHub is not enough: without the signature, launchers ignore it.
 
 ```bash
-# From the project folder (important):
-cd KindyrLauncher
-pnpm update-kindyr
+# Once: generate the key pair (the private key stays outside the repo, encrypted)
+pnpm release:keygen        # commit main/update-public-keys.js
 
-# From anywhere else, use:
-pnpm --dir <path-to>/KindyrLauncher update-kindyr
-# or
-node <path-to>/KindyrLauncher/scripts/update-kindyr.js
-
-# You can also double click update-kindyr.bat
+# On every release, after building (pnpm build / pnpm build:linux):
+pnpm release:sign          # creates dist/update-manifest.json and .sig
 ```
 
-The command updates `update.json` (new `approvedAt`) and enables **a single** 5s→3s→5s check cycle on all launchers. Without that command, a compromised release uploaded to GitHub is mitigated — it will not be silently downloaded (note: this is a mitigation, not cryptographic proof; whoever can also push `update.json` can still enable the cycle).
+Upload to the GitHub release: the installer, `latest*.yml`, the `.blockmap` files, `update-manifest.json` and `update-manifest.json.sig`. The launcher verifies the signature with the embedded public key, requires a version newer than the installed one and checks that the installer hash (`latest.yml`) matches the signed one. Keep a backup of the private key and its passphrase outside GitHub; without it you cannot sign more versions. Details in [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
 
 ## Reporting issues
 
