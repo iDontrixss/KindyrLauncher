@@ -7,6 +7,15 @@
 
 let confirmCallback = null
 
+// Avatar de Microsoft que no cargó: icono de Microsoft en su lugar.
+function showMicrosoftAvatarFallback(img) {
+  const holder = img && img.parentElement
+  if (!holder) return
+  const icon = document.createElement('i')
+  icon.className = 'fa-brands fa-microsoft'
+  holder.replaceChildren(icon)
+}
+
 function showConfirm(message, callback) {
   document.getElementById('confirm-modal-message').textContent = message
   confirmCallback = callback
@@ -65,7 +74,7 @@ async function loadMicrosoftAccounts() {
     const cleanUuid = String(account.uuid || account.id || '').replace(/-/g, '')
     const hasUuid = /^[a-f0-9]{32}$/i.test(cleanUuid)
     const avatarHtml = hasUuid
-      ? `<img src="https://mc-heads.net/avatar/${cleanUuid}/48" alt="${escapeHtml(account.name)}" style="width:100%;height:100%;object-fit:cover;image-rendering:pixelated;display:block;" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fa-brands fa-microsoft\\'></i>'">`
+      ? `<img src="https://mc-heads.net/avatar/${cleanUuid}/48" alt="${escapeHtml(account.name)}" style="width:100%;height:100%;object-fit:cover;image-rendering:pixelated;display:block;" data-error="showMicrosoftAvatarFallback" data-args="${uiArgs('$this')}">`
       : `<i class="fa-brands fa-microsoft"></i>`
     return `
     <div class="account-item ${account.id === activeAccountId ? 'active microsoft' : ''}" data-ms-active="${escapeHtml(account.id)}">

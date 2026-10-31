@@ -18,6 +18,14 @@ const MAX_PRELOAD_UPLOAD_PATHS = 50
 // Blobs en memoria pesan en el transporte (no son strings baratos): cota
 // igual a MAX_UPLOAD_FILES de main, ni uno más.
 const MAX_PRELOAD_UPLOAD_BLOBS = 20
+// KL-07: cota por blob = MAX_UPLOAD_BLOB_BYTES de main (256 MiB) y cota total
+// del lote, para que un lote no reserve gigas en el transporte IPC.
+const MAX_PRELOAD_BLOB_BYTES = 256 * 1024 * 1024
+const MAX_PRELOAD_BLOBS_TOTAL_BYTES = 512 * 1024 * 1024
+function blobByteLength(blob) {
+  const bytes = blob && blob.bytes
+  return bytes && typeof bytes.byteLength === 'number' ? bytes.byteLength : Infinity
+}
 function capUploadPayload(payload) {
   // S5/transporte: un array gigante de rutas costaría la serialización IPC
   // antes de que main lo recorte a MAX_UPLOAD_FILES (20). Cota holgada aquí
@@ -26,8 +34,18 @@ function capUploadPayload(payload) {
   if (payload && Array.isArray(payload.filePaths) && payload.filePaths.length > MAX_PRELOAD_UPLOAD_PATHS) {
     payload = { ...payload, filePaths: payload.filePaths.slice(0, MAX_PRELOAD_UPLOAD_PATHS) }
   }
-  if (payload && Array.isArray(payload.fileBlobs) && payload.fileBlobs.length > MAX_PRELOAD_UPLOAD_BLOBS) {
-    payload = { ...payload, fileBlobs: payload.fileBlobs.slice(0, MAX_PRELOAD_UPLOAD_BLOBS) }
+  if (payload && Array.isArray(payload.fileBlobs)) {
+    let total = 0
+    const kept = []
+    for (const blob of payload.fileBlobs.slice(0, MAX_PRELOAD_UPLOAD_BLOBS)) {
+      const size = blobByteLength(blob)
+      if (size > MAX_PRELOAD_BLOB_BYTES || total + size > MAX_PRELOAD_BLOBS_TOTAL_BYTES) {
+        throw new Error('Los archivos soltados superan el tamaño máximo permitido.')
+      }
+      total += size
+      kept.push(blob)
+    }
+    payload = { ...payload, fileBlobs: kept }
   }
   return payload
 }
@@ -86,6 +104,7 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
     updateAllContent: (payload) => ipcRenderer.invoke('update-all-instance-content', payload),
     setContentVersion: (payload) => ipcRenderer.invoke('set-instance-content-version', payload),
     readConsole: (payload) => ipcRenderer.invoke('read-instance-console', payload),
+    readMinecraftLog: (payload) => ipcRenderer.invoke('read-minecraft-log-file', payload),
     importMrpack: () => ipcRenderer.invoke('import-mrpack'),
     onImportProgress: (callback) => ipcRenderer.on('mrpack-progress', (_event, data) => callback(data)),
     offImportProgress: () => ipcRenderer.removeAllListeners('mrpack-progress'),
@@ -127,6 +146,8 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
   launch: (payload) => ipcRenderer.invoke('launch-game', payload),
   kill: () => ipcRenderer.invoke('kill-minecraft'),
   status: () => ipcRenderer.invoke('mc-status'),
+  orphanStatus: () => ipcRenderer.invoke('orphan-status'),
+  orphanKill: () => ipcRenderer.invoke('orphan-kill'),
   onStatus: (callback) => {
     const listener = (_event, status) => callback(status)
     ipcRenderer.on('launcher-status', listener)
@@ -163,6 +184,8 @@ contextBridge.exposeInMainWorld('kindyrAPI', {
   },
   updater: {
      getVersion: () => ipcRenderer.invoke('get-app-version'),
+     // TEMPORAL PARA BORRAR: simulacro de crash solo-dev
+     simulateCrash: () => ipcRenderer.invoke('crash-simulate'),
      getPreviousVersions: () => ipcRenderer.invoke('get-previous-versions'),
      rollback: (tag) => ipcRenderer.invoke('rollback-to-version', tag),
      getDowngradeTarget: () => ipcRenderer.invoke('get-downgrade-target'),

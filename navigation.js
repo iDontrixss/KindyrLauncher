@@ -124,17 +124,24 @@ async function loadSection(sectionName, navEl) {
         loadedSections.add(sectionName)
         translateElement(targetView)
 
-        const scripts = targetView.querySelectorAll('script')
-        const fragment = document.createDocumentFragment()
-        scripts.forEach(script => {
-          const newScript = document.createElement('script')
-          newScript.textContent = script.hasAttribute('data-isolate')
-            ? '(function(){\n' + script.textContent + '\n})();'
-            : script.textContent
-          fragment.appendChild(newScript)
+        // KL-10: la lógica de cada sección vive en sections/<nombre>.js (la CSP
+        // no admite scripts inline). Los <script> insertados con innerHTML no
+        // se ejecutan: se recrean con el mismo src y se esperan en orden.
+        for (const script of Array.from(targetView.querySelectorAll('script'))) {
+          const src = script.getAttribute('src')
           script.remove()
-        })
-        targetView.appendChild(fragment)
+          if (!src || !/^sections\/[a-z-]+\.js$/.test(src)) {
+            console.error('Script de sección no permitido:', src || '(inline)')
+            continue
+          }
+          await new Promise((resolve, reject) => {
+            const el = document.createElement('script')
+            el.src = src
+            el.onload = resolve
+            el.onerror = () => reject(new Error('No se pudo cargar ' + src))
+            targetView.appendChild(el)
+          })
+        }
 
         applyTheme()
         if (typeof syncRendererActivity === 'function') syncRendererActivity()

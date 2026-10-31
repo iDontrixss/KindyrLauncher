@@ -47,12 +47,17 @@ function normalizeMrpackPath(value) {
   return safe
 }
 
+// KL-16: la especificación de .mrpack solo permite descargas desde estos
+// dominios. Un pack no puede hacer que el launcher contacte hosts arbitrarios.
+const MRPACK_ALLOWED_DOWNLOAD_HOSTS = new Set(['cdn.modrinth.com', 'github.com', 'raw.githubusercontent.com', 'gitlab.com'])
+
 function normalizeMrpackDownloads(values) {
   const urls = []
   for (const value of Array.isArray(values) ? values : []) {
     try {
       const url = new URL(String(value || ''))
-      if (url.protocol !== 'https:' || url.username || url.password) continue
+      if (url.protocol !== 'https:' || url.username || url.password || url.port) continue
+      if (!MRPACK_ALLOWED_DOWNLOAD_HOSTS.has(url.hostname.toLowerCase())) continue
       urls.push(url.toString())
     } catch {}
   }
@@ -74,7 +79,7 @@ function getClientMrpackFiles(index = {}) {
         path: normalizeMrpackPath(file.path),
         downloads: normalizeMrpackDownloads(file.downloads)
       }
-      if (!normalized.downloads.length) throw new Error('no tiene una URL HTTPS descargable')
+      if (!normalized.downloads.length) throw new Error('no tiene una URL HTTPS de un dominio permitido (cdn.modrinth.com, github.com, raw.githubusercontent.com, gitlab.com)')
       const hasHash = (typeof file.hashes?.sha1 === 'string' && file.hashes.sha1) || (typeof file.hashes?.sha512 === 'string' && file.hashes.sha512)
       if (!hasHash) throw new Error('no tiene hash verificable (sha1/sha512 requerido)')
       accepted.push(normalized)

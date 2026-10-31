@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!--
+  Kindyr Launcher - Copyright (C) 2026 iDontrixss
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
+<html lang="es" data-theme="midnight" style="background:#030f2b;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" data-kindyr-csp="secondary" content="default-src 'none'; script-src 'sha256-wk04HQFgry+VUg3R1XH+k7/MVCP23xGYLjgxk6RKRVk='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Kindyr Launcher</title>
+<link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+<style>
+  :root{
+    --kindyr-bg:#030f2b;
+    --kindyr-surface:#0a2559;
+    --kindyr-surface-2:#12408a;
+    --kindyr-blue:#4c8dff;
+    --kindyr-blue-soft:#aacdff;
+    --kindyr-accent:#ff5a3c;
+    --kindyr-ink:#010712;
+    --kindyr-text:#f4f8ff;
+    --kindyr-inset:#071c45;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:var(--kindyr-bg); color:var(--kindyr-text);
+    font-family:'Space Grotesk','Segoe UI',system-ui,sans-serif;
+    background-image:
+      linear-gradient(rgba(76,141,255,0.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(76,141,255,0.055) 1px, transparent 1px);
+    background-size:28px 28px,28px 28px;
+    padding:16px; -webkit-app-region:drag;
+  }
+  .fatal{
+    width:460px; max-width:100%; background:var(--kindyr-surface);
+    border:3px solid var(--kindyr-ink); box-shadow:8px 8px 0 var(--kindyr-ink);
+    overflow:hidden; -webkit-app-region:no-drag;
+  }
+  .fatal-head{
+    display:flex; align-items:center; gap:12px; padding:14px 16px;
+    background:var(--kindyr-surface-2); border-bottom:3px solid var(--kindyr-ink);
+    position:relative;
+  }
+  .fatal-icon{
+    width:40px; height:40px; flex-shrink:0; background:var(--kindyr-accent);
+    border:3px solid var(--kindyr-ink); box-shadow:2px 2px 0 var(--kindyr-ink);
+    display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--kindyr-ink);
+  }
+  .fatal-kicker{
+    font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700;
+    letter-spacing:0.12em; text-transform:uppercase; color:var(--kindyr-blue-soft);
+    display:flex; align-items:center; gap:6px;
+  }
+  .fatal-kicker i{color:var(--kindyr-accent)}
+  .fatal-title{font-size:15px; font-weight:800; letter-spacing:-0.02em; text-transform:uppercase; margin-top:2px}
+  .fatal-sub{font-size:10px; font-weight:600; color:var(--kindyr-blue-soft); margin-top:1px}
+  .fatal-close{
+    position:absolute; top:12px; right:12px; width:30px; height:30px;
+    background:var(--kindyr-surface); color:var(--kindyr-text);
+    border:3px solid var(--kindyr-ink); box-shadow:2px 2px 0 var(--kindyr-ink);
+    font-size:14px; font-weight:800; cursor:pointer; line-height:1;
+  }
+  .fatal-close:hover{filter:brightness(1.15)}
+  .fatal-body{padding:16px; display:flex; flex-direction:column; gap:12px}
+  .fatal-message{font-size:13px; font-weight:600; line-height:1.5}
+  .fatal-detail{
+    background:var(--kindyr-inset); border:2px solid var(--kindyr-ink);
+    box-shadow:2px 2px 0 var(--kindyr-ink); padding:10px 12px;
+    font-family:'JetBrains Mono',monospace; font-size:10px; line-height:1.5;
+    color:var(--kindyr-blue-soft); max-height:96px; overflow:auto; white-space:pre-wrap;
+    word-break:break-word;
+  }
+  .fatal-actions{display:flex; gap:8px; justify-content:flex-end; padding:0 16px 16px}
+  .btn{
+    min-height:38px; padding:8px 14px; border:3px solid var(--kindyr-ink); border-radius:0;
+    font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:800;
+    cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+    box-shadow:3px 3px 0 var(--kindyr-ink); transition:transform .1s, filter .12s;
+  }
+  .btn:active{transform:translate(1px,1px); box-shadow:2px 2px 0 var(--kindyr-ink)}
+  .btn:focus-visible{outline:3px solid var(--kindyr-blue-soft); outline-offset:2px}
+  .btn-primary{background:var(--kindyr-accent); color:var(--kindyr-ink)}
+  .btn-primary:hover{filter:brightness(1.08); transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--kindyr-ink)}
+  .btn-secondary{background:var(--kindyr-surface-2); color:var(--kindyr-text)}
+  .btn-danger{background:transparent; color:#ff8a70; box-shadow:none}
+</style>
+</head>
+<body>
+  <div class="fatal" role="dialog" aria-modal="true" aria-labelledby="fatal-title">
+    <div class="fatal-head">
+      <div class="fatal-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div style="flex:1">
+        <div class="fatal-kicker"><i class="fa-solid fa-cube"></i> KINDYR • JUEGO EN CURSO</div>
+        <div id="fatal-title" class="fatal-title">El launcher falló</div>
+        <div class="fatal-sub">Minecraft sigue en ejecución</div>
+      </div>
+      <button type="button" class="fatal-close" id="fatalX" aria-label="Cerrar (solo launcher)">×</button>
+    </div>
+    <div class="fatal-body">
+      <div class="fatal-message" id="fatal-message"></div>
+      <div class="fatal-detail" id="fatal-detail" style="display:none"></div>
+    </div>
+    <div class="fatal-actions">
+      <button type="button" class="btn btn-danger" id="fatalKill" style="display:none"><i class="fa-solid fa-power-off"></i> <span id="fatalKillText">Cerrar todo</span></button>
+      <button type="button" class="btn btn-primary" id="fatalSolo"><i class="fa-solid fa-arrow-right-from-bracket"></i> <span id="fatalSoloText">Solo launcher</span></button>
+    </div>
+  </div>
+<script>
+  const q = new URLSearchParams(window.location.search)
+  const mode = q.get('mode') || 'game'
+  document.getElementById('fatal-title').textContent = q.get('title') || 'El launcher falló'
+  document.getElementById('fatal-message').textContent = q.get('message') || 'Minecraft sigue en ejecución. Podés cerrar solo el launcher y seguir jugando.'
+  const detail = q.get('detail') || ''
+  if (detail) {
+    const box = document.getElementById('fatal-detail')
+    box.style.display = 'block'
+    box.textContent = detail
+  }
+  if (mode === 'fatal') {
+    // Sin juego: un solo botón que cierra el launcher.
+    document.getElementById('fatalSoloText').textContent = 'Cerrar launcher'
+    document.querySelector('.fatal-sub').textContent = 'Error grave del launcher'
+  } else {
+    document.getElementById('fatalKill').style.display = 'inline-flex'
+  }
+  let done = false
+  function choose(v) {
+    if (done) return
+    done = true
+    try { window.fatalAPI.confirm(v) } catch {}
+  }
+  document.getElementById('fatalSolo').addEventListener('click', () => choose(0))
+  document.getElementById('fatalKill').addEventListener('click', () => choose(1))
+  // X y Esc = Solo launcher (nunca matar la partida por un gesto ambiguo).
+  document.getElementById('fatalX').addEventListener('click', () => choose(0))
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') choose(0)
+  })
+  // Trampa de foco mínima: Tab circula entre los 3 botones.
+  const focusables = ['fatalSolo', 'fatalKill', 'fatalX'].map(id => document.getElementById(id)).filter(el => el && el.style.display !== 'none')
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return
+    const list = focusables.filter(el => el.style.display !== 'none')
+    if (!list.length) return
+    const first = list[0]
+    const last = list[list.length - 1]
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+  })
+  document.getElementById('fatalSolo').focus()
+</script>
+</body>
+</html>

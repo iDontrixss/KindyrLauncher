@@ -5,336 +5,6 @@
 // (at your option) any later version.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-function loadHomeDiscoverScripts() {
-  const script = document.createElement('script')
-  script.textContent = `
-    let homeDiscoverOffset = 0
-    let homeDiscoverTotal = 0
-    let homeDiscoverTimer = null
-    let homeDiscoverLoading = false
-    let homeDiscoverType = 'mod'
-    let homeDiscoverOpen = false
-    function getHomeDiscoverTypes() {
-      return [
-        { id: 'mod', label: t('discover.type.mod'), placeholder: t('home.search.mods') },
-        { id: 'resourcepack', label: t('discover.type.resourcepack'), placeholder: t('home.search.resourcepacks') },
-        { id: 'datapack', label: t('discover.type.datapack'), placeholder: t('home.search.datapacks') },
-        { id: 'shader', label: t('discover.type.shader'), placeholder: t('home.search.shaders') }
-      ]
-    }
-    
-    function getHomeDiscoverLimit() {
-      return Math.max(12, Math.min(Number(document.getElementById('home-discover-limit')?.value) || 18, 24))
-    }
-    
-    function getHomeDiscoverPlaceholder() {
-      const type = getHomeDiscoverTypes().find(item => item.id === homeDiscoverType)
-      return type ? type.placeholder : t('home.search.content')
-    }
-    
-    function isHomeDiscoverOpen() {
-      return document.getElementById('home-discover-wrap')?.classList.contains('open')
-    }
-    
-    function matchesHomeDiscoverProject(project) {
-      if (homeDiscoverType === 'datapack') {
-        const categories = project.display_categories || project.categories || []
-        return categories.includes('datapack')
-      }
-      return project.project_type === homeDiscoverType
-    }
-    
-    function getProjectInstallKind(project) {
-      const categories = project.display_categories || project.categories || []
-      if (categories.includes('datapack')) return 'datapack'
-      return project.project_type || 'mod'
-    }
-
-    function getHomeProjectTypeLabel(type) {
-      const labels = {
-        mod: t('discover.type.modSingle'),
-        modpack: t('discover.type.modpackSingle'),
-        resourcepack: t('discover.type.resourcepackSingle'),
-        shader: t('discover.type.shaderSingle')
-      }
-      return labels[type] || type || t('discover.project')
-    }
-
-    function getHomeProjectUrl(project) {
-      return 'https://modrinth.com/' + encodeURIComponent(project.project_type || 'mod') + '/' + encodeURIComponent(project.slug)
-    }
-    
-    function renderHomeDiscoverTabs() {
-      document.getElementById('home-discover-tabs').innerHTML = getHomeDiscoverTypes().map(type => (
-        '<button type="button" class="home-discover-tab ' + (type.id === homeDiscoverType ? 'active' : '') + '" onclick="selectHomeDiscoverType(&quot;' + type.id + '&quot;)">' + type.label + '</button>'
-      )).join('')
-      const query = document.getElementById('home-discover-query')
-      if (query) query.placeholder = getHomeDiscoverPlaceholder()
-    }
-    
-    function selectHomeDiscoverType(type) {
-      homeDiscoverType = type
-      homeDiscoverOffset = 0
-      renderHomeDiscoverTabs()
-      if (isHomeDiscoverOpen()) searchHomeDiscover(true)
-    }
-    
-    function updateHomeDiscoverContext() {
-      const meta = getSelectedInstanceMeta()
-      document.getElementById('home-discover-version').textContent = meta.version || selectedVersion
-      document.getElementById('home-discover-loader').textContent = getInstanceLoaderLabel(meta.loader)
-    }
-    
-    function syncDiscoverButtonState(isOpen) {
-      const btn = document.getElementById('instance-discover-btn')
-      if (!btn) return
-      btn.classList.toggle('active', isOpen)
-      btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false')
-    }
-    
-    function toggleHomeDiscoverPanel(forceOpen) {
-      const wrap = document.getElementById('home-discover-wrap')
-      const shouldOpen = forceOpen === true ? true : forceOpen === false ? false : !homeDiscoverOpen
-
-      if (!shouldOpen) {
-        homeDiscoverOpen = false
-        wrap.classList.remove('open')
-        syncDiscoverButtonState(false)
-        return
-      }
-
-      homeDiscoverOpen = true
-      wrap.classList.add('open')
-      syncDiscoverButtonState(true)
-      renderHomeDiscoverTabs()
-      updateHomeDiscoverContext()
-      document.getElementById('home-discover-sort').value = 'relevance'
-      homeDiscoverOffset = 0
-      searchHomeDiscover(true)
-    }
-    
-    function scheduleHomeDiscoverSearch() {
-      clearTimeout(homeDiscoverTimer)
-      homeDiscoverTimer = setTimeout(() => searchHomeDiscover(true), 450)
-    }
-    
-    function renderHomeDiscoverPagination() {
-      const limit = getHomeDiscoverLimit()
-      const totalPages = Math.max(1, Math.ceil(homeDiscoverTotal / limit))
-      const currentPage = Math.floor(homeDiscoverOffset / limit) + 1
-      const container = document.getElementById('home-discover-pagination')
-      if (!container) return
-
-      const pages = []
-      if (totalPages <= 5) {
-        for (let page = 1; page <= totalPages; page += 1) pages.push(page)
-      } else {
-        pages.push(1, 2, '…', totalPages)
-      }
-
-      container.innerHTML =
-        '<button type="button" class="home-discover-page-btn" onclick="changeHomeDiscoverPage(-1)" ' + (currentPage <= 1 || homeDiscoverLoading ? 'disabled' : '') + ' aria-label="' + escapeHtml(t('home.prevPage')) + '"><i class="fa-solid fa-chevron-left"></i></button>' +
-        pages.map(page => {
-          if (page === '…') return '<span style="color:#666;font-size:12px;">…</span>'
-          return '<button type="button" class="home-discover-page-btn ' + (page === currentPage ? 'active' : '') + '" onclick="goHomeDiscoverPage(' + page + ')">' + page + '</button>'
-        }).join('') +
-        '<button type="button" class="home-discover-page-btn" onclick="changeHomeDiscoverPage(1)" ' + (currentPage >= totalPages || homeDiscoverLoading ? 'disabled' : '') + ' aria-label="' + escapeHtml(t('home.nextPage')) + '"><i class="fa-solid fa-chevron-right"></i></button>'
-    }
-    
-    function renderHomeDiscoverMessage(message) {
-      document.getElementById('home-discover-results').innerHTML = '<div class="home-discover-message">' + escapeHtml(message) + '</div>'
-      renderHomeDiscoverPagination()
-    }
-    
-    function renderHomeDiscoverResults(projects) {
-      const results = document.getElementById('home-discover-results')
-      if (!results) return
-      results.innerHTML = ''
-      if (!projects.length) {
-        renderHomeDiscoverMessage(t('home.noCompatible'))
-        return
-      }
-
-      const chunkSize = 12
-      let idx = 0
-
-      function renderChunk() {
-        const frag = document.createDocumentFragment()
-        for (let i = 0; i < chunkSize && idx < projects.length; i++, idx++) {
-          const project = projects[idx]
-          const wrapper = document.createElement('div')
-          wrapper.className = 'project-card'
-          const iconWrap = document.createElement('div')
-          iconWrap.className = 'project-icon'
-          if (project.icon_url) {
-            const img = document.createElement('img')
-            img.src = project.icon_url
-            img.alt = ''
-            img.loading = 'lazy'
-            iconWrap.appendChild(img)
-          } else {
-            const cube = document.createElement('i')
-            cube.className = 'fa-solid fa-cube'
-            cube.setAttribute('aria-hidden', 'true')
-            iconWrap.appendChild(cube)
-          }
-          const body = document.createElement('div')
-          body.className = 'project-body'
-          const titleEl = document.createElement('div')
-          titleEl.className = 'project-title'
-          titleEl.title = project.title || ''
-          titleEl.textContent = project.title || ''
-          const descEl = document.createElement('div')
-          descEl.className = 'project-desc'
-          descEl.textContent = project.description || t('discover.noDescription')
-          const stats = document.createElement('div')
-          stats.className = 'project-stats'
-          const dlTag = document.createElement('span')
-          dlTag.className = 'project-tag'
-          const dlIcon = document.createElement('i')
-          dlIcon.className = 'fa-solid fa-download'
-          dlIcon.setAttribute('aria-hidden', 'true')
-          dlTag.append(dlIcon, document.createTextNode(' ' + formatCompactNumber(project.downloads)))
-          const followTag = document.createElement('span')
-          followTag.className = 'project-tag'
-          const starIcon = document.createElement('i')
-          starIcon.className = 'fa-solid fa-star'
-          starIcon.setAttribute('aria-hidden', 'true')
-          followTag.append(starIcon, document.createTextNode(' ' + formatCompactNumber(project.follows)))
-          stats.append(dlTag, followTag)
-          const categories = (project.display_categories || project.categories || []).slice(0, 3)
-          const tags = [getHomeProjectTypeLabel(project.project_type), ...categories].filter(Boolean).slice(0, 5)
-          tags.forEach(tag => {
-            const tagEl = document.createElement('span')
-            tagEl.className = 'project-tag'
-            tagEl.textContent = tag
-            stats.appendChild(tagEl)
-          })
-          body.append(titleEl, descEl, stats)
-          const actions = document.createElement('div')
-          actions.className = 'project-actions'
-          const viewBtn = document.createElement('button')
-          viewBtn.type = 'button'
-          viewBtn.className = 'secondary-btn'
-          viewBtn.textContent = t('discover.view')
-          viewBtn.addEventListener('click', () => openModrinthProject(getHomeProjectUrl(project)))
-          const installBtn = document.createElement('button')
-          installBtn.type = 'button'
-          installBtn.className = 'primary-btn'
-          installBtn.textContent = t('discover.install')
-          installBtn.addEventListener('click', () => quickInstallLatestRelease(project, installBtn))
-          actions.append(viewBtn, installBtn)
-          wrapper.append(iconWrap, body, actions)
-          frag.appendChild(wrapper)
-        }
-        results.appendChild(frag)
-        if (idx < projects.length) {
-
-          setTimeout(renderChunk, 0)
-        } else {
-          renderHomeDiscoverPagination()
-        }
-      }
-
-      renderChunk()
-    }
-    
-    async function searchHomeDiscover(resetPage = false) {
-      if (homeDiscoverLoading) return
-      if (resetPage) homeDiscoverOffset = 0
-      homeDiscoverLoading = true
-
-      const meta = getSelectedInstanceMeta()
-      const query = document.getElementById('home-discover-query').value
-      const sort = document.getElementById('home-discover-sort').value
-      const limit = getHomeDiscoverLimit()
-      updateHomeDiscoverContext()
-      renderHomeDiscoverMessage(t('home.loadingContent'))
-
-      const result = await window.kindyrAPI.modrinth.search({
-        query,
-        version: meta.version || selectedVersion,
-        sort,
-        type: homeDiscoverType,
-        offset: homeDiscoverOffset,
-        limit
-      })
-
-      homeDiscoverLoading = false
-      if (!result.ok) {
-        renderHomeDiscoverMessage(result.error || t('home.searchFailed'))
-        setStatus(result.error || t('home.searchFailed'))
-        return
-      }
-
-      homeDiscoverTotal = result.totalHits
-      const typeLabel = getHomeDiscoverTypes().find(item => item.id === homeDiscoverType)?.label || t('instance.content')
-      renderHomeDiscoverResults(result.hits.filter(matchesHomeDiscoverProject))
-      setStatus(t('home.loadedFor', { type: typeLabel, version: meta.version || selectedVersion }))
-    }
-    
-    function goHomeDiscoverPage(page) {
-      const limit = getHomeDiscoverLimit()
-      homeDiscoverOffset = Math.max(0, (page - 1) * limit)
-      searchHomeDiscover(false)
-    }
-    
-    function changeHomeDiscoverPage(direction) {
-      const limit = getHomeDiscoverLimit()
-      const nextOffset = homeDiscoverOffset + direction * limit
-      const maxOffset = Math.max(0, Math.ceil(homeDiscoverTotal / limit) * limit - limit)
-      homeDiscoverOffset = Math.max(0, Math.min(nextOffset, maxOffset))
-      searchHomeDiscover(false)
-    }
-    
-    async function quickInstallLatestRelease(project, button) {
-      const meta = getSelectedInstanceMeta()
-      const projectType = getProjectInstallKind(project)
-      if (projectType === 'mod' && (!meta.loader || meta.loader === 'vanilla')) {
-        setStatus(t('home.vanillaModsWarning'))
-        return
-      }
-
-      const originalText = button.textContent
-      button.disabled = true
-      button.textContent = t('home.installing')
-      setStatus(t('home.installingRelease', { title: project.title }))
-
-      let result = await window.kindyrAPI.modrinth.installLatestRelease({
-        project,
-        instanceId: selectedInstance
-      })
-      // Fallback RP/shader: sin compatibilidad directa se ofrece instalar la
-      // más actual con modal de aviso en vez de fallar en seco.
-      if (!result.ok && isNoCompatibleError(result.error) && !project._curseForge && COMPAT_FALLBACK_KINDS.has(getProjectInstallKind(project))) {
-        const fb = await installFallbackNewest({ project, installKind: getProjectInstallKind(project), instanceId: selectedInstance, instanceVersion: meta.version })
-        if (fb.cancelled) {
-          button.disabled = false
-          button.textContent = originalText
-          setStatus(t('app.ready'))
-          return
-        }
-        result = fb
-      }
-
-      button.disabled = false
-      button.textContent = originalText
-      if (!result.ok) {
-        setStatus(friendlyInstallError(result.error))
-        return
-      }
-
-      setStatus(t('home.installed', { name: result.version?.name || result.version?.version_number || project.title }))
-      refreshInstancePanelSoon(3)
-      if (isHomeDiscoverOpen()) searchHomeDiscover(false)
-    }
-    
-    renderHomeDiscoverTabs()
-    updateHomeDiscoverContext()
-  `
-  document.head.appendChild(script)
-}
-
 let installProject = null
 let installVersions = []
 let installVersionId = ''
@@ -410,10 +80,10 @@ function ensureCompatWarnModal() {
   modal.className = 'modal-backdrop'
   modal.id = 'compat-warn-modal'
   modal.innerHTML =
-    '<div class="account-modal compat-warn-modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()">' +
+    '<div class="account-modal compat-warn-modal" role="dialog" aria-modal="true" data-stop>' +
       '<div class="modal-head"><span class="compat-warn-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>' +
       '<div class="modal-title" id="compat-warn-title"></div>' +
-      '<button type="button" class="modal-close" onclick="closeCompatWarnModal(false)" aria-label="×">×</button></div>' +
+      '<button type="button" class="modal-close" data-click="closeCompatWarnModal" data-args="[false]" aria-label="×">×</button></div>' +
       '<div class="modal-body"><div class="compat-warn-box"><i class="fa-solid fa-triangle-exclamation"></i><span id="compat-warn-message"></span></div></div>' +
       '<div class="compat-warn-foot"><button type="button" class="secondary-btn" id="compat-warn-cancel"></button>' +
       '<button type="button" class="primary-btn" id="compat-warn-confirm"></button></div>' +
@@ -508,10 +178,10 @@ function ensureTwinModal() {
   modal.className = 'modal-backdrop'
   modal.id = 'twin-modal'
   modal.innerHTML =
-    '<div class="account-modal twin-modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()">' +
+    '<div class="account-modal twin-modal" role="dialog" aria-modal="true" data-stop>' +
       '<div class="modal-head"><span class="twin-icon"><i class="fa-solid fa-arrows-rotate"></i></span>' +
       '<div class="modal-title" id="twin-title"></div>' +
-      '<button type="button" class="modal-close" onclick="closeTwinModal(false)" aria-label="×">×</button></div>' +
+      '<button type="button" class="modal-close" data-click="closeTwinModal" data-args="[false]" aria-label="×">×</button></div>' +
       '<div class="modal-body"><div class="twin-box"><i class="fa-solid fa-circle-info"></i><span id="twin-message"></span></div></div>' +
       '<div class="twin-foot"><button type="button" class="secondary-btn" id="twin-cancel"></button>' +
       '<button type="button" class="primary-btn" id="twin-confirm"></button></div>' +
@@ -866,7 +536,7 @@ async function renderCompatInstances() {
       cardClass += ' installed'
       ic = 'fa-check'
     } else if (status === 'force') {
-      btn = '<button type="button" class="btn btn-warn" onclick="installCompatInstanceAnyway(\'' + escapeHtml(inst.id) + '\', this)"><i class="fa-solid fa-triangle-exclamation"></i> ' + escapeHtml(t('compat.installAnyway')) + '</button>'
+      btn = '<button type="button" class="btn btn-warn" data-click="installCompatInstanceAnyway" data-args="' + uiArgs(inst.id, '$this') + '"><i class="fa-solid fa-triangle-exclamation"></i> ' + escapeHtml(t('compat.installAnyway')) + '</button>'
       tag = '<span class="mini warn">' + escapeHtml(t('compat.forceTag')) + '</span>'
       cardClass += ' forceable'
       ic = 'fa-triangle-exclamation'
@@ -878,7 +548,7 @@ async function renderCompatInstances() {
       ic = 'fa-cube'
       titleAttr = ' title="Está instancia usa un loader o una versión de juego que este proyecto no soporta."'
     } else {
-      btn = '<button type="button" class="btn btn-primary" onclick="installToCompatInstance(\'' + escapeHtml(inst.id) + '\', this)"><i class="fa-solid fa-bolt"></i> Instalar</button>'
+      btn = '<button type="button" class="btn btn-primary" data-click="installToCompatInstance" data-args="' + uiArgs(inst.id, '$this') + '"><i class="fa-solid fa-bolt"></i> Instalar</button>'
       tag = '<span class="mini ok">Compatible</span>'
     }
     return '<div class="' + cardClass + '"' + titleAttr + '>'

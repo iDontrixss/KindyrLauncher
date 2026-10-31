@@ -14,7 +14,7 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.resolve(__dirname, '..')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 
 test('before-quit retrasa la salida si hay juego o instalación en curso', () => {
   assert.match(mainSource, /app\.on\('before-quit', \(event\) =>/)
@@ -28,7 +28,7 @@ test('existe apagado ordenado compartido que nunca deja huérfanos', () => {
   assert.match(mainSource, /async function shutdownForAppQuit\(\)/)
   assert.match(mainSource, /stopped\.kill\('SIGKILL'\)/)
   assert.match(mainSource, /function flushLaunchLogSync\(\)/)
-  assert.match(mainSource, /fs\.appendFileSync\(currentLogFile, chunk\)/)
+  assert.match(mainSource, /fs\.appendFileSync\((state\.)?currentLogFile, chunk\)/)
 })
 
 test('kill-minecraft reutiliza el apagado compartido sin cambiar su contrato', () => {

@@ -96,12 +96,23 @@ function writeStagedBlob(stagingDir, file, bytes) {
     error.reason = 'type'
     throw error
   }
-  const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes || [])
-  if (buf.length > MAX_UPLOAD_BLOB_BYTES) {
+  // KL-07: medir ANTES de copiar (Buffer.from duplica la memoria) y aceptar
+  // solo binarios (Uint8Array/Buffer/ArrayBuffer), no arrays de números.
+  const isBinary = Buffer.isBuffer(bytes) || bytes instanceof Uint8Array || bytes instanceof ArrayBuffer
+  const length = isBinary ? bytes.byteLength : -1
+  if (length <= 0) {
+    const error = new Error('Contenido vacío o no binario.')
+    error.reason = 'unreadable'
+    throw error
+  }
+  if (length > MAX_UPLOAD_BLOB_BYTES) {
     const error = new Error('Archivo demasiado grande.')
     error.reason = 'too-large'
     throw error
   }
+  const buf = Buffer.isBuffer(bytes)
+    ? bytes
+    : bytes instanceof ArrayBuffer ? Buffer.from(bytes) : Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   fs.mkdirSync(stagingDir, { recursive: true })
   const dest = path.join(stagingDir, name)
   try {

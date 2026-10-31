@@ -14,7 +14,7 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.resolve(__dirname, '..')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 
 test('existen los helpers de verificación del JRE', () => {
   assert.match(mainSource, /async function getAdoptiumJreAsset\(javaMajor\)/)

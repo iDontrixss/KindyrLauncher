@@ -16,10 +16,10 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.resolve(__dirname, '..')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 const modrinthSource = fs.readFileSync(path.join(root, 'modrinth.js'), 'utf8')
 const commonSource = fs.readFileSync(path.join(root, 'common.js'), 'utf8')
-const discoverSource = fs.readFileSync(path.join(root, 'sections', 'descubrir.html'), 'utf8')
+const discoverSource = require('./helpers/section-source').readSectionSource('descubrir')
 
 function functionBody(source, file, name) {
   const start = source.indexOf(`function ${name}(`)

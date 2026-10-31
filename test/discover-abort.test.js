@@ -11,8 +11,8 @@ const fs = require('fs')
 const path = require('path')
 
 test('P1-3: descubrir usa AbortController y request ID', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'sections', 'descubrir.html'), 'utf8')
-  const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8')
+  const html = require('./helpers/section-source').readSectionSource('descubrir')
+  const main = require('./helpers/main-source').readMainSource()
   // Renderer debe tener AbortController y requestId
   assert.match(html, /discoverAbortController/)
   assert.match(html, /discoverRequestId/)
@@ -191,7 +191,7 @@ test('P1-3: spinner/loading termina correctamente', async () => {
 })
 
 test('P1-3: búsqueda vacía y cambio rápido de filtros', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'sections', 'descubrir.html'), 'utf8')
+  const html = require('./helpers/section-source').readSectionSource('descubrir')
   // Debe mantener debounce 450ms
   assert.match(html, /450/)
   // scheduleModrinthSearch debe existir y usar clearTimeout
@@ -200,7 +200,7 @@ test('P1-3: búsqueda vacía y cambio rápido de filtros', () => {
 })
 
 test('P1-3: main.js search no duplica lógica y mantiene limit/offset', () => {
-  const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8')
+  const main = require('./helpers/main-source').readMainSource()
   // Debe mantener limit/offset clamps
   assert.match(main, /Math\.max\(0, Math\.min\(Number\(payload\.offset\)/)
   assert.match(main, /Math\.max\(1, Math\.min\(Number\(payload\.limit\)/)

@@ -10,67 +10,6 @@ let launcherInstancesRefreshRequest = null
 const instanceRefreshTimers = new Set()
 let instanceViewGeneration = 0
 
-// Sanea HTML de proveedor (changelog Modrinth ya convertido a HTML en main)
-// antes de inyectarlo con innerHTML. Replica el patrón de Descubrir
-// (sections/descubrir.html: sanitizeRichHtml) con nombres propios para no
-// colisionar con sus `const` globales cuando esa sección se carga.
-// Allowlist de tags, sin handlers ni estilos, solo URLs http(s).
-const CHANGELOG_ALLOWED_TAGS = new Set(['a', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'del', 'code', 'pre', 'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'blockquote', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'div', 'details', 'summary', 'sup', 'sub'])
-const CHANGELOG_DROP_TAGS = new Set(['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'select', 'textarea', 'noscript', 'template', 'link', 'meta', 'base', 'title'])
-
-function isSafeChangelogUrl(value) {
-  const raw = String(value || '').trim()
-  if (!raw || raw.charAt(0) === '#') return ''
-  if (/^(javascript|data|vbscript|file|blob):/i.test(raw)) return ''
-  try {
-    const url = new URL(raw, 'https://modrinth.com')
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return ''
-    return url.href
-  } catch { return '' }
-}
-
-function sanitizeChangelogHtml(html) {
-  const source = String(html || '')
-  if (!source.trim()) return ''
-  let root
-  try {
-    const doc = new DOMParser().parseFromString('<div>' + source + '</div>', 'text/html')
-    root = doc.body ? doc.body.firstChild : null
-  } catch { return '' }
-  if (!root) return ''
-  function clean(node) {
-    const children = Array.from(node.childNodes)
-    for (const child of children) {
-      if (child.nodeType === 8) { child.remove(); continue }
-      if (child.nodeType === 3) continue
-      if (child.nodeType !== 1) { child.remove(); continue }
-      const tag = child.tagName.toLowerCase()
-      if (CHANGELOG_DROP_TAGS.has(tag)) { child.remove(); continue }
-      if (!CHANGELOG_ALLOWED_TAGS.has(tag)) {
-        while (child.firstChild) node.insertBefore(child.firstChild, child)
-        child.remove()
-        continue
-      }
-      for (const attr of Array.from(child.attributes)) {
-        const name = attr.name.toLowerCase()
-        if ((tag === 'a' && name === 'href') || (tag === 'img' && name === 'src')) {
-          const safe = isSafeChangelogUrl(attr.value)
-          if (safe) child.setAttribute(attr.name, safe)
-          else child.removeAttribute(attr.name)
-          continue
-        }
-        if ((name === 'alt' || name === 'title') && (tag === 'img' || tag === 'a')) continue
-        child.removeAttribute(attr.name)
-      }
-      if (tag === 'a') { child.setAttribute('target', '_blank'); child.setAttribute('rel', 'noopener noreferrer') }
-      if (tag === 'img') { child.setAttribute('loading', 'lazy'); if (!child.getAttribute('alt')) child.setAttribute('alt', '') }
-      clean(child)
-    }
-  }
-  clean(root)
-  return root.innerHTML
-}
-
 function disposeInstanceDetailView() {
   instanceViewGeneration++
   for (const timer of instanceRefreshTimers) clearTimeout(timer)
@@ -125,7 +64,7 @@ function instanceIconHtml(instance, cls) {
   const initial = escapeHtml(String(instance?.name || 'M').charAt(0).toUpperCase())
   const icon = instance && instance.icon
   if (icon && icon.file) {
-    return '<div class="' + cls + ' has-img">' + initial + '<img src="' + escapeHtml(toFileUrl(icon.file)) + '" alt="" loading="lazy" onerror="this.remove()"></div>'
+    return '<div class="' + cls + ' has-img">' + initial + '<img src="' + escapeHtml(toFileUrl(icon.file)) + '" alt="" loading="lazy" data-error="uiRemoveElement" data-args="[&quot;$this&quot;]"></div>'
   }
   if (icon && icon.fa) {
     return '<div class="' + cls + ' has-fa" style="background:' + escapeHtml(icon.bg || '') + '"><i class="fa-solid ' + escapeHtml(icon.fa) + '"></i></div>'
@@ -141,7 +80,7 @@ function renderHeroIcon(el, instance, displayName) {
   el.classList.toggle('has-fa', Boolean(icon && !icon.file && icon.fa))
   if (icon && icon.file) {
     el.style.background = ''
-    el.innerHTML = escapeHtml(initial) + '<img src="' + escapeHtml(toFileUrl(icon.file)) + '" alt="" onerror="this.remove()">'
+    el.innerHTML = escapeHtml(initial) + '<img src="' + escapeHtml(toFileUrl(icon.file)) + '" alt="" data-error="uiRemoveElement" data-args="[&quot;$this&quot;]">'
   } else if (icon && icon.fa) {
     el.style.background = icon.bg || ''
     el.innerHTML = '<i class="fa-solid ' + escapeHtml(icon.fa) + '"></i>'
@@ -246,18 +185,18 @@ function loadInstanceDetailContent() {
           <span id="instance-manager-meta">${escapeHtml(t('instance.managerHint'))}</span>
         </div>
         <div class="instance-manager-actions">
-          <button type="button" class="primary-btn instance-discover-btn" id="instance-discover-btn" onclick="openDiscoverForInstance()">
+          <button type="button" class="primary-btn instance-discover-btn" id="instance-discover-btn" data-click="openDiscoverForInstance">
             <i class="fa-solid fa-compass" aria-hidden="true"></i> ${escapeHtml(t('instance.discover'))}
           </button>
-          <button type="button" class="secondary-btn" onclick="refreshInstancePanel()"><i class="fa-solid fa-rotate"></i> ${escapeHtml(t('instance.refresh'))}</button>
+          <button type="button" class="secondary-btn" data-click="refreshInstancePanel"><i class="fa-solid fa-rotate"></i> ${escapeHtml(t('instance.refresh'))}</button>
         </div>
       </div>
       <div class="tab-row">
-        <button type="button" class="tab-btn active" id="instance-tab-content-btn" onclick="switchInstanceTab('content')"><i class="fa-solid fa-cubes"></i><span>${escapeHtml(t('instance.content'))}</span></button>
-        <button type="button" class="tab-btn" id="instance-tab-files-btn" onclick="switchInstanceTab('files')"><i class="fa-regular fa-folder-open"></i><span>${escapeHtml(t('instance.folders'))}</span></button>
-        <button type="button" class="tab-btn" id="instance-tab-worlds-btn" onclick="switchInstanceTab('worlds')"><i class="fa-solid fa-earth-americas"></i><span>${escapeHtml(t('instance.worlds'))}</span></button>
-        <button type="button" class="tab-btn" id="instance-tab-logs-btn" onclick="switchInstanceTab('logs')"><i class="fa-regular fa-rectangle-list"></i><span>${escapeHtml(t('instance.logs'))}</span></button>
-        <button type="button" class="tab-btn" id="instance-tab-console-btn" onclick="switchInstanceTab('console')"><i class="fa-solid fa-terminal"></i><span>${escapeHtml(t('instance.consoleTab'))}</span></button>
+        <button type="button" class="tab-btn active" id="instance-tab-content-btn" data-click="switchInstanceTab" data-args="[&quot;content&quot;]"><i class="fa-solid fa-cubes"></i><span>${escapeHtml(t('instance.content'))}</span></button>
+        <button type="button" class="tab-btn" id="instance-tab-files-btn" data-click="switchInstanceTab" data-args="[&quot;files&quot;]"><i class="fa-regular fa-folder-open"></i><span>${escapeHtml(t('instance.folders'))}</span></button>
+        <button type="button" class="tab-btn" id="instance-tab-worlds-btn" data-click="switchInstanceTab" data-args="[&quot;worlds&quot;]"><i class="fa-solid fa-earth-americas"></i><span>${escapeHtml(t('instance.worlds'))}</span></button>
+        <button type="button" class="tab-btn" id="instance-tab-logs-btn" data-click="switchInstanceTab" data-args="[&quot;logs&quot;]"><i class="fa-regular fa-rectangle-list"></i><span>${escapeHtml(t('instance.logs'))}</span></button>
+        <button type="button" class="tab-btn" id="instance-tab-console-btn" data-click="switchInstanceTab" data-args="[&quot;console&quot;]"><i class="fa-solid fa-terminal"></i><span>${escapeHtml(t('instance.consoleTab'))}</span></button>
       </div>
       <div class="instance-tab active" id="instance-tab-content">
         <div class="content-hub">
@@ -265,27 +204,27 @@ function loadInstanceDetailContent() {
           <div class="content-hub-toolbar">
             <label class="content-hub-search" for="instance-content-search">
               <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-              <input id="instance-content-search" placeholder="${escapeHtml(t('instance.searchContent'))}" oninput="filterInstanceContent()" autocomplete="off">
+              <input id="instance-content-search" placeholder="${escapeHtml(t('instance.searchContent'))}" data-input="filterInstanceContent" autocomplete="off">
             </label>
-            <button type="button" class="secondary-btn content-hub-btn" onclick="uploadInstanceFiles()" title="${escapeHtml(t('instance.dropHint'))}"><i class="fa-regular fa-folder-open"></i> ${escapeHtml(t('instance.uploadFiles'))}</button>
-            <button type="button" class="primary-btn content-hub-btn content-hub-browse" onclick="openDiscoverForInstance()"><i class="fa-regular fa-compass"></i> ${escapeHtml(t('instance.browseContent'))}</button>
+            <button type="button" class="secondary-btn content-hub-btn" data-click="uploadInstanceFiles" title="${escapeHtml(t('instance.dropHint'))}"><i class="fa-regular fa-folder-open"></i> ${escapeHtml(t('instance.uploadFiles'))}</button>
+            <button type="button" class="primary-btn content-hub-btn content-hub-browse" data-click="openDiscoverForInstance"><i class="fa-regular fa-compass"></i> ${escapeHtml(t('instance.browseContent'))}</button>
           </div>
           <div class="content-hub-filters">
             <div class="content-hub-sort">
-              <button type="button" class="content-hub-sort-btn" id="instance-content-sort" onclick="cycleInstanceContentSort()" title="${escapeHtml(t('instance.sortBy'))}">
+              <button type="button" class="content-hub-sort-btn" id="instance-content-sort" data-click="cycleInstanceContentSort" title="${escapeHtml(t('instance.sortBy'))}">
                 <i class="fa-solid fa-arrow-down-wide-short"></i> <span id="instance-content-sort-label">${escapeHtml(t('instance.sortName'))}</span> <i class="fa-solid fa-chevron-down"></i>
               </button>
-              <button type="button" class="content-hub-iconbtn" onclick="filterInstanceContent()" title="${escapeHtml(t('instance.refresh'))}"><i class="fa-solid fa-filter"></i></button>
+              <button type="button" class="content-hub-iconbtn" data-click="filterInstanceContent" title="${escapeHtml(t('instance.refresh'))}"><i class="fa-solid fa-filter"></i></button>
             </div>
             <div class="content-hub-chips" id="instance-content-filters" role="tablist" aria-label="${escapeHtml(t('instance.content'))}"></div>
-            <button type="button" class="content-hub-updatesonly" id="instance-content-updatesonly" onclick="toggleInstanceContentUpdatesOnly()"><i class="fa-solid fa-plus"></i> ${escapeHtml(t('instance.filter'))}</button>
+            <button type="button" class="content-hub-updatesonly" id="instance-content-updatesonly" data-click="toggleInstanceContentUpdatesOnly"><i class="fa-solid fa-plus"></i> ${escapeHtml(t('instance.filter'))}</button>
             <div class="content-hub-side">
-              <button type="button" class="content-hub-link" id="instance-update-all-btn" onclick="updateAllInstanceContent()"><i class="fa-solid fa-download"></i> ${escapeHtml(t('instance.updateAll'))}</button>
-              <button type="button" class="content-hub-link" onclick="refreshInstancePanel()"><i class="fa-solid fa-rotate"></i> ${escapeHtml(t('instance.refresh'))}</button>
+              <button type="button" class="content-hub-link" id="instance-update-all-btn" data-click="updateAllInstanceContent"><i class="fa-solid fa-download"></i> ${escapeHtml(t('instance.updateAll'))}</button>
+              <button type="button" class="content-hub-link" data-click="refreshInstancePanel"><i class="fa-solid fa-rotate"></i> ${escapeHtml(t('instance.refresh'))}</button>
             </div>
           </div>
           <div class="content-hub-tablehead">
-            <button type="button" id="instance-content-selectall" class="kindyr-check" onclick="toggleSelectAllInstanceContent()" aria-pressed="false" aria-label="${escapeHtml(t('instance.selectAll'))}"><i class="fa-solid fa-check"></i></button>
+            <button type="button" id="instance-content-selectall" class="kindyr-check" data-click="toggleSelectAllInstanceContent" aria-pressed="false" aria-label="${escapeHtml(t('instance.selectAll'))}"><i class="fa-solid fa-check"></i></button>
             <span>${escapeHtml(t('instance.colProject'))}</span>
             <span>${escapeHtml(t('instance.colVersion'))}</span>
             <span class="content-hub-actionshead">${escapeHtml(t('instance.colActions'))}</span>
@@ -293,9 +232,9 @@ function loadInstanceDetailContent() {
           <div id="instance-content-list" class="content-hub-list"></div>
           <div class="content-hub-bulk" id="instance-content-bulk" hidden>
             <span id="instance-content-bulk-label"></span>
-            <button type="button" class="secondary-btn content-hub-btn" onclick="bulkToggleInstanceContent(true)">${escapeHtml(t('instance.enable'))}</button>
-            <button type="button" class="secondary-btn content-hub-btn" onclick="bulkToggleInstanceContent(false)">${escapeHtml(t('instance.disable'))}</button>
-            <button type="button" class="secondary-btn content-hub-btn content-hub-danger" onclick="bulkDeleteInstanceContent()"><i class="fa-regular fa-trash-can"></i> ${escapeHtml(t('confirm.delete'))}</button>
+            <button type="button" class="secondary-btn content-hub-btn" data-click="bulkToggleInstanceContent" data-args="[true]">${escapeHtml(t('instance.enable'))}</button>
+            <button type="button" class="secondary-btn content-hub-btn" data-click="bulkToggleInstanceContent" data-args="[false]">${escapeHtml(t('instance.disable'))}</button>
+            <button type="button" class="secondary-btn content-hub-btn content-hub-danger" data-click="bulkDeleteInstanceContent"><i class="fa-regular fa-trash-can"></i> ${escapeHtml(t('confirm.delete'))}</button>
           </div>
         </div>
       </div>
@@ -318,10 +257,10 @@ function loadInstanceDetailContent() {
             <span class="console-tab-status" id="instance-console-status"><span class="console-tab-dot" id="instance-console-dot"></span><span id="instance-console-status-text"></span></span>
             <span class="console-tab-count" id="instance-console-count"></span>
             <div class="console-tab-side">
-              <button type="button" class="type-chip active" id="instance-console-follow" onclick="toggleInstanceConsoleFollow()"><i class="fa-solid fa-arrow-down"></i> ${escapeHtml(t('instance.console.follow'))}</button>
-              <button type="button" class="content-hub-iconbtn" onclick="refreshInstanceConsole(true)" title="${escapeHtml(t('instance.refresh'))}"><i class="fa-solid fa-rotate"></i></button>
-              <button type="button" class="content-hub-iconbtn" onclick="copyInstanceConsole()" title="${escapeHtml(t('instance.console.copy'))}"><i class="fa-regular fa-copy"></i></button>
-              <button type="button" class="content-hub-iconbtn" onclick="clearInstanceConsoleView()" title="${escapeHtml(t('instance.console.clear'))}"><i class="fa-solid fa-eraser"></i></button>
+              <button type="button" class="type-chip active" id="instance-console-follow" data-click="toggleInstanceConsoleFollow"><i class="fa-solid fa-arrow-down"></i> ${escapeHtml(t('instance.console.follow'))}</button>
+              <button type="button" class="content-hub-iconbtn" data-click="refreshInstanceConsole" data-args="[true]" title="${escapeHtml(t('instance.refresh'))}"><i class="fa-solid fa-rotate"></i></button>
+              <button type="button" class="content-hub-iconbtn" data-click="copyInstanceConsole" title="${escapeHtml(t('instance.console.copy'))}"><i class="fa-regular fa-copy"></i></button>
+              <button type="button" class="content-hub-iconbtn" data-click="clearInstanceConsoleView" title="${escapeHtml(t('instance.console.clear'))}"><i class="fa-solid fa-eraser"></i></button>
             </div>
           </div>
           <div class="console-tab-view" id="instance-console-view" aria-live="off"></div>
@@ -585,7 +524,7 @@ function renderInstanceContentFilters() {
   const wrap = document.getElementById('instance-content-filters')
   if (!wrap) return
   wrap.innerHTML = INSTANCE_CONTENT_KINDS_UI.map(kind => (
-    '<button type="button" class="type-chip' + (instanceContentFilter.kind === kind.id ? ' active' : '') + '" data-kind="' + kind.id + '" onclick="setInstanceContentFilter(&quot;' + kind.id + '&quot;)">' + escapeHtml(t(kind.labelKey)) + '</button>'
+    '<button type="button" class="type-chip' + (instanceContentFilter.kind === kind.id ? ' active' : '') + '" data-kind="' + kind.id + '" data-click="setInstanceContentFilter" data-args="' + uiArgs(kind.id) + '">' + escapeHtml(t(kind.labelKey)) + '</button>'
   )).join('')
   const sortLabel = document.getElementById('instance-content-sort-label')
   if (sortLabel) {
@@ -690,7 +629,7 @@ function renderInstanceContent() {
     row.dataset.id = item.id
     // Icono / pfp original del proyecto
     const iconHtml = proj?.iconUrl
-      ? '<span class="content-hub-icon has-img"><img src="' + escapeHtml(proj.iconUrl) + '" alt="" loading="lazy" onerror="this.remove()"></span>'
+      ? '<span class="content-hub-icon has-img"><img src="' + escapeHtml(proj.iconUrl) + '" alt="" loading="lazy" data-error="uiRemoveElement" data-args="[&quot;$this&quot;]"></span>'
       : '<span class="content-hub-icon"><i class="fa-solid ' + contentKindIcon(item.kind) + '"></i></span>'
     const versionBtn = !item.projectId
       ? '<span class="content-hub-verbtn is-muted" title="' + escapeHtml(t('instance.uploadedHint')) + '"><i class="fa-solid fa-arrow-right-arrow-left"></i></span>'
@@ -909,7 +848,7 @@ function renderInstanceWorlds(worlds) {
     div.innerHTML = '<div class="content-row-icon"><i class="fa-solid fa-earth-americas"></i></div>' +
       '<div class="content-row-copy"><strong title="' + escapeHtml(world.name) + '">' + escapeHtml(world.name) + '</strong><span>' + escapeHtml(t('instance.updatedAt', { date: new Date(world.updatedAt).toLocaleString() })) + '</span></div>' +
       '<span class="pill">' + escapeHtml(t('instance.world')) + '</span>' +
-      '<button type="button" class="small-action" onclick="openInstanceTarget(&quot;saves&quot;)">' + escapeHtml(t('instances.open')) + '</button>'
+      '<button type="button" class="small-action" data-click="openInstanceTarget" data-args="[&quot;saves&quot;]">' + escapeHtml(t('instances.open')) + '</button>'
     fragment.appendChild(div)
   })
   list.innerHTML = ''
@@ -932,7 +871,7 @@ function renderInstanceLogs(logs) {
     div.innerHTML = '<div class="content-row-icon"><i class="fa-regular fa-file-lines"></i></div>' +
       '<div class="content-row-copy"><strong title="' + escapeHtml(logFile.name) + '">' + escapeHtml(logFile.name) + '</strong><span>' + formatFileSize(logFile.size) + ' · ' + new Date(logFile.updatedAt).toLocaleString() + '</span></div>' +
       '<span class="pill">Log</span>' +
-      '<button type="button" class="small-action" onclick="openInstanceTarget(&quot;launcherLogs&quot;)">' + escapeHtml(t('instances.open')) + '</button>'
+      '<button type="button" class="small-action" data-click="openInstanceTarget" data-args="[&quot;launcherLogs&quot;]">' + escapeHtml(t('instances.open')) + '</button>'
     fragment.appendChild(div)
   })
   list.innerHTML = ''
@@ -1382,6 +1321,7 @@ async function uploadInstanceFiles() {
 const UPLOAD_SKIP_MESSAGE_KEY = {
   'is-modpack': 'instance.uploadIsModpack',
   type: 'instance.uploadSkipType',
+  'not-local': 'instance.uploadSkipNotLocal',
   'too-large': 'instance.uploadSkipTooLarge',
   unrecognized: 'instance.uploadSkipUnknown',
   unreadable: 'instance.uploadSkipUnreadable'
@@ -1617,19 +1557,19 @@ function ensureContentVersionsModal() {
   modal = document.createElement('div')
   modal.className = 'modal-backdrop'
   modal.id = 'content-versions-modal'
-  modal.innerHTML = '<div class="account-modal content-versions-modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()">' +
+  modal.innerHTML = '<div class="account-modal content-versions-modal" role="dialog" aria-modal="true" data-stop>' +
     '<div class="modal-head content-versions-head"><span class="content-versions-pfp" id="content-versions-pfp"></span>' +
     '<div class="modal-title" id="content-versions-title"></div>' +
-    '<button type="button" class="content-versions-close" onclick="closeInstanceContentVersions()" aria-label="×"><i class="fa-solid fa-xmark"></i></button></div>' +
+    '<button type="button" class="content-versions-close" data-click="closeInstanceContentVersions" aria-label="×"><i class="fa-solid fa-xmark"></i></button></div>' +
     '<div class="content-versions-body">' +
     '<div class="content-versions-side"><label class="content-versions-search"><i class="fa-solid fa-magnifying-glass"></i>' +
     '<input id="content-versions-search" autocomplete="off"></label>' +
     '<div id="content-versions-list" class="content-versions-list"></div>' +
-    '<button type="button" class="content-versions-incompat" id="content-versions-incompat" onclick="toggleContentVersionsIncompatible()"></button></div>' +
+    '<button type="button" class="content-versions-incompat" id="content-versions-incompat" data-click="toggleContentVersionsIncompatible"></button></div>' +
     '<div class="content-versions-main" id="content-versions-main"></div>' +
     '</div>' +
     '<div class="content-versions-foot"><div class="content-versions-warn"><i class="fa-solid fa-triangle-exclamation"></i><span id="content-versions-warn-text"></span></div>' +
-    '<div class="content-versions-footbtns"><button type="button" class="secondary-btn" onclick="closeInstanceContentVersions()" id="content-versions-cancel"></button>' +
+    '<div class="content-versions-footbtns"><button type="button" class="secondary-btn" data-click="closeInstanceContentVersions" id="content-versions-cancel"></button>' +
     '<button type="button" class="primary-btn content-versions-update" id="content-versions-update"></button></div></div></div>'
   modal.addEventListener('click', (ev) => { if (ev.target === modal) closeInstanceContentVersions() })
   document.body.appendChild(modal)
@@ -1737,13 +1677,11 @@ async function selectContentVersion(versionId) {
   if (!box) return
   const html = detail?.changelogHtml || ''
   if (html) {
-    // S1: nunca innerHTML directo con HTML de proveedor (XSS vía
-    // <img onerror>, <svg onload>, javascript:). Se sanea primero.
-    box.innerHTML = sanitizeChangelogHtml(html) || '<div class="muted-empty">' + escapeHtml(t('instance.noChangelog')) + '</div>'
-    box.querySelectorAll('a').forEach(a => {
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
-    })
+    // S1: nunca innerHTML con HTML de proveedor. El saneador único construye
+    // un fragmento nuevo solo con nodos permitidos (html-sanitizer.js).
+    const clean = sanitizeProviderHtml(html, 'https://modrinth.com')
+    if (providerHtmlHasContent(clean)) box.replaceChildren(clean)
+    else box.innerHTML = '<div class="muted-empty">' + escapeHtml(t('instance.noChangelog')) + '</div>'
   } else {
     box.innerHTML = '<div class="muted-empty">' + escapeHtml(t('instance.noChangelog')) + '</div>'
   }
@@ -1768,7 +1706,7 @@ async function openInstanceContentVersions(item, preselectLatest = false) {
   const pfp = document.getElementById('content-versions-pfp')
   if (pfp) {
     pfp.innerHTML = proj.iconUrl
-      ? '<img src="' + escapeHtml(proj.iconUrl) + '" alt="" onerror="this.remove()">'
+      ? '<img src="' + escapeHtml(proj.iconUrl) + '" alt="" data-error="uiRemoveElement" data-args="[&quot;$this&quot;]">'
       : '<i class="fa-solid ' + contentKindIcon(item.kind) + '"></i>'
     pfp.classList.toggle('has-img', Boolean(proj.iconUrl))
   }
@@ -1859,6 +1797,9 @@ let createVersions = []
 let createSelectedVersion = null
 let createStep = 'choice'
 let createNameEdited = false
+function markCreateNameEdited() {
+  createNameEdited = true
+}
 let createIcon = null
 let createLoaderChannel = 'stable'
 let createLoaderVersions = []
@@ -1894,7 +1835,7 @@ function renderCreateLoaders() {
   const row = document.getElementById('create-loader-row')
   if (row) {
     row.innerHTML = createLoaders.map(loader => (
-      '<button type="button" class="loader-option ' + (loader.id === createLoader ? 'active' : '') + '" onclick="selectCreateLoader(&quot;' + loader.id + '&quot;)">' + loader.label + '</button>'
+      '<button type="button" class="loader-option ' + (loader.id === createLoader ? 'active' : '') + '" data-click="selectCreateLoader" data-args="' + uiArgs(loader.id) + '">' + loader.label + '</button>'
     )).join('')
   }
 }
@@ -1932,7 +1873,7 @@ function renderCreateIconPreview() {
     preview.classList.add('has-img')
     const nameInput = document.getElementById('create-name')
     const initial = escapeHtml(String((nameInput && nameInput.value) || defaultCreateName() || 'M').charAt(0).toUpperCase())
-    preview.innerHTML = initial + '<img src="' + escapeHtml(toFileUrl(createIcon.path)) + '" alt="" onerror="this.remove()">'
+    preview.innerHTML = initial + '<img src="' + escapeHtml(toFileUrl(createIcon.path)) + '" alt="" data-error="uiRemoveElement" data-args="[&quot;$this&quot;]">'
     return
   }
   if (createIcon && createIcon.kind === 'preset' && createIcon.fa) {
@@ -1953,7 +1894,7 @@ function renderCreatePresets() {
   const grid = document.getElementById('create-preset-grid')
   if (!grid) return
   grid.innerHTML = CREATE_ICON_PRESETS.map((preset, index) => (
-    '<button type="button" class="create-preset-cell" data-preset="' + index + '" style="background:' + escapeHtml(preset.bg) + '" onclick="selectCreatePreset(' + index + ')" aria-label="preset ' + (index + 1) + '">' +
+    '<button type="button" class="create-preset-cell" data-preset="' + index + '" style="background:' + escapeHtml(preset.bg) + '" data-click="selectCreatePreset" data-args="' + uiArgs(index) + '" aria-label="preset ' + (index + 1) + '">' +
       '<i class="fa-solid ' + escapeHtml(preset.fa) + '"></i>' +
     '</button>'
   )).join('')
@@ -2032,7 +1973,7 @@ function renderCreateChannels() {
   const row = document.getElementById('create-channel-row')
   if (row) {
     row.innerHTML = CREATE_CHANNELS.map(channel => (
-      '<button type="button" class="loader-option ' + (channel.id === createLoaderChannel ? 'active' : '') + '" onclick="selectCreateChannel(&quot;' + channel.id + '&quot;)">' + escapeHtml(t(channel.labelKey)) + '</button>'
+      '<button type="button" class="loader-option ' + (channel.id === createLoaderChannel ? 'active' : '') + '" data-click="selectCreateChannel" data-args="' + uiArgs(channel.id) + '">' + escapeHtml(t(channel.labelKey)) + '</button>'
     )).join('')
   }
   const other = document.getElementById('create-other-loader')
@@ -2268,7 +2209,7 @@ async function loadExternalLaunchers() {
       const found = (item.roots || []).find(root => root.exists)
       const descKey = 'external.desc.' + item.launcherId
       const desc = t(descKey) === descKey ? (found ? found.root : t('external.notFound')) : t(descKey)
-      return '<button type="button" class="external-pick-row" onclick="chooseExternalLauncher(&quot;' + escapeHtml(item.launcherId) + '&quot;)">' +
+      return '<button type="button" class="external-pick-row" data-click="chooseExternalLauncher" data-args="' + uiArgs(item.launcherId) + '">' +
         '<span class="external-pick-icon">' + externalLauncherIcon(item.launcherId) + '</span>' +
         '<span class="external-pick-main"><strong>' + escapeHtml(externalLauncherLabel(item.launcherId, item.label)) + '</strong><small>' + escapeHtml(desc) + '</small></span>' +
         '<i class="fa-solid fa-chevron-right external-pick-chevron" aria-hidden="true"></i>' +
@@ -2281,7 +2222,7 @@ async function loadExternalLaunchers() {
     '<div class="external-foot">' +
       '<span></span>' +
       '<span class="external-foot-actions">' +
-        '<button type="button" class="secondary-btn" onclick="backToImportMenu()">' + escapeHtml(t('create.back')) + '</button>' +
+        '<button type="button" class="secondary-btn" data-click="backToImportMenu">' + escapeHtml(t('create.back')) + '</button>' +
       '</span>' +
     '</div>'
 }
@@ -2301,7 +2242,7 @@ async function chooseExternalLauncher(launcherId, rootOverride) {
   if (!result || !result.ok) {
     if (view) {
       view.innerHTML = '<div class="install-note">' + escapeHtml((result && result.error) || t('external.detectError')) + '</div>' +
-        '<div class="settings-actions"><button type="button" class="secondary-btn" onclick="openExternalImport()">' + escapeHtml(t('external.backLaunchers')) + '</button></div>'
+        '<div class="settings-actions"><button type="button" class="secondary-btn" data-click="openExternalImport">' + escapeHtml(t('external.backLaunchers')) + '</button></div>'
     }
     return
   }
@@ -2379,7 +2320,7 @@ function renderExternalInstances() {
       '<span class="external-instance-icon">' + externalInstanceIcon(item.loader) + '</span>' +
       '<span class="external-instance-main"><strong>' + escapeHtml(item.name) + '</strong><small>' + sub + '</small></span>' +
       '<input type="checkbox"' + (externalState.checked[index] ? ' checked' : '') + (item.supported && !externalState.importing ? '' : ' disabled') +
-        ' onchange="toggleExternalChecked(' + index + ')">' +
+        ' data-change="toggleExternalChecked" data-args="' + uiArgs(index) + '">' +
     '</label>'
   }).join('')
   const summary = externalSelectionSummary()
@@ -2391,10 +2332,10 @@ function renderExternalInstances() {
     (subtitle ? '<div class="external-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +
     '<div class="external-pathbar"><i class="fa-regular fa-folder" aria-hidden="true"></i>' +
       '<span>' + escapeHtml(externalState.root || '') + '</span>' +
-      '<button type="button" class="secondary-btn" onclick="externalBrowseFolder()"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> ' + escapeHtml(t('external.chooseFolder')) + '</button>' +
+      '<button type="button" class="secondary-btn" data-click="externalBrowseFolder"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> ' + escapeHtml(t('external.chooseFolder')) + '</button>' +
     '</div>' +
     '<div class="external-list-head"><span>' + escapeHtml(listTitle) + ' (' + externalState.instances.length + ')</span>' +
-      '<button type="button" class="external-clear-btn" onclick="setExternalCheckedAll(false)"' + (externalState.importing ? ' disabled' : '') + '>' + escapeHtml(t('external.clear')) + '</button>' +
+      '<button type="button" class="external-clear-btn" data-click="setExternalCheckedAll" data-args="[false]"' + (externalState.importing ? ' disabled' : '') + '>' + escapeHtml(t('external.clear')) + '</button>' +
     '</div>' +
     (externalState.instances.length ? '<div class="external-instance-list">' + rows + '</div>' : '<div class="install-note">' + escapeHtml(t('external.noInstances')) + '</div>') +
     warning +
@@ -2402,9 +2343,9 @@ function renderExternalInstances() {
       '<span>' + escapeHtml(t('external.selected', { n: summary.count })) + ' · ' + escapeHtml(t('external.totalSize', { size: formatExternalBytes(summary.total) })) + '</span>' +
       '<span class="external-foot-actions">' +
       (externalState.importing
-        ? '<button type="button" class="secondary-btn" onclick="cancelExternalImports()">' + escapeHtml(t('external.cancel')) + '</button>'
-        : '<button type="button" class="secondary-btn" onclick="openExternalImport()">' + escapeHtml(t('create.back')) + '</button>' +
-          '<button type="button" class="primary-btn" onclick="runExternalImports()"' + (summary.count ? '' : ' disabled') + '>' + escapeHtml(t('external.continue')) + ' ›</button>') +
+        ? '<button type="button" class="secondary-btn" data-click="cancelExternalImports">' + escapeHtml(t('external.cancel')) + '</button>'
+        : '<button type="button" class="secondary-btn" data-click="openExternalImport">' + escapeHtml(t('create.back')) + '</button>' +
+          '<button type="button" class="primary-btn" data-click="runExternalImports"' + (summary.count ? '' : ' disabled') + '>' + escapeHtml(t('external.continue')) + ' ›</button>') +
       '</span>' +
     '</div>'
 }
@@ -2827,7 +2768,7 @@ function renderIsettingsIconPreview() {
   const initial = String(instance?.name || 'M').charAt(0).toUpperCase()
   if (isettingsIcon && isettingsIcon.kind === 'upload' && isettingsIcon.path) {
     preview.classList.add('has-img')
-    preview.innerHTML = escapeHtml(initial) + '<img src="' + escapeHtml(toFileUrl(isettingsIcon.path)) + '" alt="" onerror="this.remove()">'
+    preview.innerHTML = escapeHtml(initial) + '<img src="' + escapeHtml(toFileUrl(isettingsIcon.path)) + '" alt="" data-error="uiRemoveElement" data-args="[&quot;$this&quot;]">'
     return
   }
   if (isettingsIcon && isettingsIcon.kind === 'preset' && isettingsIcon.fa) {
@@ -2845,7 +2786,7 @@ function renderIsettingsPresets() {
   const grid = document.getElementById('isettings-preset-grid')
   if (!grid) return
   grid.innerHTML = CREATE_ICON_PRESETS.map((preset, index) => (
-    '<button type="button" class="create-preset-cell" data-preset="' + index + '" style="background:' + escapeHtml(preset.bg) + '" onclick="selectIsettingsPreset(' + index + ')">' +
+    '<button type="button" class="create-preset-cell" data-preset="' + index + '" style="background:' + escapeHtml(preset.bg) + '" data-click="selectIsettingsPreset" data-args="' + uiArgs(index) + '">' +
       '<i class="fa-solid ' + escapeHtml(preset.fa) + '"></i>' +
     '</button>'
   )).join('')
@@ -2971,7 +2912,7 @@ function renderIsettingsUpdateChannels() {
   if (!row || !instance) return
   const current = instance.versionType || 'release'
   row.innerHTML = ISETTINGS_UPDATE_CHANNELS.map(channel => (
-    '<button type="button" class="loader-option ' + (channel.id === current ? 'active' : '') + '" onclick="isettingsSetChannel(&quot;' + channel.id + '&quot;)">' + escapeHtml(t('create.channel.' + channel.id)) + '</button>'
+    '<button type="button" class="loader-option ' + (channel.id === current ? 'active' : '') + '" data-click="isettingsSetChannel" data-args="' + uiArgs(channel.id) + '">' + escapeHtml(t('create.channel.' + channel.id)) + '</button>'
   )).join('')
   const desc = document.getElementById('isettings-channel-desc')
   if (desc) {
@@ -3077,7 +3018,7 @@ function renderIsettingsLoaders() {
   const row = document.getElementById('isettings-loader-row')
   if (row) {
     row.innerHTML = createLoaders.map(loader => (
-      '<button type="button" class="loader-option ' + (loader.id === isettingsLoader ? 'active' : '') + '" onclick="isettingsSelectLoader(&quot;' + loader.id + '&quot;)">' + loader.label + '</button>'
+      '<button type="button" class="loader-option ' + (loader.id === isettingsLoader ? 'active' : '') + '" data-click="isettingsSelectLoader" data-args="' + uiArgs(loader.id) + '">' + loader.label + '</button>'
     )).join('')
   }
   renderIsettingsChannels()
@@ -3149,7 +3090,7 @@ function renderIsettingsChannels() {
   const row = document.getElementById('isettings-loader-channel-row')
   if (row) {
     row.innerHTML = CREATE_CHANNELS.map(channel => (
-      '<button type="button" class="loader-option ' + (channel.id === isettingsLoaderChannel ? 'active' : '') + '" onclick="isettingsSelectChannel(&quot;' + channel.id + '&quot;)">' + escapeHtml(t(channel.labelKey)) + '</button>'
+      '<button type="button" class="loader-option ' + (channel.id === isettingsLoaderChannel ? 'active' : '') + '" data-click="isettingsSelectChannel" data-args="' + uiArgs(channel.id) + '">' + escapeHtml(t(channel.labelKey)) + '</button>'
     )).join('')
   }
   const other = document.getElementById('isettings-other-loader')

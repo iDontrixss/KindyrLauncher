@@ -10,8 +10,8 @@ const assert = require('node:assert/strict')
 const fs = require('fs')
 const path = require('path')
 
-const mainSource = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8')
-const discoverSource = fs.readFileSync(path.join(__dirname, '..', 'sections', 'descubrir.html'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
+const discoverSource = require('./helpers/section-source').readSectionSource('descubrir')
 const preloadSource = fs.readFileSync(path.join(__dirname, '..', 'preload.js'), 'utf8')
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')
 const commonSource = fs.readFileSync(path.join(__dirname, '..', 'common.js'), 'utf8')
@@ -51,13 +51,13 @@ test('detalle: preload expone details en ambos providers', () => {
 test('detalle: sección full-width con tabs Descripción/Versiones/Galería + X', () => {
   assert.match(discoverSource, /id="discover-details"/)
   assert.match(discoverSource, /id="discover-details-info"/)
-  assert.match(discoverSource, /selectProjectTab\('desc'\)/)
-  assert.match(discoverSource, /selectProjectTab\('versions'\)/)
-  assert.match(discoverSource, /selectProjectTab\('gallery'\)/)
+  assert.ok(discoverSource.includes('data-click="selectProjectTab" data-args="[&quot;desc&quot;]"'))
+  assert.ok(discoverSource.includes('data-click="selectProjectTab" data-args="[&quot;versions&quot;]"'))
+  assert.ok(discoverSource.includes('data-click="selectProjectTab" data-args="[&quot;gallery&quot;]"'))
   assert.match(discoverSource, /id="project-tab-desc"/)
   assert.match(discoverSource, /id="project-tab-versions"/)
   assert.match(discoverSource, /id="project-tab-gallery"/)
-  assert.match(discoverSource, /installDetailProject\(this\)/)
+  assert.ok(discoverSource.includes('data-click="installDetailProject" data-args="[&quot;$this&quot;]"'))
   assert.match(discoverSource, /discover-close/)
   assert.match(discoverSource, /discover-details-main/)
   assert.match(discoverSource, /discover-filter-panel discover-details-side/)
@@ -97,11 +97,10 @@ test('detalle: solo la ficha scrollea, la sidebar queda estática', () => {
 })
 
 test('detalle: descubrir abre la ficha al clickear la card y sanea el HTML del proveedor', () => {
-  assert.match(discoverSource, /onclick="openDiscoveredProjectDetails\('/)
-  assert.match(discoverSource, /event\.stopPropagation\(\);installDiscoveredProject\(/)
-  assert.match(discoverSource, /function sanitizeRichHtml\(html, baseUrl\)/)
-  assert.match(discoverSource, /RICH_DROP_TAGS/)
-  assert.match(discoverSource, /javascript\|data\|vbscript\|file\|blob/)
+  assert.match(discoverSource, /data-click="openDiscoveredProjectDetails"/)
+  // El botón Instalar de la card no abre la ficha (data-stop = stopPropagation).
+  assert.match(discoverSource, /data-click="installDiscoveredProject" data-args="' \+ uiArgs\(project, '\$this'\) \+ '" data-stop/)
+  assert.match(discoverSource, /sanitizeProviderHtml\(detailData && detailData\.bodyHtml, base\)/)
   assert.match(discoverSource, /function renderProjectDescription\(\)/)
   assert.match(discoverSource, /function renderProjectGallery\(\)/)
   assert.match(discoverSource, /function loadProjectVersionList\(\)/)
@@ -225,28 +224,6 @@ test('detalle: sin currentLanguage indefinido y sin duplicar formatRelativeTime'
 test('detalle: STYLE_GUIDE exige cards para controles clickeables', () => {
   const guide = fs.readFileSync(path.join(__dirname, '..', 'docs', 'STYLE_GUIDE.md'), 'utf8')
   assert.match(guide, /Todo control clickeable propio es una card/)
-})
-
-// Réplica de isSafeRichUrl (debe coincidir con sections/descubrir.html): solo http(s),
-// resuelve relativas contra la web del proveedor, bloquea esquemas peligrosos.
-function isSafeRichUrl(value, base) {
-  const raw = String(value || '').trim()
-  if (!raw || raw.charAt(0) === '#') return ''
-  if (/^(javascript|data|vbscript|file|blob):/i.test(raw)) return ''
-  try {
-    const url = new URL(raw, base || undefined)
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return ''
-    return url.href
-  } catch { return '' }
-}
-
-test('detalle: URLs del cuerpo rico solo http(s) y relativas resueltas', () => {
-  assert.equal(isSafeRichUrl('https://cdn.modrinth.com/x.png'), 'https://cdn.modrinth.com/x.png')
-  assert.equal(isSafeRichUrl('javascript:alert(1)'), '')
-  assert.equal(isSafeRichUrl('data:text/html,<b>x</b>'), '')
-  assert.equal(isSafeRichUrl('#ancla'), '')
-  assert.equal(isSafeRichUrl('/gallery/img.png', 'https://modrinth.com'), 'https://modrinth.com/gallery/img.png')
-  assert.equal(isSafeRichUrl('   '), '')
 })
 
 // Réplica de mergeCurseForgeCategoryPages (debe coincidir con main.js).

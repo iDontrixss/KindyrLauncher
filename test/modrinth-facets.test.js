@@ -61,7 +61,7 @@ test('P1-1: loader filtering allowlist', () => {
 })
 
 test('P1-1: main.js allowlist es solo mod y all', () => {
-  const mainSource = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8')
+  const mainSource = require('./helpers/main-source').readMainSource()
   // Debe contener el allowlist corregido y NO contener plugin/datapack en el allowlist
   assert.match(mainSource, /loaderAllowedTypes\s*=\s*new Set\(\['mod',\s*'all'\]\)/)
   assert.equal(mainSource.includes("loaderAllowedTypes = new Set(['mod', 'plugin'"), false)
@@ -141,7 +141,7 @@ test('P1-2: new_filters builder casos requeridos', () => {
 })
 
 test('P1-2: new_filters usa game_versions no versions', () => {
-  const mainSource = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8')
+  const mainSource = require('./helpers/main-source').readMainSource()
   assert.match(mainSource, /buildModrinthNewFilters/)
   assert.match(mainSource, /game_versions/)
   assert.equal(mainSource.includes("buildModrinthNewFilters") && mainSource.includes("project_types = mod"), true)
@@ -195,7 +195,7 @@ test('P1-2: integración Modrinth new_filters vs facets', async () => {
 
 test('P1-2: fallback y limit/offset', () => {
   // Verificar que main.js implementa fallback new_filters -> facets
-  const mainSource = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8')
+  const mainSource = require('./helpers/main-source').readMainSource()
   assert.match(mainSource, /newFilters/)
   assert.match(mainSource, /facets/)
   assert.match(mainSource, /fallback/i)

@@ -13,7 +13,7 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.resolve(__dirname, '..')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 const preloadSource = fs.readFileSync(path.join(root, 'preload.js'), 'utf8')
 
 function handlerBody(source, channel) {
@@ -62,7 +62,7 @@ test('install-update exige descarga completada', () => {
 })
 
 test('finish-onboarding tolera config ausente', () => {
-  assert.match(mainSource, /ipcMain\.handle\('finish-onboarding', \(_event, config = \{\}\)/)
+  assert.match(mainSource, /ipcMain\.handle\('finish-onboarding', \(event, config = \{\}\)/)
 })
 
 test('skins: corte temprano en main y en preload', () => {
@@ -75,5 +75,5 @@ test('sin divergencia con S9/S11: mismos helpers en install y launch', () => {
   assert.match(mainSource, /downloadSingleFileVerified\(file\.url, target, file\.hashes/)
   const launchBody = handlerBody(mainSource, 'launch-game')
   assert.match(launchBody, /isTrustedJavaBinary\(/)
-  assert.match(launchBody, /sanitizeCustomArgs\(customArgs\)/)
+  assert.match(launchBody, /sanitizeCustomArgs\(customArgs, /)
 })

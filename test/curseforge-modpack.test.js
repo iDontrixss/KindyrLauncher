@@ -18,7 +18,7 @@ const {
 } = require('../curseforge-modpack')
 
 const root = path.resolve(__dirname, '..')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 
 test('resolves curseforge modloader ids like modrinth loaders', () => {
   assert.deepEqual(resolveCurseForgeModLoaderId('forge-47.2.0'), { loader: 'forge', loaderVersion: '47.2.0' })

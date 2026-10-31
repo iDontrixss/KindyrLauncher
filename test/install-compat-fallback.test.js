@@ -15,7 +15,7 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.resolve(__dirname, '..')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 const modrinthSource = fs.readFileSync(path.join(root, 'modrinth.js'), 'utf8')
 
 function functionBody(source, file, name) {

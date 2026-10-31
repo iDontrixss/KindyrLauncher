@@ -14,7 +14,7 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.resolve(__dirname, '..')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 const commonSource = fs.readFileSync(path.join(root, 'common.js'), 'utf8')
 const instancesSource = fs.readFileSync(path.join(root, 'instances.js'), 'utf8')
 const preloadSource = fs.readFileSync(path.join(root, 'preload.js'), 'utf8')
@@ -53,13 +53,13 @@ test('preload expone readConsole', () => {
 })
 
 test('el tab Consola existe con sus controles read-only', () => {
-  assert.ok(instancesSource.includes("switchInstanceTab('console')"), 'botón del tab')
+  assert.ok(instancesSource.includes('data-click="switchInstanceTab" data-args="[&quot;console&quot;]"'), 'botón del tab')
   assert.ok(instancesSource.includes("t('instance.consoleTab')"), 'título i18n')
   assert.ok(instancesSource.includes('id="instance-tab-console"'), 'panel del tab')
   assert.ok(instancesSource.includes('id="instance-console-view"'), 'viewport')
   assert.ok(instancesSource.includes('id="instance-console-follow"'), 'toggle seguir')
-  assert.ok(instancesSource.includes('copyInstanceConsole()'), 'botón copiar')
-  assert.ok(instancesSource.includes('refreshInstanceConsole('), 'botón refrescar')
+  assert.ok(instancesSource.includes('data-click="copyInstanceConsole"'), 'botón copiar')
+  assert.ok(instancesSource.includes('data-click="refreshInstanceConsole"'), 'botón refrescar')
   assert.equal(instancesSource.includes('instance-console-input'), false, 'sin entrada de comandos: solo lectura')
 })
 

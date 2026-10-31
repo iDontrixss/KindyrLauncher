@@ -16,21 +16,21 @@ const root = path.resolve(__dirname, '..')
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
 const instancesSource = fs.readFileSync(path.join(root, 'instances.js'), 'utf8')
 const preloadSource = fs.readFileSync(path.join(root, 'preload.js'), 'utf8')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8')
 const commonSource = fs.readFileSync(path.join(root, 'common.js'), 'utf8')
 
 test('el paso external vive junto a la importación por archivo', () => {
   assert.ok(html.includes('id="create-step-external"'), 'paso external en el modal')
   assert.ok(html.includes('id="external-launcher-view"'), 'contenedor dinámico')
-  assert.ok(html.includes('onclick="openExternalFromImportMenu()"'), 'ruta hacia el paso external')
+  assert.ok(html.includes('data-click="openExternalFromImportMenu"'), 'ruta hacia el paso external')
   assert.ok(html.includes('data-i18n="create.choice.importExternal"'), 'i18n del botón')
   // "Importar modpack" es modal propio SOLO con Subir archivo / Desde otro launcher.
   assert.ok(html.includes('id="import-modpack-modal"'), 'modal propio de importar')
   const importModal = html.slice(html.indexOf('id="import-modpack-modal"'), html.indexOf('id="import-modpack-modal"') + 2000)
   assert.ok(importModal.includes('data-i18n="instances.import"'), 'título Importar, no Crear')
-  assert.ok(importModal.includes('onclick="createImportMrpack()"'), 'vía de archivo intacta')
-  assert.ok(importModal.includes('onclick="openExternalFromImportMenu()"'), 'vía externa')
+  assert.ok(importModal.includes('data-click="createImportMrpack"'), 'vía de archivo intacta')
+  assert.ok(importModal.includes('data-click="openExternalFromImportMenu"'), 'vía externa')
   assert.ok(!html.includes('id="create-import-suboptions"'), 'sin subopciones dentro de Crear (sin fuga de estado)')
   assert.ok(!html.includes('toggleImportOptions'), 'sin toggle con estado global')
   // Agregar instancia: solo Personalizado + Descubrir.
@@ -39,7 +39,7 @@ test('el paso external vive junto a la importación por archivo', () => {
   assert.ok(choice.includes('data-i18n="create.choice.search"'), 'Descubrir presente')
   assert.ok(!choice.includes('data-i18n="instances.import"'), 'Importar fuera de Agregar')
   // Regla 7 de la guía: controles clickeables propios son cards del sistema.
-  for (const match of [...html.matchAll(/<button[^>]*onclick="(openExternalFromImportMenu\(\)|createImportMrpack\(\))"[^>]*>/g)]) {
+  for (const match of [...html.matchAll(/<button[^>]*data-click="(openExternalFromImportMenu|createImportMrpack)"[^>]*>/g)]) {
     assert.match(match[0], /create-choice-option/, 'botón de importar es card del sistema')
   }
   assert.ok(instancesSource.includes("for (const name of ['choice', 'custom', 'external'])"), 'step registrado')

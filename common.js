@@ -502,6 +502,7 @@ const I18N = {
     'instance.uploadSkipped': '({count} omitidos: tipo/tamaño no permitido o ya existen)',
     'instance.uploadIsModpack': '“{file}” es un modpack completo: instalalo desde Descubrir en vez de subirlo suelto',
     'instance.uploadSkipType': '“{file}” no es un formato válido para subir (.jar/.zip/.mrpack)',
+    'instance.uploadSkipNotLocal': '“{file}” no está en un disco local: copialo a tu PC y volvé a soltarlo',
     'instance.uploadSkipTooLarge': '“{file}” supera el tamaño máximo (2 GiB)',
     'instance.uploadSkipUnknown': '“{file}” no se reconoció como mod, resource pack, shader o datapack',
     'instance.uploadSkipUnreadable': '“{file}” no se pudo leer como archivo ZIP',
@@ -1142,6 +1143,7 @@ const I18N = {
     'instance.uploadSkipped': '({count} skipped: disallowed type/size or already present)',
     'instance.uploadIsModpack': '“{file}” is a full modpack: install it from Discover instead of uploading it loose',
     'instance.uploadSkipType': '“{file}” is not a valid format to upload (.jar/.zip/.mrpack)',
+    'instance.uploadSkipNotLocal': '“{file}” is not on a local drive: copy it to your PC and drop it again',
     'instance.uploadSkipTooLarge': '“{file}” exceeds the maximum size (2 GiB)',
     'instance.uploadSkipUnknown': '“{file}” was not recognized as a mod, resource pack, shader or datapack',
     'instance.uploadSkipUnreadable': '“{file}” could not be read as a ZIP file',
@@ -1843,6 +1845,15 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;')
 }
 
+// F2: única vía para innerHTML con datos externos. Exige HTML ya saneado
+// (escapeHtml) y texto estático. El HTML de proveedores NO pasa por aquí:
+// usa sanitizeProviderHtml() (html-sanitizer.js), que devuelve un fragmento.
+// El trinquete scripts/check-innerhtml.js solo acepta esta vía.
+function setSafeHtml(el, html) {
+  if (!el) return
+  el.innerHTML = String(html)
+}
+
 function formatFileSize(bytes) {
   if (!bytes) return '0 KB'
   if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + ' KB'
@@ -1966,7 +1977,7 @@ function renderAccounts() {
     .map(a => {
       const isActive = a.name === settings.username && settings.accountType !== 'microsoft'
       return `
-        <div class="account-item ${isActive ? 'active' : ''}" onclick="selectOfflineAccount(this.dataset.name)" data-name="${escapeHtml(a.name)}">
+        <div class="account-item ${isActive ? 'active' : ''}" data-click="selectOfflineAccount" data-args="[&quot;$data:name&quot;]" data-name="${escapeHtml(a.name)}">
           <div class="avatar offline">
             ${getInitials(a.name)}
           </div>
@@ -2246,7 +2257,7 @@ function showPrepareToast(name, message = 'Iniciando…') {
         <div style="color:var(--kindyr-text, #f4f8ff);font-family:'Space Grotesk','Segoe UI',system-ui,sans-serif;font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.01em;">${escapeHtml(name)}</div>
         <div id="prepare-toast-message" style="color:var(--kindyr-blue-soft, #aacdff);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;">${escapeHtml(message)}</div>
       </div>
-      <button type="button" onclick="hidePrepareToast(true)" style="background:var(--kindyr-accent, #ff5a3c);border:2px solid var(--kindyr-ink, #010712);color:var(--kindyr-ink, #010712);cursor:pointer;font-size:14px;line-height:1;width:28px;height:28px;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 var(--kindyr-ink, #010712);font-weight:800;">×</button>
+      <button type="button" data-click="hidePrepareToast" data-args="[true]" style="background:var(--kindyr-accent, #ff5a3c);border:2px solid var(--kindyr-ink, #010712);color:var(--kindyr-ink, #010712);cursor:pointer;font-size:14px;line-height:1;width:28px;height:28px;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 var(--kindyr-ink, #010712);font-weight:800;">×</button>
     </div>
     <div style="height:8px;background:var(--kindyr-bg, #030f2b);border:2px solid var(--kindyr-ink, #010712);border-radius:0;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);">
       <div id="prepare-toast-bar" style="height:100%;width:0%;background:var(--kindyr-accent, #ff5a3c);transition:width 0.3s ease;"></div>

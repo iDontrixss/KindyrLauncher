@@ -13,7 +13,7 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.resolve(__dirname, '..')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 const instancesSource = fs.readFileSync(path.join(root, 'instances.js'), 'utf8')
 const preloadSource = fs.readFileSync(path.join(root, 'preload.js'), 'utf8')
 
@@ -63,7 +63,7 @@ test('upload clasifica por contenido y reporta skipped[] en ambas vías', () => 
   assert.match(body, /reason: 'is-modpack'/)
   assert.match(body, /reason: 'unreadable'/)
   assert.match(body, /return \{ ok: true, copied, skipped \}/)
-  assert.match(mainSource, /require\('\.\/content-sniff'\)/)
+  assert.match(mainSource, /require\('(\.\.\/)+content-sniff'\)/)
   // .mrpack entra al circuito zip (si no, el redirect de modpack nunca se ve)
   assert.match(mainSource, /UPLOAD_ALLOWED_EXTS = new Set\(\['\.jar', '\.zip', '\.mrpack'\]\)/)
   assert.match(body, /lower\.endsWith\('\.mrpack'\)/)
@@ -76,11 +76,8 @@ test('el diálogo SOLO corre en la rama sin filePaths/fileBlobs (un drop jamás 
   assert.match(body, /un drop jamás debe abrirlo/)
 })
 
-test('cada invoke de upload deja traza forense (rama + conteos)', () => {
-  assert.match(mainSource, /function debugUploadLog\(line\)/)
-  const body = handlerBody(mainSource, 'upload-instance-files')
-  assert.match(body, /debugUploadLog\(`invoke keys=/)
-  assert.match(body, /debugUploadLog\(`done dropMode=/)
+test('KL-11: la traza forense temporal del DnD ya no se escribe en producción', () => {
+  assert.equal(/debugUploadLog|upload-debug\.log/.test(mainSource), false)
 })
 
 test('renderer muestra guía de modpack cuando corresponde', () => {
@@ -122,6 +119,6 @@ test('solo el panel Contenido adicional acepta drop (ni vista amplia ni tarjetas
   assert.equal(instancesSource.includes('setupInstanceListDropZone'), false)
   assert.equal(instancesSource.includes("closest('.instance-card')"), false)
   // renderLauncherInstancesList no engancha nada de drop
-  const sectionSource = fs.readFileSync(path.join(root, 'sections', 'instancias.html'), 'utf8')
+  const sectionSource = require('./helpers/section-source').readSectionSource('instancias')
   assert.equal(sectionSource.includes('DropZone'), false)
 })

@@ -80,3 +80,21 @@ test('verifies downloaded files with SHA-1 preferred (Modrinth canonical), SHA-5
     fs.rmSync(directory, { recursive: true, force: true })
   }
 })
+
+test('KL-16: las descargas del .mrpack se limitan a los dominios de la especificación', () => {
+  const { getClientMrpackFiles } = require('../mrpack-utils')
+  const sha1 = { sha1: 'abc' }
+  const { accepted, rejected } = getClientMrpackFiles({ files: [
+    { path: 'mods/a.jar', downloads: ['https://cdn.modrinth.com/a.jar'], hashes: sha1 },
+    { path: 'mods/b.jar', downloads: ['https://github.com/o/r/releases/download/v1/b.jar'], hashes: sha1 },
+    { path: 'mods/c.jar', downloads: ['https://raw.githubusercontent.com/o/r/main/c.jar'], hashes: sha1 },
+    { path: 'mods/d.jar', downloads: ['https://gitlab.com/o/r/-/raw/main/d.jar'], hashes: sha1 },
+    { path: 'mods/e.jar', downloads: ['https://tracker.example.com/e.jar'], hashes: sha1 },
+    { path: 'mods/f.jar', downloads: ['https://cdn.modrinth.com.evil.example/f.jar'], hashes: sha1 },
+    { path: 'mods/g.jar', downloads: ['https://cdn.modrinth.com:8443/g.jar'], hashes: sha1 },
+    { path: 'mods/h.jar', downloads: ['https://192.168.1.10/h.jar', 'https://cdn.modrinth.com/h.jar'], hashes: sha1 }
+  ] })
+  assert.deepEqual(accepted.map(f => f.path), ['mods/a.jar', 'mods/b.jar', 'mods/c.jar', 'mods/d.jar', 'mods/h.jar'])
+  assert.deepEqual(accepted.find(f => f.path === 'mods/h.jar').downloads, ['https://cdn.modrinth.com/h.jar'])
+  assert.deepEqual(rejected.map(f => f.path), ['mods/e.jar', 'mods/f.jar', 'mods/g.jar'])
+})

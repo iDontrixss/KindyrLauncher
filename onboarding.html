@@ -11,6 +11,7 @@
 <html lang="es" data-theme="midnight">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" data-kindyr-csp="secondary" content="default-src 'none'; script-src 'sha256-91/QZekQ9KM8Lgs16UgIQsE3UFzbHiK5gAoV9mWUmPA='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Bienvenido a Kindyr Launcher</title>
   <style>
     :root {
@@ -598,7 +599,7 @@
 
 <div class="header">
   <div class="brand-chip"><span class="local-icon setup" aria-hidden="true"></span> Setup Kindyr</div>
-  <button class="win-close" onclick="window.electronAPI.send('close')"></button>
+  <button class="win-close" data-action="close"></button>
 </div>
 
 <div class="content">
@@ -611,14 +612,14 @@
     <h1>Bienvenido a Kindyr</h1>
     <p>Elegí el idioma antes de tocar cualquier otra cosa.</p>
     <div class="options">
-      <button class="option-btn" id="opt-es" onclick="selectLang('es')">
+      <button class="option-btn" id="opt-es" data-action="selectLang" data-arg="es">
         <div class="option-icon lang"><span class="local-icon lang" aria-hidden="true"></span></div>
         <div class="option-text">
           <strong>Español</strong>
           <span>Interfaz en español</span>
         </div>
       </button>
-      <button class="option-btn" id="opt-en" onclick="selectLang('en')">
+      <button class="option-btn" id="opt-en" data-action="selectLang" data-arg="en">
         <div class="option-icon lang"><span class="local-icon lang" aria-hidden="true"></span></div>
         <div class="option-text">
           <strong>English</strong>
@@ -633,14 +634,14 @@
     <h1>Elegí tu cuenta</h1>
     <p>Definí cómo querés jugar en este launcher.</p>
     <div class="options">
-      <button class="option-btn" id="opt-ms" onclick="selectAccount('microsoft')">
+      <button class="option-btn" id="opt-ms" data-action="selectAccount" data-arg="microsoft">
         <div class="option-icon ms"><span class="local-icon ms" aria-hidden="true"></span></div>
         <div class="option-text">
           <strong>Cuenta Microsoft</strong>
           <span>Login oficial · Servidores premium</span>
         </div>
       </button>
-      <button class="option-btn" id="opt-offline" onclick="selectAccount('offline')">
+      <button class="option-btn" id="opt-offline" data-action="selectAccount" data-arg="offline">
         <div class="option-icon offline"><span class="local-icon offline" aria-hidden="true"></span></div>
         <div class="option-text">
           <strong>Modo offline</strong>
@@ -659,28 +660,28 @@
     <h1>Elegí tu tema</h1>
     <p>Podés cambiarlo en cualquier momento desde ajustes.</p>
     <div class="options">
-      <button class="option-btn" id="opt-midnight" onclick="selectTheme('midnight')">
+      <button class="option-btn" id="opt-midnight" data-action="selectTheme" data-arg="midnight">
         <div class="option-icon theme midnight"><span class="local-icon theme" aria-hidden="true"></span></div>
         <div class="option-text">
           <strong>Midnight</strong>
           <span>Azul profundo Kindyr</span>
         </div>
       </button>
-      <button class="option-btn" id="opt-navy" onclick="selectTheme('navy')">
+      <button class="option-btn" id="opt-navy" data-action="selectTheme" data-arg="navy">
         <div class="option-icon theme navy"><span class="local-icon theme" aria-hidden="true"></span></div>
         <div class="option-text">
           <strong>Navy</strong>
           <span>Oscuro, compacto y contrastado</span>
         </div>
       </button>
-      <button class="option-btn" id="opt-azure" onclick="selectTheme('azure')">
+      <button class="option-btn" id="opt-azure" data-action="selectTheme" data-arg="azure">
         <div class="option-icon theme azure"><span class="local-icon theme" aria-hidden="true"></span></div>
         <div class="option-text">
           <strong>Azure</strong>
           <span>Más brillante, más eléctrico</span>
         </div>
       </button>
-      <button class="option-btn" id="opt-steel" onclick="selectTheme('steel')">
+      <button class="option-btn" id="opt-steel" data-action="selectTheme" data-arg="steel">
         <div class="option-icon theme steel"><span class="local-icon theme" aria-hidden="true"></span></div>
         <div class="option-text">
           <strong>Steel</strong>
@@ -692,16 +693,29 @@
 </div>
 
 <div class="footer">
-  <button class="btn-back" id="btn-back" onclick="goBack()" style="visibility:hidden">Atrás</button>
+  <button class="btn-back" id="btn-back" data-action="goBack" style="visibility:hidden">Atrás</button>
   <div class="dots">
     <div class="dot active" id="dot-1"></div>
     <div class="dot" id="dot-2"></div>
     <div class="dot" id="dot-3"></div>
   </div>
-  <button class="btn-next" id="btn-next" onclick="goNext()">Siguiente</button>
+  <button class="btn-next" id="btn-next" data-action="goNext">Siguiente</button>
 </div>
 
 <script>
+  // Acciones de botones por delegación (sin onclick inline: CSP estricta).
+  document.addEventListener('click', (event) => {
+    const el = event.target.closest('[data-action]')
+    if (!el) return
+    const action = el.dataset.action
+    const arg = el.dataset.arg
+    if (action === 'close') window.electronAPI.send('close')
+    else if (action === 'selectLang') selectLang(arg)
+    else if (action === 'selectAccount') selectAccount(arg)
+    else if (action === 'selectTheme') selectTheme(arg)
+    else if (action === 'goBack') goBack()
+    else if (action === 'goNext') goNext()
+  })
   let currentStep = 1
   let config = { accountType: null, language: null, theme: 'midnight', username: '' }
   const usernamePattern = /^[A-Za-z0-9_]{3,16}$/

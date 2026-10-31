@@ -11,7 +11,7 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.resolve(__dirname, '..')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 
 test('xmcl file-transfer shim exists and main.js has hook', () => {
   const shimPath = path.join(root, 'xmcl-shims', 'core-utils.js')

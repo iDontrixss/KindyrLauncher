@@ -11,7 +11,7 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.resolve(__dirname, '..')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 const preloadSource = fs.readFileSync(path.join(root, 'preload.js'), 'utf8')
 const navigationSource = fs.readFileSync(path.join(root, 'navigation.js'), 'utf8')
 const instancesSource = fs.readFileSync(path.join(root, 'instances.js'), 'utf8')
@@ -64,8 +64,8 @@ test('the create-instance modal offers custom, discover and import first', () =>
   assert.match(indexSource, /id="create-step-choice"/)
   assert.match(indexSource, /id="create-step-custom"/)
   assert.match(indexSource, /id="create-step-external"/)
-  assert.match(indexSource, /selectCreateStep\('custom'\)/)
-  assert.match(indexSource, /openExternalFromImportMenu\(\)/)
+  assert.ok(indexSource.includes('data-click="selectCreateStep" data-args="[&quot;custom&quot;]"'))
+  assert.ok(indexSource.includes('data-click="openExternalFromImportMenu"'))
   assert.match(indexSource, /id="import-modpack-modal"/)
   assert.match(instancesSource, /function openImportModpackMenu\(\)/)
   assert.match(instancesSource, /function selectCreateStep\(step\)/)
@@ -93,7 +93,7 @@ test('the custom create step has icon, name, version select and loader channel',
 test('instance icons use absolute paths with migration for legacy relative ones', () => {
   assert.match(mainSource, /function migrateInstanceIcons\(instances\)/)
   assert.match(mainSource, /\{\s*file:\s*path\.join\(getInstanceDir\(instanceId\), icon\.file\)\s*\}/)
-  assert.match(instancesSource, /onerror="this\.remove\(\)"/)
+  assert.match(instancesSource, /data-error="uiRemoveElement"/)
 })
 
 test('the instance settings modal has three tabs and backend handlers', () => {
@@ -122,8 +122,8 @@ test('downloads and rollbacks only allow safe https destinations', () => {
 test('all windows deny popups and foreign navigation', () => {
   assert.match(mainSource, /function hardenWindowNavigation\(win\)/)
   assert.match(mainSource, /setWindowOpenHandler\(\(\) => \(\{\s*action: 'deny'\s*\}\)\)/)
-  assert.match(mainSource, /hardenWindowNavigation\(mainWindow\)/)
-  assert.match(mainSource, /hardenWindowNavigation\(splashWindow\)/)
+  assert.match(mainSource, /hardenWindowNavigation\((state\.)?mainWindow\)/)
+  assert.match(mainSource, /hardenWindowNavigation\((state\.)?splashWindow\)/)
 })
 
 test('the update dialog never uses node require in the renderer', () => {

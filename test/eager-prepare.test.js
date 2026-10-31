@@ -14,13 +14,13 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.resolve(__dirname, '..')
-const mainSource = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+const mainSource = require('./helpers/main-source').readMainSource()
 const commonSource = fs.readFileSync(path.join(root, 'common.js'), 'utf8')
 const instancesSource = fs.readFileSync(path.join(root, 'instances.js'), 'utf8')
 const modrinthSource = fs.readFileSync(path.join(root, 'modrinth.js'), 'utf8')
 const curseforgeSource = fs.readFileSync(path.join(root, 'curseforge.js'), 'utf8')
-const ajustesSource = fs.readFileSync(path.join(root, 'sections', 'ajustes.html'), 'utf8')
-const instSectionSource = fs.readFileSync(path.join(root, 'sections', 'instancias.html'), 'utf8')
+const ajustesSource = require('./helpers/section-source').readSectionSource('ajustes')
+const instSectionSource = require('./helpers/section-source').readSectionSource('instancias')
 
 function functionBody(source, file, name) {
   const start = source.indexOf(`function ${name}(`)
