@@ -49,7 +49,7 @@ Extraído de `package.json` y verificado contra `pnpm-lock.yaml`. Solo se listan
 ## 4. Recursos gráficos y fuentes
 
 - **skinview3d 3.4.1** (vía jsDelivr) — MIT. Render de skins en `sections/skins.html`.
-- **Space Grotesk / JetBrains Mono** — SIL Open Font License 1.1.
+- **Space Grotesk / JetBrains Mono** — SIL Open Font License 1.1. Incluidas en `assets/fonts/` (subconjuntos latin y latin-ext, de Fontsource 5.3.0) con sus textos de licencia.
 - Iconos de la app en `assets/icon.ico`, `assets/logo-*.png` — propios de Kindyr, bajo GPL-3.0-or-later.
 
 ## 5. Obligaciones al distribuir

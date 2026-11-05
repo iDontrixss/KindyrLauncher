@@ -26,6 +26,7 @@ Neo-brutalista hard-shadow: `border-radius: 0` en todo, bordes gruesos `2-3px so
 ## 3. Tipografía
 * Primaria: `'Space Grotesk','Segoe UI',system-ui,sans-serif` `600` base, `800` títulos/CTAs
 * Mono: `'JetBrains Mono',monospace` para kickers, badges, números
+* Carga: `assets/fonts/fonts.css` (woff2 locales, enlazado en las 5 ventanas). Toda ventana nueva debe enlazarlo; `test/fonts.test.js` lo verifica. Space Grotesk llega a `700`: un `800` se ve como `700`.
 * Console: `Consolas,'Courier New',monospace` `11px/1.45` `.console-tab-view` (tab Consola del Centro de control; única consola, solo lectura)
 * Escala: `.page-title 32px/1.05 800 -0.035em uppercase` + barra `14×3 accent` `::before`; `.bento-label 10px 700 0.14em uppercase accent`; `.project-title 13px 800`; `.pill-nav 13px 700`
 

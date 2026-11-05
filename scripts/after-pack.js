@@ -42,6 +42,7 @@ const REQUIRED_ASAR_FILES = [
   'preload.js',
   'preload-fatal.js',
   'fatal-dialog.html',
+  'assets/fonts/fonts.css',
   'curseforge-embedded.json',
   'LICENSE',
   'THIRD_PARTY_NOTICES.md',
