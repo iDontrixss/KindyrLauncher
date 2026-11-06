@@ -1,17 +1,29 @@
 ---
 import '../styles/global.css';
 import { getLangFromUrl } from '../i18n/utils';
+import { VERSION } from '../data/downloads';
 
 interface Props {
   title: string;
   description: string;
+  noindex?: boolean;
+  faq?: { question: string; answer: string }[];
 }
 
-const { title, description } = Astro.props;
+const { title, description, noindex = false, faq = [] } = Astro.props;
 const lang = getLangFromUrl(Astro.url);
 
-const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://kindyrlauncher.pages.dev');
-const socialImage = new URL('/og-cover.svg', canonicalURL);
+const siteURL = Astro.site ?? 'https://kindyrlauncher.pages.dev';
+// Cada página se publica como carpeta: canonical, hreflang y sitemap van con barra final.
+const pathname = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
+const canonicalURL = new URL(pathname, siteURL);
+const socialImage = new URL('/og-cover.png', siteURL);
+
+const localizedPath = pathname.replace(/^\/[^/]+/, '');
+const alternates = [
+  ...['en', 'es', 'pt', 'ru'].map((code) => ({ hreflang: code, href: new URL(`/${code}${localizedPath}`, siteURL) })),
+  { hreflang: 'x-default', href: new URL(`/en${localizedPath}`, siteURL) },
+];
 
 const localeMap: Record<string, string> = {
   en: 'en_US',
@@ -21,6 +33,25 @@ const localeMap: Record<string, string> = {
 };
 const ogLocale = localeMap[lang] || 'es_UY';
 
+const ogAlt: Record<string, string> = {
+  es: 'Kindyr, el launcher de Minecraft para jugar a tu manera',
+  en: 'Kindyr, the Minecraft launcher to play your way',
+  pt: 'Kindyr, o launcher de Minecraft para jogar do seu jeito',
+  ru: 'Kindyr — лаунчер Minecraft, чтобы играть по-своему',
+};
+const keywords: Record<string, string> = {
+  es: 'Kindyr, launcher de Minecraft, Modrinth, modpacks, Forge, Fabric, NeoForge, Quilt, código abierto',
+  en: 'Kindyr, Minecraft launcher, Modrinth, modpacks, Forge, Fabric, NeoForge, Quilt, open source',
+  pt: 'Kindyr, launcher de Minecraft, Modrinth, modpacks, Forge, Fabric, NeoForge, Quilt, código aberto',
+  ru: 'Kindyr, лаунчер Minecraft, Modrinth, модпаки, Forge, Fabric, NeoForge, Quilt, открытый исходный код',
+};
+const skipText: Record<string, string> = {
+  es: 'Saltar al contenido',
+  en: 'Skip to content',
+  pt: 'Pular para o conteúdo',
+  ru: 'Перейти к содержимому',
+};
+
 const structuredData = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
@@ -29,6 +60,8 @@ const structuredData = {
   applicationCategory: 'GameApplication',
   operatingSystem: 'Windows, Linux',
   isAccessibleForFree: true,
+  softwareVersion: VERSION,
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   url: canonicalURL.toString(),
   downloadUrl: 'https://github.com/iDontrixss/KindyrLauncher/releases',
   codeRepository: 'https://github.com/iDontrixss/KindyrLauncher',
@@ -46,6 +79,17 @@ const structuredData = {
   },
   inLanguage: lang,
 };
+
+const faqData = faq.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  inLanguage: lang,
+  mainEntity: faq.map(({ question, answer }) => ({
+    '@type': 'Question',
+    name: question,
+    acceptedAnswer: { '@type': 'Answer', text: answer },
+  })),
+} : null;
 ---
 
 <!doctype html>
@@ -56,11 +100,12 @@ const structuredData = {
     <meta name="theme-color" content="#061840" />
     <meta name="color-scheme" content="dark" />
     <meta name="description" content={description} />
-    <meta name="keywords" content="Kindyr, launcher de Minecraft, Minecraft launcher, Modrinth, modpacks, Forge, Fabric, NeoForge, Quilt, open source" />
+    <meta name="keywords" content={keywords[lang] ?? keywords.es} />
     <meta name="author" content="iDontrixss" />
-    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large'} />
     <meta name="generator" content={Astro.generator} />
-    <link rel="canonical" href={canonicalURL} />
+    {!noindex && <link rel="canonical" href={canonicalURL} />}
+    {!noindex && alternates.map(({ hreflang, href }) => <link rel="alternate" hreflang={hreflang} href={href} />)}
     <link rel="icon" type="image/png" href="/kindyr-favicon.png?v=3" sizes="500x500" />
     <link rel="apple-touch-icon" href="/kindyr-favicon.png?v=3" />
     <link rel="preload" href="/kindyr-logo.png" as="image" />
@@ -84,21 +129,23 @@ const structuredData = {
     <meta property="og:site_name" content="Kindyr" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonicalURL} />
+    {!noindex && <meta property="og:url" content={canonicalURL} />}
     <meta property="og:image" content={socialImage} />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Kindyr, el launcher de Minecraft para jugar a tu manera" />
+    <meta property="og:image:alt" content={ogAlt[lang] ?? ogAlt.es} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImage} />
-    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+    {!noindex && <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />}
+    {faqData && <script type="application/ld+json" set:html={JSON.stringify(faqData)} />}
     <script is:inline>document.documentElement.classList.add('js');</script>
     <title>{title}</title>
   </head>
   <body>
-    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+    <a class="skip-link" href="#contenido">{skipText[lang] ?? skipText.es}</a>
     <slot />
   </body>
 </html>

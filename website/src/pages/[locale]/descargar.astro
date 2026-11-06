@@ -20,11 +20,11 @@ const t = useTranslations(lang);
 const options = Object.values(downloads);
 ---
 
-<BaseLayout title={t('downloadPage.eyebrow')} description={t('downloadPage.description')}>
+<BaseLayout title={t('downloadPage.metaTitle')} description={t('downloadPage.description')}>
   <div class="site-shell">
     <main id="contenido" class="download-page">
       <div class="section-grid download-back-row">
-        <a class="button button-dark button-small download-back" href={`/${lang}`} data-back>{t('downloadPage.back')}</a>
+        <a class="button button-dark button-small download-back" href={`/${lang}/`} data-back>{t('downloadPage.back')}</a>
       </div>
       <section class="download download-page__band" aria-labelledby="descargar-titulo">
         <div class="download-grid" aria-hidden="true"></div>
@@ -67,7 +67,7 @@ const options = Object.values(downloads);
   .download-page { min-height: 100vh; padding-top: 110px; display: flex; flex-direction: column; gap: 40px; }
   .download-page__band { min-height: 560px; grid-template-columns: minmax(330px, .7fr) minmax(0, 1.3fr); align-items: center; }
   .download-page__copy h1 { margin: 28px 0 0; font-size: clamp(51px, 6vw, 84px); line-height: .9; letter-spacing: -.055em; text-transform: uppercase; }
-  .download-page__copy h1 em { color: var(--white); font-style: normal; text-shadow: 4px 4px 0 var(--ink); }
+  .download-page__copy h1 :global(em) { color: #fff; font-style: normal; text-shadow: 4px 4px 0 var(--ink); }
   .download-page__copy > p { max-width: 520px; margin: 25px 0 0; font-size: 18px; font-weight: 600; line-height: 1.6; }
   .download-page__grid { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
   .download-page__card { display: flex; flex-direction: column; gap: 8px; padding: 28px; border: 3px solid var(--ink); background: var(--navy); box-shadow: var(--shadow-large); color: var(--white); text-decoration: none; transition: transform 140ms ease, box-shadow 140ms ease; }

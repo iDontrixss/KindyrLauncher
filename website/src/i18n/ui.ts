@@ -194,6 +194,7 @@ export const ui = {
     // Download Page
     'downloadPage.back': '← BACK',
     'downloadPage.eyebrow': 'DOWNLOADS · v',
+    'downloadPage.metaTitle': 'Download Kindyr for Windows and Linux',
     'downloadPage.title': 'CHOOSE YOUR<br /><em>SYSTEM.</em>',
     'downloadPage.description': 'Kindyr is available for Windows and Linux. Download the version that corresponds to your equipment.',
     'downloadPage.download': 'DOWNLOAD',
@@ -408,6 +409,7 @@ export const ui = {
     // Download Page
     'downloadPage.back': '← VOLVER',
     'downloadPage.eyebrow': 'DESCARGAS · v',
+    'downloadPage.metaTitle': 'Descargar Kindyr para Windows y Linux',
     'downloadPage.title': 'ELEGÍ TU<br /><em>SISTEMA.</em>',
     'downloadPage.description': 'Kindyr está disponible para Windows y Linux. Descargá la versión que corresponde a tu equipo.',
     'downloadPage.download': 'DESCARGAR',
@@ -622,6 +624,7 @@ export const ui = {
     // Download Page
     'downloadPage.back': '← НАЗАД',
     'downloadPage.eyebrow': 'ЗАГРУЗКИ · v',
+    'downloadPage.metaTitle': 'Скачать Kindyr для Windows и Linux',
     'downloadPage.title': 'ВЫБЕРИТЕ<br /><em>СИСТЕМУ.</em>',
     'downloadPage.description': 'Kindyr доступен для Windows и Linux. Скачайте версию, соответствующую вашему оборудованию.',
     'downloadPage.download': 'СКАЧАТЬ',
@@ -836,6 +839,7 @@ export const ui = {
     // Download Page
     'downloadPage.back': '← VOLTAR',
     'downloadPage.eyebrow': 'DOWNLOADS · v',
+    'downloadPage.metaTitle': 'Baixar o Kindyr para Windows e Linux',
     'downloadPage.title': 'ESCOLHA SEU<br /><em>SISTEMA.</em>',
     'downloadPage.description': 'Kindyr está disponível para Windows e Linux. Baixe a versão que corresponde ao seu equipamento.',
     'downloadPage.download': 'BAIXAR',

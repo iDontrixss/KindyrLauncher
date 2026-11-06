@@ -43,7 +43,7 @@ const columns = [
   {
     title: t('footer.colLauncher'),
     links: [
-      { label: t('nav.download'), href: `/${lang}/descargar` },
+      { label: t('nav.download'), href: `/${lang}/descargar/` },
       { label: t('nav.faq'), href: `/${lang}/#preguntas` },
       { label: 'GitHub', href: GITHUB_URL },
       { label: t('footer.releases'), href: RELEASES_URL },
@@ -112,7 +112,7 @@ const columns = [
   .kindyr-footer__brand { display: grid; align-content: start; gap: 20px; }
   .kindyr-footer__social { display: flex; flex-wrap: wrap; gap: 10px; }
   .kindyr-footer__social a { display: grid; place-items: center; width: 40px; height: 40px; border: 2px solid var(--ink); background: var(--surface-2); color: var(--muted); box-shadow: 3px 3px 0 var(--ink); transition: transform 120ms ease, background-color 120ms ease, color 120ms ease; }
-  .kindyr-footer__social a:hover { background: var(--coral); color: var(--white); transform: translate(-2px, -2px); }
+  .kindyr-footer__social a:hover { background: var(--coral); color: var(--on-coral); transform: translate(-2px, -2px); }
   .kindyr-footer__social svg { width: 19px; height: 19px; fill: currentColor; stroke: none; }
   .kindyr-footer__slogan { margin: 0; color: var(--dim); font-size: 13px; font-weight: 500; }
   .kindyr-footer__col { display: grid; align-content: start; gap: 14px; }

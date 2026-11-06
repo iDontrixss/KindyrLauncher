@@ -33,7 +33,7 @@ while (heroLeadLines.length < 3) heroLeadLines.push('');
 
 const githubURL = 'https://github.com/iDontrixss/KindyrLauncher';
 const releasesURL = `${githubURL}/releases`;
-const pageDownloadsURL = `/${lang}/descargar`;
+const pageDownloadsURL = `/${lang}/descargar/`;
 
 // [etiqueta, textoKindyr, ganaKindyr, textoOficial, ganaOficial, textoTlauncher, ganaTlauncher]
 // La celda ganadora de cada fila se resalta con el estilo actual (✓ verde).
@@ -72,6 +72,7 @@ const faqItems = [
 ---
 
 <BaseLayout
+  faq={faqItems}
   title={t('meta.title')}
   description={t('meta.description')}
 >
@@ -139,8 +140,8 @@ const faqItems = [
           </div>
         </div>
 
-        <div class="hero-product reveal reveal-delay" aria-label={t('a11y.heroView')}>
-          <div class="app-window has-shot">
+        <div class="hero-product reveal reveal-delay">
+          <div class="app-window has-shot" role="img" aria-label={t('a11y.heroView')}>
             <LauncherMockup view="home" />
           </div>
           <div class="product-sticker" set:html={t('hero.tag')}></div>
@@ -161,13 +162,13 @@ const faqItems = [
           </ul>
         </div>
 
-        <div class="discover-window has-shot reveal reveal-delay" aria-label={t('a11y.discoverView')}>
+        <div class="discover-window has-shot reveal reveal-delay" role="img" aria-label={t('a11y.discoverView')}>
           <LauncherMockup view="discover" />
         </div>
       </section>
 
       <section class="showcase showcase-instances section-grid">
-        <div class="instance-manager has-shot reveal" aria-label={t('a11y.instancesView')}>
+        <div class="instance-manager has-shot reveal" role="img" aria-label={t('a11y.instancesView')}>
           <LauncherMockup view="instances" />
         </div>
 

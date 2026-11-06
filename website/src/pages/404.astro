@@ -1,0 +1,101 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+
+// Cloudflare Pages sirve este archivo para cualquier ruta inexistente, así que no
+// sabemos el idioma en build: se renderizan los cuatro y un script muestra el que toca.
+const copy = {
+  es: { back: 'VOLVER AL INICIO', eyebrow: 'ERROR 404', title: 'PÁGINA<br /><em>PERDIDA.</em>', text: 'Esta ruta no existe o se movió. Volvé al inicio y seguí desde ahí.', alt: 'Logo de Kindyr con una gota de agua preocupada' },
+  en: { back: 'BACK TO HOME', eyebrow: 'ERROR 404', title: 'PAGE<br /><em>LOST.</em>', text: "This page doesn't exist or has moved. Head back home and pick it up from there.", alt: 'Kindyr logo with a worried water drop' },
+  pt: { back: 'VOLTAR AO INÍCIO', eyebrow: 'ERRO 404', title: 'PÁGINA<br /><em>PERDIDA.</em>', text: 'Esta página não existe ou mudou de lugar. Volte ao início e continue a partir de lá.', alt: 'Logo do Kindyr com uma gota de água preocupada' },
+  ru: { back: 'НА ГЛАВНУЮ', eyebrow: 'ОШИБКА 404', title: 'СТРАНИЦА<br /><em>ПОТЕРЯНА.</em>', text: 'Этой страницы нет или она переехала. Вернитесь на главную и продолжите оттуда.', alt: 'Логотип Kindyr с обеспокоенной каплей воды' },
+};
+const langs = Object.keys(copy) as (keyof typeof copy)[];
+---
+
+<BaseLayout title="404 · Kindyr" description="404 — Kindyr" noindex>
+  <div class="site-shell">
+    <main id="contenido" class="notfound-page">
+      <section class="download notfound-band" aria-labelledby="notfound-titulo">
+        <div class="download-grid" aria-hidden="true"></div>
+        <div class="download-copy notfound-copy">
+          {langs.map((l) => (
+            <div class="notfound-lang" data-lang={l} hidden={l !== 'es'} lang={l}>
+              <div class="eyebrow"><span></span> {copy[l].eyebrow}</div>
+              <h1 id={l === 'es' ? 'notfound-titulo' : undefined} set:html={copy[l].title}></h1>
+              <p class="yuyu-text">{copy[l].text}</p>
+              <div class="download-actions">
+                <a class="button button-dark" href={`/${l}/`}>{copy[l].back}</a>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div class="download-logo notfound-logo">
+          <span class="notfound-logo__wrap">
+            <img src="/kindyr-logo.png" alt="" width="240" height="240" />
+            <svg class="notfound-drop" viewBox="0 0 48 60" role="img" aria-label="" xmlns="http://www.w3.org/2000/svg">
+              <path d="M24 3C24 3 6 24 6 38a18 18 0 0 0 36 0C42 24 24 3 24 3Z" fill="#6cc4ff" stroke="#010712" stroke-width="3" stroke-linejoin="round" />
+              <path d="M13 36c0-5 3-10 6-14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".75" />
+              <circle cx="18" cy="41" r="3" fill="#010712" />
+              <circle cx="30" cy="41" r="3" fill="#010712" />
+              <circle cx="19" cy="40" r=".9" fill="#fff" />
+              <circle cx="31" cy="40" r=".9" fill="#fff" />
+              <path d="M12.5 36 21 32M35.5 36 27 32" fill="none" stroke="#010712" stroke-width="2.4" stroke-linecap="round" />
+              <path d="M19 51q5-5 10 0" fill="none" stroke="#010712" stroke-width="2.4" stroke-linecap="round" />
+              <path d="M40 24q3 4 0 7q-3-3 0-7Z" fill="#fff" stroke="#010712" stroke-width="1.5" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="notfound-code" aria-hidden="true">404</span>
+        </div>
+      </section>
+    </main>
+    <SiteFooter />
+  </div>
+  <script is:inline>
+    (function () {
+      var supported = ['es', 'en', 'pt', 'ru'];
+      var fromPath = location.pathname.split('/')[1];
+      var fromNav = (navigator.language || 'es').slice(0, 2).toLowerCase();
+      var lang = supported.indexOf(fromPath) > -1 ? fromPath : supported.indexOf(fromNav) > -1 ? fromNav : 'en';
+      var blocks = document.querySelectorAll('.notfound-lang');
+      for (var i = 0; i < blocks.length; i++) {
+        var on = blocks[i].getAttribute('data-lang') === lang;
+        blocks[i].hidden = !on;
+        var h1 = blocks[i].querySelector('h1');
+        if (h1) h1.id = on ? 'notfound-titulo' : '';
+      }
+      document.documentElement.lang = lang;
+      var alts = {
+        es: 'Logo de Kindyr con una gota de agua preocupada',
+        en: 'Kindyr logo with a worried water drop',
+        pt: 'Logo do Kindyr com uma gota de água preocupada',
+        ru: 'Логотип Kindyr с обеспокоенной каплей воды'
+      };
+      var img = document.querySelector('.notfound-logo img');
+      if (img) img.alt = alts[lang];
+    })();
+  </script>
+</BaseLayout>
+
+<style>
+  .notfound-page { min-height: 100vh; display: flex; flex-direction: column; }
+  .notfound-band { flex: 1; min-height: 560px; }
+  .notfound-copy h1 { margin: 28px 0 0; font-size: clamp(51px, 6vw, 84px); line-height: .9; letter-spacing: -.055em; text-transform: uppercase; }
+  .notfound-copy h1 :global(em) { color: #fff; font-style: normal; text-shadow: 4px 4px 0 var(--ink); }
+  .notfound-copy .notfound-lang > p { max-width: 520px; margin: 25px 0 0; font-size: 18px; font-weight: 600; line-height: 1.6; }
+  .notfound-lang[hidden] { display: none; }
+  .notfound-logo { position: relative; }
+  .notfound-logo__wrap { position: relative; display: block; width: min(62%, 240px); }
+  .notfound-logo__wrap img { width: 100%; height: auto; }
+  .notfound-drop { position: absolute; top: -34px; right: -44px; width: 92px; height: auto; filter: drop-shadow(4px 5px 0 rgba(1,7,18,.6)); transform-origin: 50% 90%; animation: notfound-drip 3.2s ease-in-out infinite; }
+  .notfound-code { position: absolute; right: -16px; bottom: 24px; padding: 9px 11px; border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); box-shadow: 3px 3px 0 var(--ink); transform: rotate(-3deg); font: 800 8px/1 var(--font-mono); }
+  @keyframes notfound-drip {
+    0%, 100% { transform: rotate(6deg) translateY(0); }
+    50% { transform: rotate(-5deg) translateY(4px); }
+  }
+  @media (prefers-reduced-motion: reduce) { .notfound-drop { animation: none; } }
+  @media (max-width: 900px) {
+    .notfound-band { grid-template-columns: 1fr; }
+    .notfound-logo { min-height: 300px; }
+  }
+</style>

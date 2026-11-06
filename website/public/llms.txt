@@ -1,0 +1,13 @@
+# Kindyr
+
+> Kindyr is a free, open-source, ad-free Minecraft launcher for Windows and Linux. It creates and manages instances, installs mods and modpacks from Modrinth, imports .mrpack files and supports Forge, Fabric, NeoForge and Quilt.
+
+## Pages
+- [Home (English)](https://kindyrlauncher.pages.dev/en/): overview and features
+- [Inicio (Español)](https://kindyrlauncher.pages.dev/es/)
+- [Início (Português)](https://kindyrlauncher.pages.dev/pt/)
+- [Главная (Русский)](https://kindyrlauncher.pages.dev/ru/)
+- [Downloads](https://kindyrlauncher.pages.dev/en/descargar/): Windows and Linux builds
+
+## Source
+- [GitHub repository](https://github.com/iDontrixss/KindyrLauncher): code, releases and legal docs

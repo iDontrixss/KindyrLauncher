@@ -16,6 +16,7 @@ pnpm-debug.log*
 *.exe
 *.dmg
 *.png
+!website/public/og-cover.png
 *.jpg
 *.gif
 *.zip

@@ -4,7 +4,7 @@ import { getLangFromUrl, getRouteFromUrl, useTranslations } from '../i18n/utils'
 
 const currentLang = getLangFromUrl(Astro.url);
 const t = useTranslations(currentLang);
-const currentRoute = getRouteFromUrl(Astro.url);
+const currentRoute = getRouteFromUrl(Astro.url).replace(/\/$/, '');
 
 const langOptions = [
   { code: 'en', name: languages.en, initial: 'EN' },
@@ -33,7 +33,7 @@ const currentLangData = langOptions.find((l) => l.code === currentLang) || langO
     {langOptions.map((option) => (
       <a
         class={`language-option ${option.code === currentLang ? 'language-option--active' : ''}`}
-        href={`/${option.code}${currentRoute ? '/' + currentRoute : ''}`}
+        href={`/${option.code}/${currentRoute ? currentRoute + '/' : ''}`}
         role="menuitem"
         lang={option.code}
         aria-current={option.code === currentLang ? 'true' : 'false'}
@@ -59,7 +59,7 @@ const currentLangData = langOptions.find((l) => l.code === currentLang) || langO
     padding: 0 15px;
     border: 2px solid var(--ink);
     background: var(--coral);
-    color: var(--white);
+    color: var(--on-coral);
     box-shadow: 3px 3px 0 var(--ink);
     cursor: pointer;
     font: 800 10px/1 var(--font-mono);
@@ -136,7 +136,7 @@ const currentLangData = langOptions.find((l) => l.code === currentLang) || langO
   .language-option:hover {
     border-color: var(--ink);
     background: var(--coral);
-    color: var(--white);
+    color: var(--on-coral);
   }
 
   .language-option:focus-visible {
