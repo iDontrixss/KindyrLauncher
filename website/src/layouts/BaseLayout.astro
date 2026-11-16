@@ -52,6 +52,38 @@ const skipText: Record<string, string> = {
   ru: 'Перейти к содержимому',
 };
 
+// featureList en el idioma de cada página (antes iba en español en las cuatro versiones).
+const featureLists: Record<string, string[]> = {
+  es: [
+    'Gestión de instancias de Minecraft',
+    'Integración con Modrinth',
+    'Importación de paquetes .mrpack',
+    'Compatibilidad con múltiples loaders',
+    'Gestión de cuentas Microsoft',
+  ],
+  en: [
+    'Minecraft instance management',
+    'Modrinth integration',
+    '.mrpack modpack import',
+    'Support for multiple mod loaders',
+    'Microsoft account management',
+  ],
+  pt: [
+    'Gerenciamento de instâncias do Minecraft',
+    'Integração com o Modrinth',
+    'Importação de pacotes .mrpack',
+    'Compatibilidade com vários loaders',
+    'Gerenciamento de contas Microsoft',
+  ],
+  ru: [
+    'Управление экземплярами Minecraft',
+    'Интеграция с Modrinth',
+    'Импорт сборок .mrpack',
+    'Поддержка нескольких загрузчиков модов',
+    'Управление аккаунтами Microsoft',
+  ],
+};
+
 const structuredData = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
@@ -65,13 +97,7 @@ const structuredData = {
   url: canonicalURL.toString(),
   downloadUrl: 'https://github.com/iDontrixss/KindyrLauncher/releases',
   codeRepository: 'https://github.com/iDontrixss/KindyrLauncher',
-  featureList: [
-    'Gestión de instancias de Minecraft',
-    'Integración con Modrinth',
-    'Importación de paquetes .mrpack',
-    'Compatibilidad con múltiples loaders',
-    'Gestión de cuentas Microsoft',
-  ],
+  featureList: featureLists[lang] ?? featureLists.es,
   author: {
     '@type': 'Person',
     name: 'iDontrixss',
