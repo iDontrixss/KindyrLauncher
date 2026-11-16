@@ -99,6 +99,7 @@ const faqData = faq.length > 0 ? {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#061840" />
     <meta name="color-scheme" content="dark" />
+    <meta name="text-scale" content="scale" />
     <meta name="description" content={description} />
     <meta name="keywords" content={keywords[lang] ?? keywords.es} />
     <meta name="author" content="iDontrixss" />
@@ -118,12 +119,8 @@ const faqData = faq.length > 0 ? {
       <link rel="preload" href="/fonts/indie-flower/IndieFlower-Regular.woff2" as="font" type="font/woff2" crossorigin />
       <link rel="preload" href="/fonts/sue-ellen-francisco/SueEllenFrancisco-Regular.woff2" as="font" type="font/woff2" crossorigin />
     )}
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="preload" href="/fonts/space-grotesk/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content={ogLocale} />
     <meta property="og:site_name" content="Kindyr" />
@@ -142,6 +139,7 @@ const faqData = faq.length > 0 ? {
     {!noindex && <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />}
     {faqData && <script type="application/ld+json" set:html={JSON.stringify(faqData)} />}
     <script is:inline>document.documentElement.classList.add('js');</script>
+    {!noindex && <script type="speculationrules" is:inline set:html={JSON.stringify({ prefetch: [{ where: { href_matches: '/*' }, eagerness: 'moderate' }] })} />}
     <title>{title}</title>
   </head>
   <body>

@@ -80,15 +80,15 @@ const langs = Object.keys(copy) as (keyof typeof copy)[];
 <style>
   .notfound-page { min-height: 100vh; display: flex; flex-direction: column; }
   .notfound-band { flex: 1; min-height: 560px; }
-  .notfound-copy h1 { margin: 28px 0 0; font-size: clamp(51px, 6vw, 84px); line-height: .9; letter-spacing: -.055em; text-transform: uppercase; }
+  .notfound-copy h1 { margin: 28px 0 0; font-size: clamp(3.1875rem, 6vw, 5.25rem); line-height: .9; letter-spacing: -.055em; text-transform: uppercase; }
   .notfound-copy h1 :global(em) { color: #fff; font-style: normal; text-shadow: 4px 4px 0 var(--ink); }
-  .notfound-copy .notfound-lang > p { max-width: 520px; margin: 25px 0 0; font-size: 18px; font-weight: 600; line-height: 1.6; }
+  .notfound-copy .notfound-lang > p { max-width: 520px; margin: 25px 0 0; font-size: 1.125rem; font-weight: 600; line-height: 1.6; }
   .notfound-lang[hidden] { display: none; }
   .notfound-logo { position: relative; }
   .notfound-logo__wrap { position: relative; display: block; width: min(62%, 240px); }
   .notfound-logo__wrap img { width: 100%; height: auto; }
   .notfound-drop { position: absolute; top: -34px; right: -44px; width: 92px; height: auto; filter: drop-shadow(4px 5px 0 rgba(1,7,18,.6)); transform-origin: 50% 90%; animation: notfound-drip 3.2s ease-in-out infinite; }
-  .notfound-code { position: absolute; right: -16px; bottom: 24px; padding: 9px 11px; border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); box-shadow: 3px 3px 0 var(--ink); transform: rotate(-3deg); font: 800 8px/1 var(--font-mono); }
+  .notfound-code { position: absolute; right: -16px; bottom: 24px; padding: 9px 11px; border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); box-shadow: 3px 3px 0 var(--ink); transform: rotate(-3deg); font: 800 0.625rem/1 var(--font-mono); }
   @keyframes notfound-drip {
     0%, 100% { transform: rotate(6deg) translateY(0); }
     50% { transform: rotate(-5deg) translateY(4px); }

@@ -18,9 +18,10 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 type View = 'home' | 'instances' | 'discover' | 'import' | 'accounts' | 'skins' | 'settings' | 'migrate';
-interface Props { view: View }
+// priority="high": candidata a LCP (solo la del hero). Por defecto se difiere (lazy).
+interface Props { view: View; priority?: 'high' | 'lazy' }
 
-const { view } = Astro.props;
+const { view, priority = 'lazy' } = Astro.props;
 
 // Si existe public/previews/<vista>.webp se usa una imagen estática (mucho más liviana).
 // Si no existe, cae al iframe de siempre. PREVIEW_IFRAME=1 fuerza los iframes
@@ -233,6 +234,8 @@ const documentHtml = `<!doctype html><html lang="es"><head><meta charset="utf-8"
       height="540"
       alt=""
       decoding="async"
+      loading={priority === 'high' ? 'eager' : 'lazy'}
+      fetchpriority={priority === 'high' ? 'high' : undefined}
       draggable="false"
     />
   </div>

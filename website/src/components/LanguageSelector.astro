@@ -16,27 +16,32 @@ const langOptions = [
 const currentLangData = langOptions.find((l) => l.code === currentLang) || langOptions[0];
 ---
 
+<!--
+  Lista corta de enlaces = navegación, no un menú de comandos: sin role="menu"/"menuitem".
+  Popover nativo: Esc, clic fuera y retorno del foco los resuelve el navegador.
+-->
 <div class="language-selector" data-language-selector>
   <button
     class="language-trigger"
     type="button"
     aria-expanded="false"
-    aria-haspopup="true"
     aria-label={t('a11y.changeLang')}
+    aria-controls="language-menu"
+    popovertarget="language-menu"
+    popovertargetaction="toggle"
   >
     <span class="language-initial">{currentLangData.initial}</span>
     <svg class="language-chevron" aria-hidden="true" viewBox="0 0 24 24">
       <path d="M6 9l6 6 6-6"/>
     </svg>
   </button>
-  <div class="language-dropdown" role="menu">
+  <div class="language-dropdown" id="language-menu" popover="auto">
     {langOptions.map((option) => (
       <a
         class={`language-option ${option.code === currentLang ? 'language-option--active' : ''}`}
         href={`/${option.code}/${currentRoute ? currentRoute + '/' : ''}`}
-        role="menuitem"
         lang={option.code}
-        aria-current={option.code === currentLang ? 'true' : 'false'}
+        aria-current={option.code === currentLang ? 'true' : undefined}
       >
         <span class="language-option-initial">{option.initial}</span>
         <span class="language-option-name">{option.name}</span>
@@ -62,7 +67,7 @@ const currentLangData = langOptions.find((l) => l.code === currentLang) || langO
     color: var(--on-coral);
     box-shadow: 3px 3px 0 var(--ink);
     cursor: pointer;
-    font: 800 10px/1 var(--font-mono);
+    font: 800 0.625rem/1 var(--font-mono);
     letter-spacing: .08em;
     text-transform: uppercase;
     transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
@@ -90,7 +95,7 @@ const currentLangData = langOptions.find((l) => l.code === currentLang) || langO
   }
 
   .language-initial {
-    font-size: 11px;
+    font-size: 0.6875rem;
   }
 
   .language-chevron {
@@ -100,25 +105,50 @@ const currentLangData = langOptions.find((l) => l.code === currentLang) || langO
     transition: transform 140ms ease;
   }
 
+  /* Popover (top layer): posición fija. Con anclaje CSS se pega al botón y se voltea si no cabe;
+     sin él, el script de abajo coloca top/left al abrir. */
   .language-dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
+    position: fixed;
+    inset: auto;
+    top: 64px;
+    right: 16px;
     min-width: 180px;
+    margin: 0;
     padding: 8px;
     border: 2px solid var(--ink);
     background: var(--navy);
+    color: inherit;
     box-shadow: 6px 6px 0 var(--ink);
+    overflow: visible;
     opacity: 0;
-    visibility: hidden;
     transform: translateY(-8px);
-    transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+    transition: opacity 140ms ease, transform 140ms ease, overlay 140ms allow-discrete, display 140ms allow-discrete;
   }
 
-  .language-dropdown.is-open {
+  .language-dropdown:popover-open {
     opacity: 1;
-    visibility: visible;
     transform: translateY(0);
+  }
+
+  /* Navegadores sin Popover API: el selector no se ofrece (se entra por /en/, /es/...). */
+  @supports not selector(:popover-open) {
+    .language-selector { display: none; }
+  }
+
+  @starting-style {
+    .language-dropdown:popover-open {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  @supports (position-area: block-end) {
+    .language-dropdown {
+      inset: auto;
+      position-area: block-end span-inline-start;
+      margin-block-start: 8px;
+      position-try-fallbacks: flip-inline, flip-block;
+    }
   }
 
   .language-option {
@@ -158,63 +188,37 @@ const currentLangData = langOptions.find((l) => l.code === currentLang) || langO
     background: var(--blue-bright);
     color: var(--ink);
     box-shadow: 2px 2px 0 var(--ink);
-    font: 700 11px/1 var(--font-mono);
+    font: 700 0.6875rem/1 var(--font-mono);
     letter-spacing: .08em;
   }
 
   .language-option-name {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 500;
-  }
-
-  @media (max-width: 700px) {
-    .language-dropdown {
-      right: auto;
-      left: 0;
-    }
   }
 </style>
 
 <script>
-(() => {
-  const selector = document.querySelector('[data-language-selector]');
-  if (!selector) return;
+  const selector = document.querySelector<HTMLElement>('[data-language-selector]');
+  const trigger = selector?.querySelector<HTMLButtonElement>('.language-trigger');
+  const dropdown = selector?.querySelector<HTMLElement>('.language-dropdown');
 
-  const trigger = selector.querySelector<HTMLButtonElement>('.language-trigger');
-  const dropdown = selector.querySelector<HTMLDivElement>('.language-dropdown');
+  if (selector && trigger && dropdown) {
+    const hasAnchor = CSS.supports('position-area: block-end');
 
-  if (!trigger || !dropdown) return;
-
-  const isOpen = () => trigger.getAttribute('aria-expanded') === 'true';
-
-  const open = () => {
-    trigger.setAttribute('aria-expanded', 'true');
-    dropdown.classList.add('is-open');
-  };
-
-  const close = () => {
-    trigger.setAttribute('aria-expanded', 'false');
-    dropdown.classList.remove('is-open');
-  };
-
-  const toggle = () => (isOpen() ? close() : open());
-
-  trigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggle();
-  });
-
-  document.addEventListener('click', (e) => {
-    if (isOpen() && !selector.contains(e.target as Node)) {
-      close();
-    }
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && isOpen()) {
-      close();
-      trigger.focus();
-    }
-  });
-})();
+    // aria-expanded sigue al estado real del popover (abre/cierra por botón, Esc o clic fuera).
+    dropdown.addEventListener('toggle', (event) => {
+      const isOpen = (event as ToggleEvent).newState === 'open';
+      trigger.setAttribute('aria-expanded', String(isOpen));
+      if (isOpen && !hasAnchor) {
+        // Respaldo sin anclaje CSS: borde derecho del popover alineado al del botón, dentro del viewport.
+        const rect = trigger.getBoundingClientRect();
+        const width = dropdown.offsetWidth;
+        const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
+        dropdown.style.top = `${rect.bottom + 8}px`;
+        dropdown.style.left = `${left}px`;
+        dropdown.style.right = 'auto';
+      }
+    });
+  }
 </script>

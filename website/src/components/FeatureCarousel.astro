@@ -78,8 +78,6 @@ const features = [
   id="funciones"
   aria-labelledby="feature-carousel-title"
   data-carousel
-  data-label-pause={t('carousel.pause')}
-  data-label-resume={t('carousel.resume')}
   data-label-card={t('carousel.card')}
   data-label-of={t('carousel.of')}
 >
@@ -118,7 +116,6 @@ const features = [
   </div>
 
   <div class="carousel-footer section-grid">
-    <button class="carousel-toggle" type="button" data-carousel-toggle aria-pressed="false">{t('carousel.pause')}</button>
     <div class="carousel-dots" data-carousel-dots role="group" aria-label={t('carousel.select')}></div>
     <p class="carousel-status" data-carousel-status aria-live="off"></p>
   </div>
@@ -126,10 +123,10 @@ const features = [
 
 <style>
   .feature-carousel { padding: 130px 0 140px; overflow: clip; }
-  .feature-carousel h2 { margin: 28px 0 0; font-size: clamp(43px, 4.8vw, 68px); font-weight: 700; line-height: .9; letter-spacing: -.055em; text-transform: uppercase; }
+  .feature-carousel h2 { margin: 28px 0 0; font-size: clamp(2.6875rem, 4.8vw, 4.25rem); font-weight: 700; line-height: .9; letter-spacing: -.055em; text-transform: uppercase; }
   .feature-carousel h2 em { color: var(--coral); font-style: normal; }
   /* Antes era ".feature-carousel > div > p" y también atrapaba al texto de estado del footer. */
-  .feature-carousel .section-grid > p.yuyu-text { max-width: 560px; margin: 22px 0 0; font-size: 21px; font-weight: 500; line-height: 1.6; }
+  .feature-carousel .section-grid > p.yuyu-text { max-width: 560px; margin: 22px 0 0; font-size: 1.3125rem; font-weight: 500; line-height: 1.6; }
 
   .carousel-viewport {
     position: relative;
@@ -166,7 +163,7 @@ const features = [
     color: var(--on-coral);
     box-shadow: 3px 3px 0 var(--ink);
     cursor: pointer;
-    font-size: 30px;
+    font-size: 1.875rem;
     line-height: 1;
     transform: translateY(-50%);
     transition: transform 140ms ease, box-shadow 140ms ease;
@@ -177,25 +174,12 @@ const features = [
   .carousel-nav--next { right: max(18px, calc((100% - var(--max)) / 2)); }
   .carousel-nav span { transform: translateY(-3px); }
 
-  /* Solo visual: todo el footer (Pausar, dots y estado) se oculta pero los nodos
-     siguen en el DOM porque el JS los usa. No borrarlos. */
-  .carousel-footer { display: none; }
-  .carousel-toggle, .carousel-status { display: none; }
-  .carousel-toggle {
-    padding: 6px 12px;
-    border: 2px solid var(--ink);
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    font: 700 10px/1.4 var(--font-mono);
-    letter-spacing: .08em;
-    text-transform: uppercase;
-  }
-  .carousel-toggle:hover { background: var(--coral); color: var(--on-coral); }
-  .carousel-toggle:focus-visible { outline: 2px solid var(--white); outline-offset: 3px; }
+  /* El autoplay (>5 s) exige un control visible de pausa (WCAG 2.2.2): el footer se muestra.
+     El estado queda solo para lectores de pantalla (oculto visualmente, nunca display:none). */
+  .carousel-footer { position: relative; display: flex; align-items: center; justify-content: center; gap: 22px; margin-top: 4px; }
   .carousel-dots { display: flex; flex-wrap: wrap; gap: 0; }
   /* botón de 24px (objetivo táctil mínimo) con el punto visual de 13px dibujado en ::before */
-  .carousel-dot {
+  :global(.carousel-dot) {
     display: grid;
     place-items: center;
     width: 24px;
@@ -205,28 +189,28 @@ const features = [
     background: transparent;
     cursor: pointer;
   }
-  .carousel-dot::before {
+  :global(.carousel-dot)::before {
     width: 13px;
     height: 13px;
-    border: 2px solid var(--ink);
+    border: 2px solid var(--blue-pale);
     border-radius: 50%;
     background: transparent;
     content: '';
     transition: background-color 160ms ease, transform 160ms ease;
   }
-  .carousel-dot:hover::before { transform: scale(1.25); }
-  .carousel-dot.active::before { background: var(--coral); }
-  .carousel-dot:focus-visible { outline: 2px solid var(--white); outline-offset: 0; }
-  .carousel-status { margin: 0; color: var(--dim); font: 700 11px/1.5 var(--font-mono); letter-spacing: .06em; }
+  :global(.carousel-dot):hover::before { transform: scale(1.25); }
+  :global(.carousel-dot.active)::before { background: var(--coral); border-color: var(--white); transform: scale(1.3); }
+  :global(.carousel-dot):focus-visible { outline: 2px solid var(--white); outline-offset: 0; }
+  .carousel-status { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
   @media (max-width: 680px) {
     .feature-carousel { padding: 100px 0; }
-    .feature-carousel h2 { font-size: clamp(39px, 11vw, 55px); }
+    .feature-carousel h2 { font-size: clamp(2.4375rem, 11vw, 3.4375rem); }
     .carousel-viewport { padding: 40px 0 48px; }
-    .carousel-nav { width: 44px; height: 44px; font-size: 25px; }
+    .carousel-nav { width: 44px; height: 44px; font-size: 1.5625rem; }
     .carousel-nav--prev { left: 10px; }
     .carousel-nav--next { right: 10px; }
-    .carousel-footer { flex-wrap: wrap; align-items: flex-start; }
+    .carousel-footer { flex-wrap: wrap; gap: 14px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -244,15 +228,12 @@ const features = [
     const slides = Array.from(track.querySelectorAll<HTMLElement>('[data-carousel-slide]'));
     const prevBtn = root.querySelector<HTMLButtonElement>('[data-carousel-prev]')!;
     const nextBtn = root.querySelector<HTMLButtonElement>('[data-carousel-next]')!;
-    const toggleBtn = root.querySelector<HTMLButtonElement>('[data-carousel-toggle]')!;
     const dotsWrap = root.querySelector<HTMLElement>('[data-carousel-dots]')!;
     const status = root.querySelector<HTMLElement>('[data-carousel-status]');
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const total = slides.length;
     const INTERVAL = 4500;
     const carouselLabels = {
-      pause: root.dataset.labelPause || 'Pause',
-      resume: root.dataset.labelResume || 'Resume',
       card: root.dataset.labelCard || 'Card',
       of: root.dataset.labelOf || '/',
     };
@@ -262,7 +243,6 @@ const features = [
     let hovered = false;
     let focused = false;
     let inView = true;
-    let userPaused = false;
     let step = 0;
 
     slides.forEach((_, index) => {
@@ -327,7 +307,7 @@ const features = [
 
     const start = () => {
       stop();
-      if (motionQuery.matches || userPaused || hovered || focused || !inView || document.hidden) return;
+      if (motionQuery.matches || hovered || focused || !inView || document.hidden) return;
       timer = window.setInterval(() => goTo(active + 1), INTERVAL);
     };
 
@@ -345,13 +325,6 @@ const features = [
 
     prevBtn.addEventListener('click', () => userGo(active - 1));
     nextBtn.addEventListener('click', () => userGo(active + 1));
-
-    toggleBtn.addEventListener('click', () => {
-      userPaused = !userPaused;
-      toggleBtn.setAttribute('aria-pressed', String(userPaused));
-      toggleBtn.textContent = userPaused ? carouselLabels.resume : carouselLabels.pause;
-      start();
-    });
 
     // Hover y foco son dos fuentes distintas: cada una con su bandera.
     viewport.addEventListener('pointerenter', () => { hovered = true; start(); });

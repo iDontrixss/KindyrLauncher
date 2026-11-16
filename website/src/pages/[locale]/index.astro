@@ -100,12 +100,12 @@ const faqItems = [
         </a>
         <LanguageSelector />
         <a class="button button-small" href="#descargar">{t('nav.download')}</a>
-        <button class="menu-toggle" type="button" aria-label={t('a11y.openMenu')} aria-expanded="false" data-menu-toggle>
+        <button class="menu-toggle" type="button" aria-label={t('a11y.openMenu')} aria-expanded="false" aria-controls="mobile-menu" popovertarget="mobile-menu" popovertargetaction="toggle" data-menu-toggle>
           <span></span><span></span><span></span>
         </button>
       </div>
 
-      <nav class="mobile-nav" aria-label={t('a11y.mobileNav')} data-mobile-nav>
+      <nav class="mobile-nav" id="mobile-menu" popover="auto" aria-label={t('a11y.mobileNav')} data-mobile-nav>
         <a href="#funciones">{t('nav.features')}</a>
         <a href="#modrinth">{t('nav.content')}</a>
         <a href="#comparativa">{t('nav.why')}</a>
@@ -142,7 +142,7 @@ const faqItems = [
 
         <div class="hero-product reveal reveal-delay">
           <div class="app-window has-shot" role="img" aria-label={t('a11y.heroView')}>
-            <LauncherMockup view="home" />
+            <LauncherMockup view="home" priority="high" />
           </div>
           <div class="product-sticker" set:html={t('hero.tag')}></div>
         </div>
@@ -191,27 +191,34 @@ const faqItems = [
             <p class="yuyu-text">{t('why.description')}</p>
           </div>
 
-          <div class="comparison-table reveal" role="table" aria-label={t('a11y.comparison')}>
-            <div class="comparison-head" role="row">
-              <span role="columnheader">{t('why.feature')}</span>
-              <strong role="columnheader">{t('why.kindyr')}</strong>
-              <span role="columnheader">{t('why.official')}</span>
-              <span role="columnheader">{t('why.tlauncher')}</span>
-            </div>
-            {comparisonRows.map((row) => (
-              <div class="comparison-row" role="row">
-                <span class="comparison-label" role="cell">{row[0]}</span>
-                {[
-                  { text: row[1], win: row[2], launcher: t('why.kindyr') },
-                  { text: row[3], win: row[4], launcher: t('why.official') },
-                  { text: row[5], win: row[6], launcher: t('why.tlauncher') },
-                ].map((cell) => (
-                  cell.win
-                    ? <strong class="comparison-win" role="cell" data-launcher={cell.launcher}><i>✓</i>{cell.text}</strong>
-                    : <span class="comparison-cell" role="cell" data-launcher={cell.launcher}>{cell.text}</span>
+          <div class="comparison-wrap reveal" role="region" tabindex="0" aria-labelledby="comparison-caption">
+            <table class="comparison-table">
+              <caption id="comparison-caption">{t('a11y.comparison')}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{t('why.feature')}</th>
+                  <th scope="col" class="comparison-head-kindyr">{t('why.kindyr')}</th>
+                  <th scope="col">{t('why.official')}</th>
+                  <th scope="col">{t('why.tlauncher')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row) => (
+                  <tr>
+                    <th scope="row" class="comparison-label">{row[0]}</th>
+                    {[
+                      { text: row[1], win: row[2], launcher: t('why.kindyr') },
+                      { text: row[3], win: row[4], launcher: t('why.official') },
+                      { text: row[5], win: row[6], launcher: t('why.tlauncher') },
+                    ].map((cell) => (
+                      cell.win
+                        ? <td class="comparison-win" data-launcher={cell.launcher}><span class="comparison-win__inner"><i>✓</i>{cell.text}</span></td>
+                        : <td class="comparison-cell" data-launcher={cell.launcher}>{cell.text}</td>
+                    ))}
+                  </tr>
                 ))}
-              </div>
-            ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -460,10 +467,30 @@ const faqItems = [
         // vez más con demora. Es idempotente y conserva la fuente visible.
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { normalizeCycle(); });
         window.setTimeout(normalizeCycle, 800);
-        window.setInterval(() => {
-          cycleIndex = (cycleIndex + 1) % usable.length;
-          applyCycleFont(usable[cycleIndex]);
-        }, 300);
+        // El ciclo solo corre con el hero a la vista y la pestaña visible: cada tick
+        // cambia fuente y tamaño (relayout), no tiene sentido pagarlo fuera de pantalla.
+        let cycleTimer = 0;
+        let cycleInView = true;
+        const syncCycle = () => {
+          const shouldRun = cycleInView && !document.hidden;
+          if (shouldRun && !cycleTimer) {
+            cycleTimer = window.setInterval(() => {
+              cycleIndex = (cycleIndex + 1) % usable.length;
+              applyCycleFont(usable[cycleIndex]);
+            }, 300);
+          } else if (!shouldRun && cycleTimer) {
+            window.clearInterval(cycleTimer);
+            cycleTimer = 0;
+          }
+        };
+        if ('IntersectionObserver' in window) {
+          new IntersectionObserver(([entry]) => {
+            cycleInView = entry.isIntersecting;
+            syncCycle();
+          }, { rootMargin: '200px' }).observe(cycleEl);
+        }
+        document.addEventListener('visibilitychange', syncCycle);
+        syncCycle();
         let cycleResizeTimer = 0;
         window.addEventListener('resize', () => {
           window.clearTimeout(cycleResizeTimer);
@@ -476,29 +503,58 @@ const faqItems = [
     const mobileNav = document.querySelector('[data-mobile-nav]');
     const header = document.querySelector('[data-header]');
 
+    // Menú móvil: popover nativo (Esc, clic fuera y foco los maneja el navegador).
+    // Aquí solo se sincroniza aria-expanded y se cierra al elegir un enlace o al ensanchar la ventana.
+    const hasPopover = mobileNav && 'showPopover' in mobileNav;
     const closeMenu = () => {
-      menuToggle?.setAttribute('aria-expanded', 'false');
-      mobileNav?.classList.remove('is-open');
+      if (hasPopover) {
+        if (mobileNav.matches(':popover-open')) mobileNav.hidePopover();
+      } else {
+        menuToggle?.setAttribute('aria-expanded', 'false');
+        mobileNav?.classList.remove('is-open');
+      }
     };
 
-    menuToggle?.addEventListener('click', () => {
-      const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
-      menuToggle.setAttribute('aria-expanded', String(!isOpen));
-      mobileNav?.classList.toggle('is-open', !isOpen);
-    });
+    if (hasPopover) {
+      mobileNav.addEventListener('toggle', (event) => {
+        menuToggle?.setAttribute('aria-expanded', String(event.newState === 'open'));
+      });
+    } else {
+      // Respaldo para navegadores sin Popover API.
+      mobileNav?.removeAttribute('popover');
+      menuToggle?.removeAttribute('popovertarget');
+      menuToggle?.addEventListener('click', () => {
+        const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
+        menuToggle.setAttribute('aria-expanded', String(!isOpen));
+        mobileNav?.classList.toggle('is-open', !isOpen);
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && menuToggle?.getAttribute('aria-expanded') === 'true') {
+          closeMenu();
+          menuToggle.focus();
+        }
+      });
+    }
 
     mobileNav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+    window.matchMedia('(min-width: 901px)').addEventListener('change', (event) => { if (event.matches) closeMenu(); });
 
-    const syncHeader = () => header?.classList.toggle('is-scrolled', window.scrollY > 24);
-    syncHeader();
-    window.addEventListener('scroll', syncHeader, { passive: true });
+    // Con animation-timeline: scroll() el header se anima solo en CSS; este listener es el respaldo.
+    if (!CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)')) {
+      const syncHeader = () => header?.classList.toggle('is-scrolled', window.scrollY > 24);
+      syncHeader();
+      window.addEventListener('scroll', syncHeader, { passive: true });
+    }
 
     document.querySelectorAll('[data-year]').forEach((node) => {
       node.textContent = String(new Date().getFullYear());
     });
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!reduceMotion && 'IntersectionObserver' in window) {
+    const nativeReveal = CSS.supports('(animation-timeline: view()) and (animation-range: entry 0% entry 100%)');
+    if (nativeReveal && !reduceMotion) {
+      // El revelado lo hace el CSS con animation-timeline: view(); no hace falta observer.
+    } else if (!reduceMotion && 'IntersectionObserver' in window) {
       const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
