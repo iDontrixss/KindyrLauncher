@@ -106,6 +106,18 @@ const structuredData = {
   inLanguage: lang,
 };
 
+// Nombre del sitio para Google (resultados de búsqueda). Sin esto, Google usa el dominio y en
+// *.pages.dev muestra "Cloudflare". Va en la home de cada idioma; url apunta a la raíz del sitio.
+const isHome = /^\/[a-z]{2}\/$/.test(pathname);
+const websiteData = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Kindyr Launcher',
+  alternateName: ['Kindyr', 'KindyrLauncher'],
+  url: new URL('/', siteURL).toString(),
+  inLanguage: lang,
+};
+
 const faqData = faq.length > 0 ? {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
@@ -164,6 +176,7 @@ const faqData = faq.length > 0 ? {
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImage} />
     {!noindex && <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />}
+    {!noindex && isHome && <script type="application/ld+json" set:html={JSON.stringify(websiteData)} />}
     {faqData && <script type="application/ld+json" set:html={JSON.stringify(faqData)} />}
     <script is:inline>document.documentElement.classList.add('js');</script>
     {!noindex && <script type="speculationrules" is:inline set:html={JSON.stringify({ prefetch: [{ where: { href_matches: '/*' }, eagerness: 'moderate' }] })} />}

@@ -8,6 +8,14 @@ import { languages } from '../i18n/ui';
 // (el más hablado en la comunidad de Minecraft y en el mundo).
 // Sin JS: se muestra el selector y un meta-refresh lleva a /en/.
 const site = Astro.site ?? 'https://kindyrlauncher.pages.dev';
+// Nombre del sitio para Google: sin WebSite JSON-LD en la raíz, en *.pages.dev muestra "Cloudflare".
+const websiteData = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Kindyr Launcher',
+  alternateName: ['Kindyr', 'KindyrLauncher'],
+  url: new URL('/', site).toString(),
+};
 const localeLinks = [
   { code: 'en', href: '/en/' },
   { code: 'es', href: '/es/' },
@@ -36,6 +44,7 @@ const localeLinks = [
     <link rel="alternate" hreflang="pt" href={new URL('/pt/', site)} />
     <link rel="alternate" hreflang="x-default" href={new URL('/en/', site)} />
     <link rel="icon" type="image/png" href="/kindyr-favicon.png?v=3" sizes="500x500" />
+    <script type="application/ld+json" set:html={JSON.stringify(websiteData)} />
     <meta http-equiv="refresh" content="4;url=/en/" />
   </head>
   <body>
